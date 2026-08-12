@@ -58,7 +58,16 @@
             <div>
                 <span class="block text-xs font-semibold text-gray-500 uppercase">Berkas Lampiran</span>
                 @if ($outgoingMail->file_path)
-                    <span class="text-blue-800 font-medium break-all">{{ $outgoingMail->file_path }}</span>
+                    <div class="mt-1 flex items-center space-x-2">
+                        <a href="{{ route('document.download', ['path' => $outgoingMail->file_path]) }}" 
+                           class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-xs font-semibold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            Unduh Dokumen (Local)
+                        </a>
+                        <span class="text-xs text-gray-500 font-mono">({{ $outgoingMail->file_path }})</span>
+                    </div>
                 @else
                     <span class="text-gray-400">Tidak ada lampiran.</span>
                 @endif

@@ -6,9 +6,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreIncomingMailRequest;
 use App\Http\Requests\UpdateIncomingMailRequest;
+use App\Jobs\ProcessOcrJob;
 use App\Models\IncomingMail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class IncomingMailController extends Controller
@@ -22,7 +24,7 @@ class IncomingMailController extends Controller
 
         $incomingMails = IncomingMail::latest()->paginate(15);
 
-        return view('incoming_mails.index', compact('incomingMails'));
+        return view('incoming-mails.index', compact('incomingMails'));
     }
 
     /**
@@ -32,7 +34,7 @@ class IncomingMailController extends Controller
     {
         Gate::authorize('create', IncomingMail::class);
 
-        return view('incoming_mails.create');
+        return view('incoming-mails.create');
     }
 
     /**
@@ -43,16 +45,18 @@ class IncomingMailController extends Controller
         Gate::authorize('create', IncomingMail::class);
 
         $filePath = $request->hasFile('file')
-            ? $request->file('file')->store('incoming-mails', 's3')
+            ? $request->file('file')->store('incoming-mails')
             : null;
 
-        IncomingMail::create(array_merge(
+        $incomingMail = IncomingMail::create(array_merge(
             $request->validated(),
             [
                 'file_path' => $filePath,
                 'status' => 'RECEIVED',
             ]
         ));
+
+        ProcessOcrJob::dispatch($incomingMail);
 
         return redirect()
             ->route('incoming-mails.index')
@@ -67,8 +71,9 @@ class IncomingMailController extends Controller
         Gate::authorize('view', $incomingMail);
 
         $incomingMail->load('dispositions.sender', 'dispositions.receiver');
+        $users = \App\Models\User::orderBy('name')->get();
 
-        return view('incoming_mails.show', compact('incomingMail'));
+        return view('incoming-mails.show', compact('incomingMail', 'users'));
     }
 
     /**
@@ -78,7 +83,7 @@ class IncomingMailController extends Controller
     {
         Gate::authorize('update', $incomingMail);
 
-        return view('incoming_mails.edit', compact('incomingMail'));
+        return view('incoming-mails.edit', compact('incomingMail'));
     }
 
     /**
@@ -91,7 +96,7 @@ class IncomingMailController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('file')) {
-            $data['file_path'] = $request->file('file')->store('incoming-mails', 's3');
+            $data['file_path'] = $request->file('file')->store('incoming-mails');
         }
 
         $incomingMail->update($data);
@@ -115,3 +120,4 @@ class IncomingMailController extends Controller
             ->with('success', 'Surat Masuk berhasil dihapus.');
     }
 }
+

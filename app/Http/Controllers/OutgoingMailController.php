@@ -6,9 +6,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreOutgoingMailRequest;
 use App\Http\Requests\UpdateOutgoingMailRequest;
+use App\Jobs\ProcessDigitalSignatureJob;
 use App\Models\OutgoingMail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class OutgoingMailController extends Controller
@@ -22,7 +24,7 @@ class OutgoingMailController extends Controller
 
         $outgoingMails = OutgoingMail::with('creator')->latest()->paginate(15);
 
-        return view('outgoing_mails.index', compact('outgoingMails'));
+        return view('outgoing-mails.index', compact('outgoingMails'));
     }
 
     /**
@@ -32,7 +34,7 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('create', OutgoingMail::class);
 
-        return view('outgoing_mails.create');
+        return view('outgoing-mails.create');
     }
 
     /**
@@ -43,7 +45,7 @@ class OutgoingMailController extends Controller
         Gate::authorize('create', OutgoingMail::class);
 
         $filePath = $request->hasFile('file')
-            ? $request->file('file')->store('outgoing-mails', 's3')
+            ? $request->file('file')->store('outgoing-mails')
             : null;
 
         OutgoingMail::create(array_merge(
@@ -69,7 +71,23 @@ class OutgoingMailController extends Controller
 
         $outgoingMail->load('creator');
 
-        return view('outgoing_mails.show', compact('outgoingMail'));
+        return view('outgoing-mails.show', compact('outgoingMail'));
+    }
+
+    /**
+     * Issue PSrE Digital Signature for the outgoing mail.
+     */
+    public function sign(OutgoingMail $outgoingMail): RedirectResponse
+    {
+        Gate::authorize('sign', $outgoingMail);
+
+        $outgoingMail->update(['status' => 'READY_FOR_SIGN']);
+
+        ProcessDigitalSignatureJob::dispatch($outgoingMail, auth()->user());
+
+        return redirect()
+            ->route('outgoing-mails.show', $outgoingMail)
+            ->with('success', 'Tanda tangan digital (PSrE) berhasil dipicu.');
     }
 
     /**
@@ -79,7 +97,7 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('update', $outgoingMail);
 
-        return view('outgoing_mails.edit', compact('outgoingMail'));
+        return view('outgoing-mails.edit', compact('outgoingMail'));
     }
 
     /**
@@ -92,7 +110,7 @@ class OutgoingMailController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('file')) {
-            $data['file_path'] = $request->file('file')->store('outgoing-mails', 's3');
+            $data['file_path'] = $request->file('file')->store('outgoing-mails');
         }
 
         $outgoingMail->update($data);
@@ -116,3 +134,4 @@ class OutgoingMailController extends Controller
             ->with('success', 'Surat Keluar berhasil dihapus.');
     }
 }
+
