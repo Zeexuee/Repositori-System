@@ -3,15 +3,15 @@
 @section('title', 'Daftar Surat Masuk')
 
 @section('content')
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-200">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/80">
         <div>
-            <h1 class="text-xl font-bold text-gray-900">Daftar Surat Masuk</h1>
-            <p class="text-sm text-gray-600 mt-1">Kelola dan pantau seluruh alur dokumen surat masuk perusahaan.</p>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Daftar Surat Masuk</h1>
+            <p class="text-xs text-slate-600 mt-1">Kelola dan pantau seluruh alur dokumen surat masuk perusahaan.</p>
         </div>
         @can('create', App\Models\IncomingMail::class)
             <div class="mt-4 sm:mt-0">
-                <a href="{{ route('incoming-mails.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-semibold rounded-md hover:bg-blue-800 transition-colors shadow-sm">
-                    + Catat Surat Masuk
+                <a href="{{ route('incoming-mails.create') }}" class="inline-flex items-center px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all shadow-xs">
+                    Catat Surat Masuk
                 </a>
             </div>
         @endcan
@@ -20,37 +20,37 @@
     <div class="mt-6 overflow-x-auto">
         <table class="w-full text-left border-collapse">
             <thead>
-                <tr class="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    <th class="p-3">Nomor Surat</th>
-                    <th class="p-3">Subjek</th>
-                    <th class="p-3">Pengirim</th>
-                    <th class="p-3">Tanggal Diterima</th>
-                    <th class="p-3">Status</th>
-                    <th class="p-3 text-right">Aksi</th>
+                <tr class="border-b border-slate-200 bg-slate-100 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    <th class="p-3.5">Nomor Surat</th>
+                    <th class="p-3.5">Subjek</th>
+                    <th class="p-3.5">Pengirim</th>
+                    <th class="p-3.5">Tanggal Diterima</th>
+                    <th class="p-3.5">Status</th>
+                    <th class="p-3.5 text-right">Aksi</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 text-sm">
+            <tbody class="divide-y divide-slate-200 text-sm">
                 @forelse ($incomingMails as $mail)
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="p-3 font-semibold text-gray-900">{{ $mail->mail_number }}</td>
-                        <td class="p-3 text-gray-800">{{ $mail->subject }}</td>
-                        <td class="p-3 text-gray-700">{{ $mail->sender }}</td>
-                        <td class="p-3 text-gray-600">{{ $mail->received_date?->format('d M Y') }}</td>
-                        <td class="p-3">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-300">
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-3.5 font-bold text-slate-900">{{ $mail->mail_number }}</td>
+                        <td class="p-3.5 text-slate-800">{{ $mail->subject }}</td>
+                        <td class="p-3.5 text-slate-700">{{ $mail->sender }}</td>
+                        <td class="p-3.5 text-slate-600 text-xs font-mono">{{ $mail->received_date?->format('d M Y') }}</td>
+                        <td class="p-3.5">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-300">
                                 {{ $mail->status }}
                             </span>
                         </td>
-                        <td class="p-3 text-right space-x-2">
-                            <a href="{{ route('incoming-mails.show', $mail) }}" class="text-blue-700 hover:text-blue-900 font-medium">Detail</a>
+                        <td class="p-3.5 text-right space-x-2">
+                            <a href="{{ route('incoming-mails.show', $mail) }}" class="text-xs font-semibold text-slate-900 hover:underline">Detail</a>
                             @can('update', $mail)
-                                <a href="{{ route('incoming-mails.edit', $mail) }}" class="text-amber-700 hover:text-amber-900 font-medium">Edit</a>
+                                <a href="{{ route('incoming-mails.edit', $mail) }}" class="text-xs font-semibold text-amber-700 hover:underline">Edit</a>
                             @endcan
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="p-8 text-center text-gray-500">Belum ada data surat masuk.</td>
+                        <td colspan="6" class="p-8 text-center text-slate-500 italic text-xs">Belum ada data surat masuk.</td>
                     </tr>
                 @endforelse
             </tbody>

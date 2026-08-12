@@ -8,6 +8,7 @@ use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\IncomingMailController;
 use App\Http\Controllers\MailDispositionController;
 use App\Http\Controllers\OutgoingMailController;
+use App\Http\Controllers\RepositoryController;
 use Illuminate\Support\Facades\Route;
 
 // Autentikasi
@@ -24,6 +25,9 @@ Route::middleware(['auth'])->group(function () {
     // Unduh Dokumen Internal (Disk Local)
     Route::get('/download-document', [DocumentDownloadController::class, 'download'])->name('document.download');
 
+    // Repositori Dokumen (Card Per Bulan)
+    Route::get('/repository', [RepositoryController::class, 'index'])->name('repository.index');
+
     // Disposisi Surat Masuk
     Route::post('/incoming-mails/{incomingMail}/dispositions', [MailDispositionController::class, 'store'])->name('incoming-mails.dispositions.store');
     Route::resource('incoming-mails', IncomingMailController::class);
@@ -32,7 +36,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/outgoing-mails/{outgoingMail}/sign', [OutgoingMailController::class, 'sign'])->name('outgoing-mails.sign');
     Route::resource('outgoing-mails', OutgoingMailController::class);
 
-    // Jejak Audit (Super Admin)
+    // Jejak Audit
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 });
 

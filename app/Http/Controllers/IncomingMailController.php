@@ -45,7 +45,7 @@ class IncomingMailController extends Controller
         Gate::authorize('create', IncomingMail::class);
 
         $filePath = $request->hasFile('file')
-            ? $request->file('file')->store('incoming-mails')
+            ? $request->file('file')->store('incoming-mails', 'local')
             : null;
 
         $incomingMail = IncomingMail::create(array_merge(
@@ -96,7 +96,7 @@ class IncomingMailController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('file')) {
-            $data['file_path'] = $request->file('file')->store('incoming-mails');
+            $data['file_path'] = $request->file('file')->store('incoming-mails', 'local');
         }
 
         $incomingMail->update($data);

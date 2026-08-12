@@ -45,7 +45,7 @@ class OutgoingMailController extends Controller
         Gate::authorize('create', OutgoingMail::class);
 
         $filePath = $request->hasFile('file')
-            ? $request->file('file')->store('outgoing-mails')
+            ? $request->file('file')->store('outgoing-mails', 'local')
             : null;
 
         OutgoingMail::create(array_merge(
@@ -110,7 +110,7 @@ class OutgoingMailController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('file')) {
-            $data['file_path'] = $request->file('file')->store('outgoing-mails');
+            $data['file_path'] = $request->file('file')->store('outgoing-mails', 'local');
         }
 
         $outgoingMail->update($data);
