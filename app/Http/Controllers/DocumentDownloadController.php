@@ -34,8 +34,8 @@ class DocumentDownloadController extends Controller
         } elseif ($outgoingMail) {
             Gate::authorize('view', $outgoingMail);
         } else {
-            // Jika tidak ditemukan di kedua entitas, hanya Super Admin yang boleh akses
-            if (! auth()->user()?->hasRole('Super Admin')) {
+            // Jika tidak ditemukan di kedua entitas, pastikan pengguna memiliki peran yang valid
+            if (! auth()->user()?->hasAnyRole(['Staf', 'Direksi'])) {
                 abort(403, 'Anda tidak memiliki hak akses untuk dokumen ini.');
             }
         }

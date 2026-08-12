@@ -30,7 +30,7 @@ class MailDispositionPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['Super Admin', 'Direksi', 'Kepala Divisi', 'Staf Sekretariat']);
+        return $user->hasAnyRole(['Staf', 'Direksi']);
     }
 
     /**
@@ -38,6 +38,6 @@ class MailDispositionPolicy
      */
     public function delete(User $user, MailDisposition $disposition): bool
     {
-        return $user->hasRole('Super Admin');
+        return $user->hasRole('Staf');
     }
 }

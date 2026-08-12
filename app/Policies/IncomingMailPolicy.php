@@ -14,7 +14,7 @@ class IncomingMailPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['Super Admin', 'Direksi', 'Kepala Divisi', 'Staf Sekretariat']);
+        return $user->hasAnyRole(['Staf', 'Direksi']);
     }
 
     /**
@@ -22,7 +22,7 @@ class IncomingMailPolicy
      */
     public function view(User $user, IncomingMail $incomingMail): bool
     {
-        return $user->hasAnyRole(['Super Admin', 'Direksi', 'Kepala Divisi', 'Staf Sekretariat']);
+        return $user->hasAnyRole(['Staf', 'Direksi']);
     }
 
     /**
@@ -30,7 +30,7 @@ class IncomingMailPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['Super Admin', 'Staf Sekretariat', 'Kepala Divisi']);
+        return $user->hasRole('Staf');
     }
 
     /**
@@ -38,11 +38,7 @@ class IncomingMailPolicy
      */
     public function update(User $user, IncomingMail $incomingMail): bool
     {
-        if ($user->hasRole('Super Admin')) {
-            return true;
-        }
-
-        if ($user->hasAnyRole(['Staf Sekretariat', 'Kepala Divisi'])) {
+        if ($user->hasRole('Staf')) {
             return $incomingMail->status !== 'COMPLETED';
         }
 
@@ -50,10 +46,10 @@ class IncomingMailPolicy
     }
 
     /**
-     * Determine whether the user can delete the incoming mail (Super Admin only).
+     * Determine whether the user can delete the incoming mail.
      */
     public function delete(User $user, IncomingMail $incomingMail): bool
     {
-        return $user->hasRole('Super Admin');
+        return $user->hasRole('Staf');
     }
 }

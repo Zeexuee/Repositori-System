@@ -15,8 +15,8 @@ class AuditLogController extends Controller
      */
     public function index(): View|RedirectResponse
     {
-        if (! auth()->user()->hasRole('Super Admin')) {
-            abort(403, 'Akses khusus Super Admin.');
+        if (! auth()->user()->hasAnyRole(['Staf', 'Direksi'])) {
+            abort(403, 'Akses tidak diizinkan.');
         }
 
         $auditLogs = AuditLog::with('user')->latest()->paginate(25);

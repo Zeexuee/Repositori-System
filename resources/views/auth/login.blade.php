@@ -39,7 +39,7 @@
             <div>
                 <label for="email" class="block text-xs font-semibold text-gray-700 uppercase mb-1">Email Pengguna</label>
                 <input id="email" name="email" type="email" autocomplete="email" required
-                       value="{{ old('email', 'admin@sekretariat.corp') }}"
+                       value="{{ old('email', 'staf@sekretariat.corp') }}"
                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-blue-800">
                 @error('email')
                     <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span>
@@ -80,36 +80,20 @@
 
         <div class="pt-4 border-t border-gray-200">
             <span class="block text-xs font-semibold text-gray-500 uppercase text-center mb-3">Login Cepat Peran Demo (Simulasi)</span>
-            <div class="grid grid-cols-2 gap-2">
-                <form action="{{ route('quick-login', ['email' => 'admin@sekretariat.corp']) }}" method="POST">
+            <div class="grid grid-cols-2 gap-3">
+                <form action="{{ route('quick-login', ['email' => 'staf@sekretariat.corp']) }}" method="POST">
                     @csrf
-                    <button type="submit" class="w-full py-2 px-2 text-xs font-medium text-gray-800 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-left flex flex-col">
-                        <span class="font-bold text-blue-900">Super Admin</span>
-                        <span class="text-[10px] text-gray-500">admin@sekretariat.corp</span>
+                    <button type="submit" class="w-full py-2.5 px-3 text-xs font-medium text-gray-800 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-left flex flex-col">
+                        <span class="font-bold text-blue-900">1. Staf</span>
+                        <span class="text-[10px] text-gray-500">staf@sekretariat.corp</span>
                     </button>
                 </form>
 
                 <form action="{{ route('quick-login', ['email' => 'direksi@sekretariat.corp']) }}" method="POST">
                     @csrf
-                    <button type="submit" class="w-full py-2 px-2 text-xs font-medium text-gray-800 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-left flex flex-col">
-                        <span class="font-bold text-blue-900">Direksi</span>
+                    <button type="submit" class="w-full py-2.5 px-3 text-xs font-medium text-gray-800 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-left flex flex-col">
+                        <span class="font-bold text-blue-900">2. Direksi</span>
                         <span class="text-[10px] text-gray-500">direksi@sekretariat.corp</span>
-                    </button>
-                </form>
-
-                <form action="{{ route('quick-login', ['email' => 'kadiv@sekretariat.corp']) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="w-full py-2 px-2 text-xs font-medium text-gray-800 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-left flex flex-col">
-                        <span class="font-bold text-blue-900">Kepala Divisi</span>
-                        <span class="text-[10px] text-gray-500">kadiv@sekretariat.corp</span>
-                    </button>
-                </form>
-
-                <form action="{{ route('quick-login', ['email' => 'staf@sekretariat.corp']) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="w-full py-2 px-2 text-xs font-medium text-gray-800 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-left flex flex-col">
-                        <span class="font-bold text-blue-900">Staf Sekretariat</span>
-                        <span class="text-[10px] text-gray-500">staf@sekretariat.corp</span>
                     </button>
                 </form>
             </div>
