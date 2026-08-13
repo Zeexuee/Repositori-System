@@ -5,8 +5,8 @@
 @section('content')
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/80">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Jejak Audit (Audit Log Trail)</h1>
-            <p class="text-xs text-slate-600 mt-1">Catatan riwayat aktivitas pengguna yang bersifat immutable (*append-only*).</p>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Event Log</h1>
+            <p class="text-xs text-slate-600 mt-1">Catatan aktivitas User di lantar Sistem</p>
         </div>
     </div>
 

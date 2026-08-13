@@ -41,7 +41,7 @@
                             </span>
                         </td>
                         <td class="p-3.5 text-right space-x-2">
-                            <a href="{{ route('incoming-mails.show', $mail) }}" class="text-xs font-semibold text-slate-900 hover:underline">Detail</a>
+                            <a href="{{ route('outgoing-mails.show', $mail) }}" class="text-xs font-semibold text-slate-900 hover:underline">Detail</a>
                             @can('update', $mail)
                                 <a href="{{ route('outgoing-mails.edit', $mail) }}" class="text-xs font-semibold text-amber-700 hover:underline">Edit</a>
                             @endcan

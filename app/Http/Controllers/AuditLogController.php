@@ -15,8 +15,8 @@ class AuditLogController extends Controller
      */
     public function index(): View|RedirectResponse
     {
-        if (! auth()->user()->hasAnyRole(['Staf', 'Direksi'])) {
-            abort(403, 'Akses tidak diizinkan.');
+        if (! auth()->user()->hasRole('Direksi')) {
+            abort(403, 'Akses tidak diizinkan. Halaman Jejak Audit khusus untuk Direksi.');
         }
 
         $auditLogs = AuditLog::with('user')->latest()->paginate(25);

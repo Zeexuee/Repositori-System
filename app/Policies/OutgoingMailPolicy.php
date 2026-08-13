@@ -14,7 +14,7 @@ class OutgoingMailPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['Staf', 'Direksi']);
+        return true;
     }
 
     /**
@@ -22,7 +22,7 @@ class OutgoingMailPolicy
      */
     public function view(User $user, OutgoingMail $outgoingMail): bool
     {
-        return $user->hasAnyRole(['Staf', 'Direksi']);
+        return true;
     }
 
     /**
@@ -30,7 +30,7 @@ class OutgoingMailPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['Staf', 'Direksi']);
+        return true;
     }
 
     /**
@@ -38,11 +38,7 @@ class OutgoingMailPolicy
      */
     public function update(User $user, OutgoingMail $outgoingMail): bool
     {
-        if ($user->hasRole('Staf')) {
-            return !in_array($outgoingMail->status, ['APPROVED', 'SIGNED'], true);
-        }
-
-        return false;
+        return ! in_array($outgoingMail->status, ['APPROVED', 'SIGNED'], true);
     }
 
     /**
@@ -50,7 +46,7 @@ class OutgoingMailPolicy
      */
     public function delete(User $user, OutgoingMail $outgoingMail): bool
     {
-        return $user->hasRole('Staf');
+        return true;
     }
 
     /**
