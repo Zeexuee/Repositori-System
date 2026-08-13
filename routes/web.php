@@ -44,6 +44,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profile/name', [\App\Http\Controllers\ProfileController::class, 'updateName'])->name('profile.update-name');
     Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.update-password');
+    // Broadcast Email (Khusus Direksi)
+    Route::get('/broadcast-emails', [\App\Http\Controllers\BroadcastEmailController::class, 'index'])->name('broadcast-emails.index');
+    Route::get('/broadcast-emails/history', [\App\Http\Controllers\BroadcastEmailController::class, 'history'])->name('broadcast-emails.history');
+    Route::post('/broadcast-emails/send', [\App\Http\Controllers\BroadcastEmailController::class, 'send'])->name('broadcast-emails.send');
+
     // Manajemen User (Khusus Direksi)
     Route::resource('users', UserController::class);
 });

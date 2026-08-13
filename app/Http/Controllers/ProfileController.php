@@ -55,7 +55,7 @@ class ProfileController extends Controller
         /** @var \App\Models\User $user */
         $user = auth()->user();
 
-        if (! Hash::check($validated['current_password'], $user->password)) {
+        if (!Hash::check($validated['current_password'], $user->password)) {
             return back()->withErrors([
                 'current_password' => 'Kata sandi saat ini tidak cocok dengan data kami.',
             ]);

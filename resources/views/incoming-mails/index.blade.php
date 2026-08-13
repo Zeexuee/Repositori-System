@@ -9,9 +9,10 @@
         </div>
         @can('create', App\Models\IncomingMail::class)
             <div class="mt-4 sm:mt-0">
-                <a href="{{ route('incoming-mails.create') }}" class="inline-flex items-center space-x-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all shadow-xs">
+                <a href="{{ route('incoming-mails.create') }}"
+                    class="inline-flex items-center space-x-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all shadow-xs">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
                     <span>Tambah Surat Masuk</span>
                 </a>
@@ -23,7 +24,8 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse min-w-max">
                 <thead>
-                    <tr class="border-b border-slate-200 bg-slate-100/90 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    <tr
+                        class="border-b border-slate-200 bg-slate-100/90 text-xs font-bold text-slate-700 uppercase tracking-wider">
                         <th class="p-3.5 text-center">No.</th>
                         <th class="p-3.5">Nomor Surat</th>
                         <th class="p-3.5">Tanggal Masuk</th>
@@ -57,7 +59,7 @@
                             </td>
                             <td class="p-3.5">
                                 @php
-                                    $badgeClasses = match($mail->status) {
+                                    $badgeClasses = match ($mail->status) {
                                         'RECEIVED' => 'bg-blue-50 text-blue-700 border-blue-200',
                                         'REGISTERED' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
                                         'PENDING_DISPOSITION' => 'bg-amber-50 text-amber-700 border-amber-200',
@@ -67,7 +69,8 @@
                                         default => 'bg-slate-100 text-slate-700 border-slate-200',
                                     };
                                 @endphp
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $badgeClasses }}">
+                                <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $badgeClasses }}">
                                     {{ $mail->status }}
                                 </span>
                             </td>
@@ -84,11 +87,13 @@
                                 {{ $mail->recipient_name ?? '-' }}
                             </td>
                             <td class="p-3.5 text-right space-x-2">
-                                <a href="{{ route('incoming-mails.show', $mail) }}" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded font-semibold text-[11px]">
+                                <a href="{{ route('incoming-mails.show', $mail) }}"
+                                    class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded font-semibold text-[11px]">
                                     Detail
                                 </a>
                                 @can('update', $mail)
-                                    <a href="{{ route('incoming-mails.edit', $mail) }}" class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded font-semibold text-[11px]">
+                                    <a href="{{ route('incoming-mails.edit', $mail) }}"
+                                        class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded font-semibold text-[11px]">
                                         Edit
                                     </a>
                                 @endcan

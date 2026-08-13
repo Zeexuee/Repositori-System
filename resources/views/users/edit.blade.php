@@ -9,7 +9,7 @@
             <p class="text-xs text-slate-500 mt-1">Perbarui rincian pengguna {{ $user->name }} dan atur peran sistem.</p>
         </div>
         <a href="{{ route('users.index') }}" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition-all border border-slate-200 shadow-xs">
-            ← Kembali ke Daftar Users
+            Kembali ke Daftar Users
         </a>
     </div>
 
