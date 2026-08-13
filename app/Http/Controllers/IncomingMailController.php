@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
+use Illuminate\Support\Str;
+
 class IncomingMailController extends Controller
 {
     /**
@@ -34,7 +36,9 @@ class IncomingMailController extends Controller
     {
         Gate::authorize('create', IncomingMail::class);
 
-        return view('incoming-mails.create');
+        $nextSequenceNumber = IncomingMail::count() + 1;
+
+        return view('incoming-mails.create', compact('nextSequenceNumber'));
     }
 
     /**
@@ -44,15 +48,39 @@ class IncomingMailController extends Controller
     {
         Gate::authorize('create', IncomingMail::class);
 
+        $validated = $request->validated();
+
+        // 1. Storage Berkas PDF Utama
         $filePath = $request->hasFile('file')
             ? $request->file('file')->store('incoming-mails', 'local')
             : null;
 
+        // 2. Storage Foto Dokumen (dari kamera/perangkat)
+        $documentPhotoPath = $request->hasFile('document_photo')
+            ? $request->file('document_photo')->store('incoming-mails/photos', 'local')
+            : null;
+
+        // 3. Storage Tanda Terima (Canvas Base64 atau File Gambar)
+        $receiptSignaturePath = null;
+        if ($request->hasFile('receipt_signature_file')) {
+            $receiptSignaturePath = $request->file('receipt_signature_file')->store('incoming-mails/signatures', 'local');
+        } elseif ($request->filled('receipt_signature') && str_contains((string) $request->receipt_signature, 'data:image')) {
+            $sigData = explode(',', (string) $request->receipt_signature)[1] ?? '';
+            if (! empty($sigData)) {
+                $decoded = base64_decode($sigData);
+                $sigFileName = 'incoming-mails/signatures/' . Str::uuid() . '.png';
+                Storage::disk('local')->put($sigFileName, $decoded);
+                $receiptSignaturePath = $sigFileName;
+            }
+        }
+
         $incomingMail = IncomingMail::create(array_merge(
-            $request->validated(),
+            $validated,
             [
                 'file_path' => $filePath,
-                'status' => 'RECEIVED',
+                'document_photo_path' => $documentPhotoPath,
+                'receipt_signature_path' => $receiptSignaturePath,
+                'status' => $request->input('status', 'RECEIVED'),
             ]
         ));
 
@@ -97,6 +125,22 @@ class IncomingMailController extends Controller
 
         if ($request->hasFile('file')) {
             $data['file_path'] = $request->file('file')->store('incoming-mails', 'local');
+        }
+
+        if ($request->hasFile('document_photo')) {
+            $data['document_photo_path'] = $request->file('document_photo')->store('incoming-mails/photos', 'local');
+        }
+
+        if ($request->hasFile('receipt_signature_file')) {
+            $data['receipt_signature_path'] = $request->file('receipt_signature_file')->store('incoming-mails/signatures', 'local');
+        } elseif ($request->filled('receipt_signature') && str_contains((string) $request->receipt_signature, 'data:image')) {
+            $sigData = explode(',', (string) $request->receipt_signature)[1] ?? '';
+            if (! empty($sigData)) {
+                $decoded = base64_decode($sigData);
+                $sigFileName = 'incoming-mails/signatures/' . Str::uuid() . '.png';
+                Storage::disk('local')->put($sigFileName, $decoded);
+                $data['receipt_signature_path'] = $sigFileName;
+            }
         }
 
         $incomingMail->update($data);

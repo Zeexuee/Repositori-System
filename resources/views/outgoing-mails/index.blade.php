@@ -6,7 +6,6 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/80">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Daftar Surat Keluar</h1>
-            <p class="text-xs text-slate-600 mt-1">Kelola pembuatan draf, verifikasi, dan tanda tangan digital surat keluar.</p>
         </div>
         @can('create', App\Models\OutgoingMail::class)
             <div class="mt-4 sm:mt-0">
@@ -32,7 +31,7 @@
             <tbody class="divide-y divide-slate-200 text-sm">
                 @forelse ($outgoingMails as $mail)
                     <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="p-3.5 font-bold text-slate-900">{{ $mail->mail_number ?? '(Draf Belum Diberi Nomor)' }}</td>
+                        <td class="p-3.5 font-bold text-slate-900">{{ $mail->mail_number ?? '-' }}</td>
                         <td class="p-3.5 text-slate-800">{{ $mail->subject }}</td>
                         <td class="p-3.5 text-slate-700">{{ $mail->recipient }}</td>
                         <td class="p-3.5 text-slate-600 text-xs">{{ $mail->creator?->name ?? 'System' }}</td>
@@ -42,7 +41,7 @@
                             </span>
                         </td>
                         <td class="p-3.5 text-right space-x-2">
-                            <a href="{{ route('outgoing-mails.show', $mail) }}" class="text-xs font-semibold text-slate-900 hover:underline">Detail</a>
+                            <a href="{{ route('incoming-mails.show', $mail) }}" class="text-xs font-semibold text-slate-900 hover:underline">Detail</a>
                             @can('update', $mail)
                                 <a href="{{ route('outgoing-mails.edit', $mail) }}" class="text-xs font-semibold text-amber-700 hover:underline">Edit</a>
                             @endcan

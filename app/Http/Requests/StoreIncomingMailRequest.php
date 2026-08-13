@@ -25,10 +25,19 @@ class StoreIncomingMailRequest extends FormRequest
     {
         return [
             'mail_number' => ['required', 'string', 'max:255', 'unique:incoming_mails,mail_number'],
-            'subject' => ['required', 'string', 'max:255'],
-            'sender' => ['required', 'string', 'max:255'],
             'received_date' => ['required', 'date'],
-            'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+            'sender' => ['required', 'string', 'max:255'],
+            'recipient' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'string', 'in:RECEIVED,REGISTERED,PENDING_DISPOSITION,IN_PROGRESS,COMPLETED,OVERDUE'],
+            'subject' => ['required', 'string', 'max:255'],
+            'outgoing_date' => ['nullable', 'date'],
+            'disposition_note' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string'],
+            'recipient_name' => ['nullable', 'string', 'max:255'],
+            'file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+            'document_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+            'receipt_signature' => ['nullable', 'string'],
+            'receipt_signature_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
     }
 }

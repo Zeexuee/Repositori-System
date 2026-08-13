@@ -5,7 +5,6 @@
 @section('content')
     <div class="pb-4 border-b border-slate-200/80">
         <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Edit Surat Keluar</h1>
-        <p class="text-xs text-slate-500 mt-1">Perbarui informasi surat keluar.</p>
     </div>
 
     <form action="{{ route('outgoing-mails.update', $outgoingMail) }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-6" x-data="{ loading: false }" @submit="loading = true">
@@ -31,7 +30,7 @@
         </div>
 
         <div>
-            <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Ganti Berkas PDF (Opsional)</label>
+            <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Ganti Berkas PDF</label>
             <input type="file" name="file" id="file" accept=".pdf" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800">
             @error('file')
                 <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>

@@ -30,9 +30,16 @@ class IncomingMail extends Model
         'mail_number',
         'subject',
         'sender',
+        'recipient',
         'received_date',
+        'outgoing_date',
         'file_path',
+        'document_photo_path',
+        'receipt_signature_path',
         'status',
+        'disposition_note',
+        'notes',
+        'recipient_name',
     ];
 
     /**
@@ -44,6 +51,7 @@ class IncomingMail extends Model
     {
         return [
             'received_date' => 'date',
+            'outgoing_date' => 'date',
         ];
     }
 
