@@ -1,17 +1,15 @@
 @extends('layouts.app')
 
 @section('title', 'Pencatatan Surat Masuk')
+@section('hide_header', true)
 
 @section('content')
     <div class="pb-4 border-b border-slate-200/80 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Form Pencatatan Surat Masuk</h1>
         </div>
-        <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs">
-            <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
-            </svg>
-            <span>Urutan Masuk Ke: <strong class="text-white font-mono">#{{ $nextSequenceNumber ?? 1 }}</strong></span>
+        <div class="inline-flex items-center px-3 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs">
+            <span class="font-mono">{{ $nextSequenceNumber ?? 1 }}</span>
         </div>
     </div>
 
@@ -55,19 +53,151 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Dari -->
-                <div>
-                    <label for="sender" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Dari <span class="text-rose-500">*</span></label>
-                    <input type="text" name="sender" id="sender" value="{{ old('sender') }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                <!-- Dari (Pengirim) -->
+                <div x-data="searchableSelect({
+                    initialValue: '{{ old('sender') }}',
+                    defaultOptions: {{ json_encode($senders ?? []) }}
+                })" class="relative" @click.away="open = false">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Dari <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="hidden" name="sender" :value="value" required>
+
+                    <!-- Trigger Button -->
+                    <button type="button" 
+                            @click="open = !open; if(open) $nextTick(() => $refs.searchInput.focus())"
+                            class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 flex items-center justify-between shadow-2xs transition-all">
+                        <span x-text="value ? value : 'Pilih / Cari Pengirim...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-semibold': value }"></span>
+                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown List -->
+                    <div x-show="open" x-cloak 
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="absolute z-30 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden p-2 space-y-2">
+                        
+                        <!-- Search Bar -->
+                        <div class="relative">
+                            <input x-ref="searchInput" 
+                                   type="text" 
+                                   x-model="search" 
+                                   placeholder="Ketik untuk mencari..." 
+                                   class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                            <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">×</span>
+                        </div>
+
+                        <!-- Options List -->
+                        <div class="max-h-44 overflow-y-auto space-y-1">
+                            <template x-for="item in filteredOptions" :key="item">
+                                <button type="button" 
+                                        @click="selectOption(item)" 
+                                        class="w-full text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors"
+                                        :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
+                                    <span x-text="item"></span>
+                                    <span x-show="value === item" class="text-xs">✓</span>
+                                </button>
+                            </template>
+
+                            <!-- Add New Option Button -->
+                            <div x-show="search.trim() !== '' && !filteredOptions.map(o => o.toLowerCase()).includes(search.trim().toLowerCase())" class="pt-1 border-t border-slate-100">
+                                <button type="button" 
+                                        @click="addNewOption(search.trim())" 
+                                        class="w-full text-left px-3 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg flex items-center space-x-1.5 transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    <span>Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
+                                </button>
+                            </div>
+
+                            <div x-show="filteredOptions.length === 0 && search.trim() === ''" class="p-3 text-center text-xs text-slate-400 italic">
+                                Belum ada opsi. Ketik di atas untuk menambah baru.
+                            </div>
+                        </div>
+                    </div>
+
                     @error('sender')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
                     @enderror
                 </div>
 
-                <!-- Kepada -->
-                <div>
-                    <label for="recipient" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Kepada</label>
-                    <input type="text" name="recipient" id="recipient" value="{{ old('recipient') }}" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                <!-- Kepada (Penerima) -->
+                <div x-data="searchableSelect({
+                    initialValue: '{{ old('recipient') }}',
+                    defaultOptions: {{ json_encode($recipients ?? []) }}
+                })" class="relative" @click.away="open = false">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Kepada
+                    </label>
+                    <input type="hidden" name="recipient" :value="value">
+
+                    <!-- Trigger Button -->
+                    <button type="button" 
+                            @click="open = !open; if(open) $nextTick(() => $refs.searchInput.focus())"
+                            class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 flex items-center justify-between shadow-2xs transition-all">
+                        <span x-text="value ? value : 'Pilih / Cari Penerima...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-semibold': value }"></span>
+                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown List -->
+                    <div x-show="open" x-cloak 
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="absolute z-30 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden p-2 space-y-2">
+                        
+                        <!-- Search Bar -->
+                        <div class="relative">
+                            <input x-ref="searchInput" 
+                                   type="text" 
+                                   x-model="search" 
+                                   placeholder="Ketik untuk mencari..." 
+                                   class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                            <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">×</span>
+                        </div>
+
+                        <!-- Options List -->
+                        <div class="max-h-44 overflow-y-auto space-y-1">
+                            <template x-for="item in filteredOptions" :key="item">
+                                <button type="button" 
+                                        @click="selectOption(item)" 
+                                        class="w-full text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors"
+                                        :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
+                                    <span x-text="item"></span>
+                                    <span x-show="value === item" class="text-xs">✓</span>
+                                </button>
+                            </template>
+
+                            <!-- Add New Option Button -->
+                            <div x-show="search.trim() !== '' && !filteredOptions.map(o => o.toLowerCase()).includes(search.trim().toLowerCase())" class="pt-1 border-t border-slate-100">
+                                <button type="button" 
+                                        @click="addNewOption(search.trim())" 
+                                        class="w-full text-left px-3 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg flex items-center space-x-1.5 transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    <span>Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
+                                </button>
+                            </div>
+
+                            <div x-show="filteredOptions.length === 0 && search.trim() === ''" class="p-3 text-center text-xs text-slate-400 italic">
+                                Belum ada opsi. Ketik di atas untuk menambah baru.
+                            </div>
+                        </div>
+                    </div>
+
                     @error('recipient')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
                     @enderror
@@ -234,6 +364,40 @@
     </form>
 
     <script>
+        function searchableSelect(config) {
+            return {
+                open: false,
+                search: '',
+                value: config.initialValue || '',
+                options: config.defaultOptions || [],
+
+                get filteredOptions() {
+                    if (!this.search.trim()) {
+                        return this.options;
+                    }
+                    return this.options.filter(opt => 
+                        opt.toLowerCase().includes(this.search.trim().toLowerCase())
+                    );
+                },
+
+                selectOption(opt) {
+                    this.value = opt;
+                    this.search = '';
+                    this.open = false;
+                },
+
+                addNewOption(newOpt) {
+                    if (!newOpt) return;
+                    if (!this.options.includes(newOpt)) {
+                        this.options.push(newOpt);
+                    }
+                    this.value = newOpt;
+                    this.search = '';
+                    this.open = false;
+                }
+            };
+        }
+
         function signaturePad() {
             return {
                 isDrawing: false,

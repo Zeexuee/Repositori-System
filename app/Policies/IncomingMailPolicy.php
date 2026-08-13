@@ -14,7 +14,7 @@ class IncomingMailPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['Staf', 'Direksi']);
+        return true;
     }
 
     /**
@@ -22,7 +22,7 @@ class IncomingMailPolicy
      */
     public function view(User $user, IncomingMail $incomingMail): bool
     {
-        return $user->hasAnyRole(['Staf', 'Direksi']);
+        return true;
     }
 
     /**
@@ -30,7 +30,7 @@ class IncomingMailPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole('Staf');
+        return true;
     }
 
     /**
@@ -38,11 +38,7 @@ class IncomingMailPolicy
      */
     public function update(User $user, IncomingMail $incomingMail): bool
     {
-        if ($user->hasRole('Staf')) {
-            return $incomingMail->status !== 'COMPLETED';
-        }
-
-        return false;
+        return $incomingMail->status !== 'COMPLETED';
     }
 
     /**
@@ -50,6 +46,6 @@ class IncomingMailPolicy
      */
     public function delete(User $user, IncomingMail $incomingMail): bool
     {
-        return $user->hasRole('Staf');
+        return true;
     }
 }

@@ -38,7 +38,34 @@ class IncomingMailController extends Controller
 
         $nextSequenceNumber = IncomingMail::count() + 1;
 
-        return view('incoming-mails.create', compact('nextSequenceNumber'));
+        $defaultCategories = [
+            'Kementerian BUMN',
+            'Direksi / Board of Directors',
+            'Divisi Hukum & Legal',
+            'Divisi Keuangan & Akuntansi',
+            'Divisi SDM & General Affairs',
+            'Divisi IT & Digital Transformation',
+            'Satuan Pengawasan Intern (SPI)',
+            'Sekretariat Perusahaan',
+            'Pihak Ketiga / Vendor',
+        ];
+
+        $dbSenders = IncomingMail::whereNotNull('sender')
+            ->select('sender')
+            ->distinct()
+            ->pluck('sender')
+            ->toArray();
+
+        $dbRecipients = IncomingMail::whereNotNull('recipient')
+            ->select('recipient')
+            ->distinct()
+            ->pluck('recipient')
+            ->toArray();
+
+        $senders = array_values(array_unique(array_merge($defaultCategories, $dbSenders)));
+        $recipients = array_values(array_unique(array_merge($defaultCategories, $dbRecipients)));
+
+        return view('incoming-mails.create', compact('nextSequenceNumber', 'senders', 'recipients'));
     }
 
     /**
