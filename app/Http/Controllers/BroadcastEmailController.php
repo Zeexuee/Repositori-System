@@ -75,6 +75,8 @@ class BroadcastEmailController extends Controller
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'min:5'],
             'target_audience' => ['nullable', 'string'],
+            'attachments' => ['nullable', 'array'],
+            'attachments.*' => ['file', 'max:15360'], // Max 15MB per attachment file
         ]);
 
         $rawInput = $validated['recipients'];
@@ -100,6 +102,52 @@ class BroadcastEmailController extends Controller
 
         $targetAudience = $validated['target_audience'] ?: 'Custom Recipient';
 
+        // Record broadcast entry in database first
+        $broadcast = BroadcastEmail::create([
+            'user_id' => auth()->id(),
+            'subject' => $validated['subject'],
+            'body' => $validated['body'],
+            'target_audience' => $targetAudience,
+            'recipient_count' => $recipientCount,
+            'attachments' => [],
+        ]);
+
+        // Process file attachments and store permanently
+        $mailAttachmentFiles = [];
+        $attachmentMetadata = [];
+
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                if ($file->isValid()) {
+                    $originalName = $file->getClientOriginalName();
+                    $mimeType = $file->getClientMimeType();
+                    $fileSize = $file->getSize();
+                    $storedPath = $file->store('broadcast_attachments/' . $broadcast->id, 'public');
+
+                    $fullStoragePath = storage_path('app/public/' . $storedPath);
+                    if (! file_exists($fullStoragePath)) {
+                        $fullStoragePath = storage_path('app/' . $storedPath);
+                    }
+
+                    $mailAttachmentFiles[] = [
+                        'path' => $fullStoragePath,
+                        'name' => $originalName,
+                        'mime' => $mimeType,
+                    ];
+
+                    $attachmentMetadata[] = [
+                        'name' => $originalName,
+                        'path' => $storedPath,
+                        'size' => $fileSize,
+                        'mime' => $mimeType,
+                    ];
+                }
+            }
+        }
+
+        // Update broadcast record with attachment metadata
+        $broadcast->update(['attachments' => $attachmentMetadata]);
+
         try {
             // Send individual email to each recipient to ensure 1-to-1 delivery & avoid spam filters
             foreach ($recipients as $recipient) {
@@ -107,7 +155,8 @@ class BroadcastEmailController extends Controller
                     new BroadcastMail(
                         $validated['subject'],
                         $validated['body'],
-                        auth()->user()->name
+                        auth()->user()->name,
+                        $mailAttachmentFiles
                     )
                 );
             }
@@ -120,17 +169,44 @@ class BroadcastEmailController extends Controller
                 ->with('error', 'Gagal mengirim email: ' . $e->getMessage());
         }
 
-        // Record broadcast entry in database
-        BroadcastEmail::create([
-            'user_id' => auth()->id(),
-            'subject' => $validated['subject'],
-            'body' => $validated['body'],
-            'target_audience' => $targetAudience,
-            'recipient_count' => $recipientCount,
-        ]);
+        $attachmentCountInfo = count($attachmentMetadata) > 0 ? " dengan " . count($attachmentMetadata) . " lampiran dokumen" : "";
 
         return redirect()
             ->route('broadcast-emails.index')
-            ->with('success', "Pesan broadcast email '{$validated['subject']}' berhasil terkirim ke {$recipientCount} alamat email.");
+            ->with('success', "Pesan broadcast email '{$validated['subject']}' berhasil terkirim ke {$recipientCount} alamat email{$attachmentCountInfo}.");
+    }
+
+    /**
+     * Download an attachment from a broadcast email.
+     */
+    public function downloadAttachment(BroadcastEmail $broadcast, int $index)
+    {
+        if (! auth()->user()->hasRole('Direksi')) {
+            abort(403, 'Akses tidak diizinkan.');
+        }
+
+        $attachments = $broadcast->attachments ?? [];
+        if (! isset($attachments[$index])) {
+            abort(404, 'Lampiran tidak ditemukan.');
+        }
+
+        $fileInfo = $attachments[$index];
+        $relativePath = $fileInfo['path'] ?? '';
+
+        $fullPath = storage_path('app/public/' . $relativePath);
+        if (! file_exists($fullPath)) {
+            $fullPath = storage_path('app/' . $relativePath);
+        }
+        if (! file_exists($fullPath)) {
+            $fullPath = storage_path('app/private/' . $relativePath);
+        }
+
+        if (! file_exists($fullPath)) {
+            abort(404, 'File lampiran tidak ditemukan pada server.');
+        }
+
+        return response()->download($fullPath, $fileInfo['name'] ?? basename($fullPath), [
+            'Content-Type' => $fileInfo['mime'] ?? 'application/octet-stream',
+        ]);
     }
 }

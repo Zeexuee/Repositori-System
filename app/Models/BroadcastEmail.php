@@ -16,7 +16,24 @@ class BroadcastEmail extends Model
         'body',
         'target_audience',
         'recipient_count',
+        'attachments',
     ];
+
+    protected $casts = [
+        'attachments' => 'array',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'attachments' => 'array',
+        ];
+    }
 
     /**
      * Relationship: Broadcast mail sender (User).

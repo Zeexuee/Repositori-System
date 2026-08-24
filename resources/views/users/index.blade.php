@@ -5,8 +5,8 @@
 @section('content')
     <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200/80 gap-3">
         <div>
-            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Manajemen Pengguna (User Management)</h1>
-            <p class="text-xs text-slate-500 mt-1">Kelola data pengguna sistem, perbarui hak akses role, serta atur akun staff & direksi.</p>
+            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Manajemen Pengguna</h1>
+            <p class="text-xs text-slate-500 mt-1"></p>
         </div>
         <div>
             <a href="{{ route('users.create') }}" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-xs inline-flex items-center space-x-2">
@@ -18,58 +18,8 @@
         </div>
     </div>
 
-    <!-- Search & Role Filter Bar -->
-    <form method="GET" action="{{ route('users.index') }}" class="my-6 bg-white/90 p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center space-x-2">
-                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                </svg>
-                <span>Pencarian & Filter Pengguna</span>
-            </h2>
-            @if (request()->hasAny(['search', 'role']))
-                <a href="{{ route('users.index') }}" class="text-xs font-semibold text-rose-600 hover:text-rose-800 underline">
-                    Reset Filter
-                </a>
-            @endif
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <!-- Search Name / Email -->
-            <div class="sm:col-span-2">
-                <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Cari Nama / Email</label>
-                <div class="relative">
-                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama pengguna atau email..." 
-                           class="w-full pl-9 pr-4 py-2 bg-slate-50/60 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-2xs">
-                    <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                </div>
-            </div>
-
-            <!-- Filter Role -->
-            <div>
-                <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Peran (Role)</label>
-                <select name="role" class="w-full px-3 py-2 bg-slate-50/60 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-2xs">
-                    <option value="">-- Semua Role --</option>
-                    <option value="Staf" {{ request('role') === 'Staf' ? 'selected' : '' }}>Staf</option>
-                    <option value="Direksi" {{ request('role') === 'Direksi' ? 'selected' : '' }}>Direksi</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="flex items-center justify-end space-x-2 pt-2">
-            <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-xs inline-flex items-center space-x-1.5 cursor-pointer">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-                <span>Cari & Filter</span>
-            </button>
-        </div>
-    </form>
-
     <!-- Users Table Card -->
-    <div class="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
+    <div class="mt-6 bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>

@@ -5,18 +5,27 @@
 @section('content')
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/80 gap-3">
         <div>
-            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Detail Surat Masuk</h1>
-            <p class="text-xs text-slate-500 mt-0.5 font-mono">{{ $incomingMail->mail_number }}</p>
+            <div class="flex items-center space-x-2">
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Detail Surat Masuk</h1>
+                @if($incomingMail->status === 'DRAFT')
+                    <span class="px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 rounded-lg">
+                        DRAFT
+                    </span>
+                @endif
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5 font-mono">
+                No: {{ $incomingMail->mail_number }}
+                @if($incomingMail->receipt_number)
+                    <span class="ml-2 px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded border border-slate-200">
+                        Ref Tanda Terima: {{ $incomingMail->receipt_number }}
+                    </span>
+                @endif
+            </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('incoming-mails.index') }}" class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs transition-all">
                 Kembali
             </a>
-            @can('update', $incomingMail)
-                <a href="{{ route('incoming-mails.edit', $incomingMail) }}" class="px-4 py-2 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 shadow-2xs transition-all">
-                    Edit Surat
-                </a>
-            @endcan
             @can('delete', $incomingMail)
                 <form action="{{ route('incoming-mails.destroy', $incomingMail) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus surat masuk ini?');">
                     @csrf
@@ -51,15 +60,15 @@
                 </div>
 
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Keluar</span>
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Surat</span>
                     <span class="font-semibold text-slate-800 text-sm block font-mono">{{ $incomingMail->outgoing_date?->format('d F Y') ?? '-' }}</span>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dari</span>
-                    <span class="font-semibold text-slate-800 text-sm block break-words">{{ $incomingMail->sender }}</span>
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dari (Biro Pengirim)</span>
+                    <span class="font-bold text-slate-900 text-sm block break-words">{{ $incomingMail->sender }}</span>
                 </div>
 
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
@@ -69,7 +78,7 @@
 
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status Surat</span>
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white shadow-2xs">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold {{ $incomingMail->status === 'DRAFT' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-900 text-white' }}">
                         {{ $incomingMail->status }}
                     </span>
                 </div>
@@ -80,6 +89,42 @@
                 <p class="font-semibold text-slate-900 text-sm leading-relaxed">{{ $incomingMail->subject }}</p>
             </div>
         </div>
+
+        <!-- Section Batch Items (Dokumen Lain dalam Tanda Terima Kolektif Ini) -->
+        @if($incomingMail->batch_id && $incomingMail->batchItems && $incomingMail->batchItems->count() > 1)
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+                        <span>Dokumen Lain Dalam Tanda Terima Kolektif Ini (Biro: {{ $incomingMail->sender }})</span>
+                    </h2>
+                    <span class="text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md border border-slate-200">
+                        Total: {{ $incomingMail->batchItems->count() }} Dokumen
+                    </span>
+                </div>
+
+                <div class="divide-y divide-slate-100">
+                    @foreach($incomingMail->batchItems as $item)
+                        <div class="py-3 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg transition-colors">
+                            <div class="space-y-0.5">
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-mono text-xs font-bold text-slate-900">{{ $item->mail_number }}</span>
+                                    @if($item->id === $incomingMail->id)
+                                        <span class="text-[10px] bg-slate-900 text-white px-1.5 py-0.2 rounded font-semibold">(Dokumen Ini)</span>
+                                    @endif
+                                </div>
+                                <p class="text-xs text-slate-600 truncate max-w-lg">{{ $item->subject }}</p>
+                            </div>
+                            @if($item->id !== $incomingMail->id)
+                                <a href="{{ route('incoming-mails.show', $item) }}" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-semibold rounded-lg transition-all">
+                                    Lihat Dokumen
+                                </a>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         <!-- Section 2: Disposisi & Penerima -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">

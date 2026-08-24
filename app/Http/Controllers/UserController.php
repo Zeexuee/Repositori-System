@@ -15,33 +15,15 @@ class UserController extends Controller
     /**
      * Display a listing of users (Direksi only).
      */
-    public function index(Request $request): View
+    public function index(): View
     {
         if (!auth()->user()->hasRole('Direksi')) {
             abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
         }
 
-        $search = $request->query('search');
-        $role = $request->query('role');
+        $users = User::with('roles')->latest()->paginate(15);
 
-        $usersQuery = User::with('roles');
-
-        if (!empty($search)) {
-            $usersQuery->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        if (!empty($role)) {
-            $usersQuery->whereHas('roles', function ($q) use ($role) {
-                $q->whereRaw('LOWER(name) = ?', [strtolower($role)]);
-            });
-        }
-
-        $users = $usersQuery->latest()->paginate(15);
-
-        return view('users.index', compact('users', 'search', 'role'));
+        return view('users.index', compact('users'));
     }
 
     /**

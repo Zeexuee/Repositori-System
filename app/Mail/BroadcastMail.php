@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -15,15 +16,19 @@ class BroadcastMail extends Mailable
     public string $emailSubject;
     public string $emailBody;
     public string $senderName;
+    public array $attachmentFiles;
 
     /**
      * Create a new message instance.
+     *
+     * @param array<int, array{path: string, name: string, mime: string}> $attachmentFiles
      */
-    public function __construct(string $emailSubject, string $emailBody, string $senderName)
+    public function __construct(string $emailSubject, string $emailBody, string $senderName, array $attachmentFiles = [])
     {
         $this->emailSubject = $emailSubject;
         $this->emailBody = $emailBody;
         $this->senderName = $senderName;
+        $this->attachmentFiles = $attachmentFiles;
     }
 
     /**
@@ -53,6 +58,16 @@ class BroadcastMail extends Mailable
      */
     public function attachments(): array
     {
-        return [];
+        $mailAttachments = [];
+
+        foreach ($this->attachmentFiles as $file) {
+            if (isset($file['path']) && file_exists($file['path'])) {
+                $mailAttachments[] = Attachment::fromPath($file['path'])
+                    ->as($file['name'] ?? basename($file['path']))
+                    ->withMime($file['mime'] ?? 'application/octet-stream');
+            }
+        }
+
+        return $mailAttachments;
     }
 }

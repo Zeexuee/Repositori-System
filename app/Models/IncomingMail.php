@@ -27,6 +27,8 @@ class IncomingMail extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'batch_id',
+        'receipt_number',
         'mail_number',
         'subject',
         'sender',
@@ -56,10 +58,34 @@ class IncomingMail extends Model
     }
 
     /**
+     * Scope query to only include drafts.
+     */
+    public function scopeDraft($query)
+    {
+        return $query->where('status', 'DRAFT');
+    }
+
+    /**
+     * Scope query to exclude drafts.
+     */
+    public function scopeSubmitted($query)
+    {
+        return $query->where('status', '!=', 'DRAFT');
+    }
+
+    /**
      * Get the dispositions for the incoming mail.
      */
     public function dispositions(): HasMany
     {
         return $this->hasMany(MailDisposition::class, 'incoming_mail_id');
+    }
+
+    /**
+     * Get all incoming mails in the same batch.
+     */
+    public function batchItems(): HasMany
+    {
+        return $this->hasMany(IncomingMail::class, 'batch_id', 'batch_id');
     }
 }
