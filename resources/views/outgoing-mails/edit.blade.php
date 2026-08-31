@@ -3,47 +3,128 @@
 @section('title', 'Edit Surat Keluar')
 
 @section('content')
-    <div class="pb-4 border-b border-gray-200">
-        <h1 class="text-xl font-bold text-gray-900">Edit Surat Keluar</h1>
-        <p class="text-sm text-gray-600 mt-1">Perbarui informasi surat keluar.</p>
+    <div class="pb-4 border-b border-slate-200/80 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Edit Surat Keluar</h1>
+            <p class="text-xs text-slate-500 mt-1">Perbarui rincian, berkas lampiran, atau status surat keluar.</p>
+        </div>
+        <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
+            <span>Status: <strong class="text-slate-900 font-mono">{{ $outgoingMail->status }}</strong></span>
+        </div>
     </div>
 
     <form action="{{ route('outgoing-mails.update', $outgoingMail) }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-6" x-data="{ loading: false }" @submit="loading = true">
         @csrf
         @method('PUT')
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <label for="subject" class="block text-sm font-semibold text-gray-900 mb-1">Subjek / Perihal</label>
-                <input type="text" name="subject" id="subject" value="{{ old('subject', $outgoingMail->subject) }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-900 focus:border-blue-900 text-sm">
-                @error('subject')
-                    <p class="text-xs text-rose-600 mt-1">{{ $message }}</p>
-                @enderror
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Nomor Surat -->
+                <div>
+                    <label for="mail_number" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Surat</label>
+                    <input type="text" name="mail_number" id="mail_number" value="{{ old('mail_number', $outgoingMail->mail_number) }}" placeholder="Otomatis jika dikosongkan" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs font-mono">
+                    @error('mail_number')
+                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Subjek / Perihal -->
+                <div>
+                    <label for="subject" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Subjek / Perihal <span class="text-rose-500">*</span></label>
+                    <input type="text" name="subject" id="subject" value="{{ old('subject', $outgoingMail->subject) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                    @error('subject')
+                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Penerima Surat -->
+                <div>
+                    <label for="recipient" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Penerima Surat <span class="text-rose-500">*</span></label>
+                    <input type="text" name="recipient" id="recipient" value="{{ old('recipient', $outgoingMail->recipient) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                    @error('recipient')
+                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
 
-            <div>
-                <label for="recipient" class="block text-sm font-semibold text-gray-900 mb-1">Penerima Surat</label>
-                <input type="text" name="recipient" id="recipient" value="{{ old('recipient', $outgoingMail->recipient) }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-900 focus:border-blue-900 text-sm">
-                @error('recipient')
-                    <p class="text-xs text-rose-600 mt-1">{{ $message }}</p>
-                @enderror
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Status Surat -->
+                <div>
+                    <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Surat</label>
+                    <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                        <option value="RECEIVE" {{ old('status', $outgoingMail->status) == 'RECEIVE' || old('status', $outgoingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
+                        <option value="PROGRES" {{ old('status', $outgoingMail->status) == 'PROGRES' || old('status', $outgoingMail->status) == 'PENDING' || old('status', $outgoingMail->status) == 'PROGRESS' || old('status', $outgoingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
+                        <option value="RETURN" {{ old('status', $outgoingMail->status) == 'RETURN' || old('status', $outgoingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
+                    </select>
+                    @error('status')
+                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Upload Berkas PDF / Gambar -->
+                <div>
+                    <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Ganti Berkas (PDF / Gambar)</label>
+                    @if ($outgoingMail->file_path)
+                        <div class="mb-2 text-xs font-medium text-slate-600">
+                            Berkas Terunggah (Utama): 
+                            <a href="{{ route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]) }}" target="_blank" class="text-slate-900 underline font-semibold">Pratinjau Berkas Utama</a>
+                        </div>
+                    @endif
+                    <input type="file" name="file" id="file" accept="application/pdf,image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+                    @error('file')
+                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
+
+            <!-- Histori Perubahan Berkas -->
+            @if ($outgoingMail->fileHistories->count() > 0)
+                <div class="pt-6 border-t border-slate-200/80 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Histori Perubahan Berkas ({{ $outgoingMail->fileHistories->count() }})</span>
+                        </h3>
+                    </div>
+                    <div class="space-y-2">
+                        @foreach ($outgoingMail->fileHistories as $history)
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl gap-3">
+                                <div class="space-y-1">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs font-bold text-slate-800 font-mono break-all">{{ $history->file_name ?? basename($history->file_path) }}</span>
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">Versi Lama</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500">
+                                        Diganti pada <span class="font-medium text-slate-700">{{ $history->created_at->format('d/m/Y H:i') }}</span>
+                                        @if ($history->uploader)
+                                            oleh <span class="font-medium text-slate-700">{{ $history->uploader->name }}</span>
+                                        @endif
+                                    </p>
+                                </div>
+                                <div class="flex items-center space-x-2 self-end sm:self-center">
+                                    <a href="{{ route('document.download', ['path' => $history->file_path, 'inline' => 1]) }}" target="_blank" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold rounded-lg shadow-2xs transition-all">
+                                        Pratinjau
+                                    </a>
+                                    <a href="{{ route('document.download', ['path' => $history->file_path]) }}" class="px-3 py-1.5 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-lg shadow-xs transition-all">
+                                        Unduh
+                                    </a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
-        <div>
-            <label for="file" class="block text-sm font-semibold text-gray-900 mb-1">Ganti Berkas PDF (Opsional)</label>
-            <input type="file" name="file" id="file" accept=".pdf" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-900 hover:file:bg-blue-100">
-            @error('file')
-                <p class="text-xs text-rose-600 mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
-            <a href="{{ route('outgoing-mails.index') }}" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+        <div class="flex items-center justify-between pt-4 border-t border-slate-200/80">
+            <a href="{{ route('outgoing-mails.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs">
                 Batal
             </a>
-            <button type="submit" :disabled="loading" class="px-5 py-2 text-sm font-semibold text-white bg-blue-900 rounded-md hover:bg-blue-800 disabled:opacity-50 inline-flex items-center space-x-2">
-                <span x-show="!loading">Perbarui Dokumen</span>
+
+            <button type="submit" :disabled="loading" class="px-6 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center space-x-2 transition-all shadow-xs">
+                <span x-show="!loading">Simpan Perubahan</span>
                 <span x-show="loading" class="flex items-center space-x-2">
                     <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

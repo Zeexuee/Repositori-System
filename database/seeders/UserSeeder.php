@@ -17,24 +17,14 @@ class UserSeeder extends Seeder
     {
         $users = [
             [
-                'email' => 'admin@sekretariat.corp',
-                'name' => 'Super Admin',
-                'role' => 'Super Admin',
+                'email' => 'staf@sekretariat.corp',
+                'name' => 'Staf Sekretariat',
+                'role' => 'Staf',
             ],
             [
                 'email' => 'direksi@sekretariat.corp',
                 'name' => 'Bapak Direktur Utama',
                 'role' => 'Direksi',
-            ],
-            [
-                'email' => 'kadiv@sekretariat.corp',
-                'name' => 'Kepala Divisi Sekretariat',
-                'role' => 'Kepala Divisi',
-            ],
-            [
-                'email' => 'staf@sekretariat.corp',
-                'name' => 'Staf Sekretariat',
-                'role' => 'Staf Sekretariat',
             ],
         ];
 

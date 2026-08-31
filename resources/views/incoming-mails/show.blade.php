@@ -3,20 +3,34 @@
 @section('title', 'Detail Surat Masuk')
 
 @section('content')
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-200">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/80 gap-3">
         <div>
-            <h1 class="text-xl font-bold text-gray-900">Detail Surat Masuk</h1>
-            <p class="text-sm text-gray-600 mt-1">ID Dokumen: {{ $incomingMail->id }}</p>
+            <div class="flex items-center space-x-2">
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Detail Surat Masuk</h1>
+                @if($incomingMail->status === 'DRAFT')
+                    <span class="px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 rounded-lg">
+                        DRAFT
+                    </span>
+                @endif
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5 font-mono">
+                No: {{ $incomingMail->mail_number }}
+                @if($incomingMail->receipt_number)
+                    <span class="ml-2 px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded border border-slate-200">
+                        Ref Tanda Terima: {{ $incomingMail->receipt_number }}
+                    </span>
+                @endif
+            </p>
         </div>
-        <div class="mt-4 sm:mt-0 flex space-x-2">
-            <a href="{{ route('incoming-mails.index') }}" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ route('incoming-mails.index') }}" class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs transition-all">
                 Kembali
             </a>
             @can('delete', $incomingMail)
                 <form action="{{ route('incoming-mails.destroy', $incomingMail) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus surat masuk ini?');">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-rose-700 rounded-md hover:bg-rose-800">
+                    <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-rose-600 rounded-xl hover:bg-rose-700 shadow-xs transition-all">
                         Hapus Dokumen
                     </button>
                 </form>
@@ -24,54 +38,175 @@
         </div>
     </div>
 
-    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-        <div class="space-y-4">
-            <div>
-                <span class="block text-xs font-semibold text-gray-500 uppercase">Nomor Surat</span>
-                <span class="font-bold text-gray-900 text-base">{{ $incomingMail->mail_number }}</span>
+    <!-- Info Grid -->
+    <div class="mt-6 space-y-6">
+        
+        <!-- Section 1: Data Utama -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
+            <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
+                <span>Data Utama Surat Masuk</span>
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nomor Surat</span>
+                    <span class="font-bold text-slate-900 text-sm block font-mono">{{ $incomingMail->mail_number }}</span>
+                </div>
+
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Masuk</span>
+                    <span class="font-bold text-slate-900 text-sm block font-mono">{{ $incomingMail->received_date?->format('d F Y') ?? '-' }}</span>
+                </div>
+
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Surat</span>
+                    <span class="font-semibold text-slate-800 text-sm block font-mono">{{ $incomingMail->outgoing_date?->format('d F Y') ?? '-' }}</span>
+                </div>
             </div>
 
-            <div>
-                <span class="block text-xs font-semibold text-gray-500 uppercase">Subjek / Perihal</span>
-                <span class="font-medium text-gray-800">{{ $incomingMail->subject }}</span>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dari (Biro Pengirim)</span>
+                    <span class="font-bold text-slate-900 text-sm block break-words">{{ $incomingMail->sender }}</span>
+                </div>
+
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kepada</span>
+                    <span class="font-semibold text-slate-800 text-sm block break-words">{{ $incomingMail->recipient ?? '-' }}</span>
+                </div>
+
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status Surat</span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold {{ $incomingMail->status === 'DRAFT' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-900 text-white' }}">
+                        {{ $incomingMail->status }}
+                    </span>
+                </div>
             </div>
 
-            <div>
-                <span class="block text-xs font-semibold text-gray-500 uppercase">Pengirim</span>
-                <span class="font-medium text-gray-800">{{ $incomingMail->sender }}</span>
+            <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Perihal</span>
+                <p class="font-semibold text-slate-900 text-sm leading-relaxed">{{ $incomingMail->subject }}</p>
             </div>
         </div>
 
-        <div class="space-y-4">
-            <div>
-                <span class="block text-xs font-semibold text-gray-500 uppercase">Tanggal Diterima</span>
-                <span class="font-medium text-gray-800">{{ $incomingMail->received_date?->format('d M Y') }}</span>
+        <!-- Section Batch Items (Dokumen Lain dalam Tanda Terima Kolektif Ini) -->
+        @if($incomingMail->batch_id && $incomingMail->batchItems && $incomingMail->batchItems->count() > 1)
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+                        <span>Dokumen Lain Dalam Tanda Terima Kolektif Ini (Biro: {{ $incomingMail->sender }})</span>
+                    </h2>
+                    <span class="text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md border border-slate-200">
+                        Total: {{ $incomingMail->batchItems->count() }} Dokumen
+                    </span>
+                </div>
+
+                <div class="divide-y divide-slate-100">
+                    @foreach($incomingMail->batchItems as $item)
+                        <div class="py-3 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg transition-colors">
+                            <div class="space-y-0.5">
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-mono text-xs font-bold text-slate-900">{{ $item->mail_number }}</span>
+                                    @if($item->id === $incomingMail->id)
+                                        <span class="text-[10px] bg-slate-900 text-white px-1.5 py-0.2 rounded font-semibold">(Dokumen Ini)</span>
+                                    @endif
+                                </div>
+                                <p class="text-xs text-slate-600 truncate max-w-lg">{{ $item->subject }}</p>
+                            </div>
+                            @if($item->id !== $incomingMail->id)
+                                <a href="{{ route('incoming-mails.show', $item) }}" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-semibold rounded-lg transition-all">
+                                    Lihat Dokumen
+                                </a>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <!-- Section 2: Disposisi & Penerima -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">
+            <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
+                <span>Disposisi & Penerima Berkas</span>
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Disposisi</span>
+                    <p class="text-xs text-slate-800 whitespace-pre-line leading-relaxed">{{ $incomingMail->disposition_note ?? '-' }}</p>
+                </div>
+
+                <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Keterangan</span>
+                    <p class="text-xs text-slate-800 whitespace-pre-line leading-relaxed">{{ $incomingMail->notes ?? '-' }}</p>
+                </div>
             </div>
 
-            <div>
-                <span class="block text-xs font-semibold text-gray-500 uppercase">Status</span>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-300 mt-1">
-                    {{ $incomingMail->status }}
-                </span>
+            <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nama Penerima Berkas</span>
+                <span class="font-bold text-slate-900 text-sm block">{{ $incomingMail->recipient_name ?? '-' }}</span>
             </div>
+        </div>
 
-            <div>
-                <span class="block text-xs font-semibold text-gray-500 uppercase">Berkas Lampiran</span>
-                @if ($incomingMail->file_path)
-                    <div class="mt-1 flex items-center space-x-2">
-                        <a href="{{ route('document.download', ['path' => $incomingMail->file_path]) }}" 
-                           class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-xs font-semibold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100">
-                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                            </svg>
-                            Unduh Dokumen (Local)
-                        </a>
-                        <span class="text-xs text-gray-500 font-mono">({{ $incomingMail->file_path }})</span>
+        <!-- Section 3: Lampiran & Tanda Terima -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">
+            <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
+                <span>Foto Dokumen & Tanda Terima</span>
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Foto Dokumen -->
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Foto Dokumen</span>
+                        @if ($incomingMail->document_photo_path)
+                            <a href="{{ route('document.download', ['path' => $incomingMail->document_photo_path]) }}" class="text-xs font-semibold text-slate-900 hover:underline">
+                                Unduh
+                            </a>
+                        @endif
                     </div>
-                @else
-                    <span class="text-gray-400">Tidak ada lampiran.</span>
-                @endif
+
+                    @if ($incomingMail->document_photo_path)
+                        <div class="bg-white p-2 border border-slate-200 rounded-lg overflow-hidden flex items-center justify-center">
+                            <img src="{{ route('document.download', ['path' => $incomingMail->document_photo_path, 'inline' => 1]) }}" alt="Foto Dokumen" class="max-h-56 object-contain rounded">
+                        </div>
+                    @elseif ($incomingMail->file_path)
+                        <div class="bg-white p-3 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+                            <span class="font-mono text-slate-600 truncate">{{ $incomingMail->file_path }}</span>
+                            <a href="{{ route('document.download', ['path' => $incomingMail->file_path]) }}" class="px-3 py-1 bg-slate-900 text-white rounded-lg font-semibold text-[11px]">
+                                Unduh PDF
+                            </a>
+                        </div>
+                    @else
+                        <p class="text-xs text-slate-400 italic">Tidak ada foto/berkas terunggah.</p>
+                    @endif
+                </div>
+
+                <!-- Tanda Terima -->
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Tanda Terima</span>
+                        @if ($incomingMail->receipt_signature_path)
+                            <a href="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path]) }}" class="text-xs font-semibold text-slate-900 hover:underline">
+                                Unduh
+                            </a>
+                        @endif
+                    </div>
+
+                    @if ($incomingMail->receipt_signature_path)
+                        <div class="bg-white p-3 border border-slate-200 rounded-lg flex items-center justify-center min-h-[120px]">
+                            <img src="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path, 'inline' => 1]) }}" alt="Tanda Terima" class="max-h-40 object-contain">
+                        </div>
+                    @else
+                        <p class="text-xs text-slate-400 italic">Tidak ada tanda tangan terdaftar.</p>
+                    @endif
+                </div>
             </div>
         </div>
+
     </div>
 @endsection

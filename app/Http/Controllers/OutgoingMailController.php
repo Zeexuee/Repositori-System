@@ -8,9 +8,9 @@ use App\Http\Requests\StoreOutgoingMailRequest;
 use App\Http\Requests\UpdateOutgoingMailRequest;
 use App\Jobs\ProcessDigitalSignatureJob;
 use App\Models\OutgoingMail;
+use App\Models\OutgoingMailFileHistory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class OutgoingMailController extends Controller
@@ -44,22 +44,30 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('create', OutgoingMail::class);
 
+        $validated = $request->validated();
+        $status = $validated['status'] ?? 'PROGRES';
+
         $filePath = $request->hasFile('file')
-            ? $request->file('file')->store('outgoing-mails')
+            ? $request->file('file')->store('outgoing-mails', 'local')
             : null;
 
+        $mailNumber = ! empty($validated['mail_number'])
+            ? $validated['mail_number']
+            : 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1);
+
         OutgoingMail::create(array_merge(
-            $request->validated(),
+            $validated,
             [
+                'mail_number' => $mailNumber,
                 'file_path' => $filePath,
                 'created_by' => auth()->id(),
-                'status' => 'DRAFT',
+                'status' => $status,
             ]
         ));
 
         return redirect()
             ->route('outgoing-mails.index')
-            ->with('success', 'Surat Keluar berhasil dibuat sebagai draf.');
+            ->with('success', 'Surat Keluar berhasil dicatat (Status: ' . $status . ').');
     }
 
     /**
@@ -69,7 +77,7 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('view', $outgoingMail);
 
-        $outgoingMail->load('creator');
+        $outgoingMail->load(['creator', 'fileHistories.uploader']);
 
         return view('outgoing-mails.show', compact('outgoingMail'));
     }
@@ -81,7 +89,7 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('sign', $outgoingMail);
 
-        $outgoingMail->update(['status' => 'READY_FOR_SIGN']);
+        $outgoingMail->update(['status' => 'APPROVED']);
 
         ProcessDigitalSignatureJob::dispatch($outgoingMail, auth()->user());
 
@@ -97,6 +105,8 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('update', $outgoingMail);
 
+        $outgoingMail->load('fileHistories.uploader');
+
         return view('outgoing-mails.edit', compact('outgoingMail'));
     }
 
@@ -110,7 +120,20 @@ class OutgoingMailController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('file')) {
-            $data['file_path'] = $request->file('file')->store('outgoing-mails');
+            if (! empty($outgoingMail->file_path)) {
+                OutgoingMailFileHistory::create([
+                    'outgoing_mail_id' => $outgoingMail->id,
+                    'file_path' => $outgoingMail->file_path,
+                    'file_name' => basename($outgoingMail->file_path),
+                    'uploaded_by' => auth()->id(),
+                ]);
+            }
+
+            $data['file_path'] = $request->file('file')->store('outgoing-mails', 'local');
+        }
+
+        if (empty($data['mail_number']) && empty($outgoingMail->mail_number)) {
+            $data['mail_number'] = 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1);
         }
 
         $outgoingMail->update($data);
@@ -134,4 +157,3 @@ class OutgoingMailController extends Controller
             ->with('success', 'Surat Keluar berhasil dihapus.');
     }
 }
-

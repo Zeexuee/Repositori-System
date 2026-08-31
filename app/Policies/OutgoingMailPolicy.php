@@ -14,7 +14,7 @@ class OutgoingMailPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['Super Admin', 'Direksi', 'Kepala Divisi', 'Staf Sekretariat']);
+        return true;
     }
 
     /**
@@ -22,7 +22,7 @@ class OutgoingMailPolicy
      */
     public function view(User $user, OutgoingMail $outgoingMail): bool
     {
-        return $user->hasAnyRole(['Super Admin', 'Direksi', 'Kepala Divisi', 'Staf Sekretariat']);
+        return true;
     }
 
     /**
@@ -30,7 +30,7 @@ class OutgoingMailPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['Super Admin', 'Staf Sekretariat', 'Kepala Divisi', 'Direksi']);
+        return true;
     }
 
     /**
@@ -38,23 +38,15 @@ class OutgoingMailPolicy
      */
     public function update(User $user, OutgoingMail $outgoingMail): bool
     {
-        if ($user->hasRole('Super Admin')) {
-            return true;
-        }
-
-        if ($user->hasAnyRole(['Staf Sekretariat', 'Kepala Divisi'])) {
-            return !in_array($outgoingMail->status, ['APPROVED', 'SIGNED'], true);
-        }
-
-        return false;
+        return ! in_array($outgoingMail->status, ['APPROVED', 'SIGNED'], true);
     }
 
     /**
-     * Determine whether the user can delete the outgoing mail (Super Admin only).
+     * Determine whether the user can delete the outgoing mail.
      */
     public function delete(User $user, OutgoingMail $outgoingMail): bool
     {
-        return $user->hasRole('Super Admin');
+        return true;
     }
 
     /**
@@ -62,6 +54,6 @@ class OutgoingMailPolicy
      */
     public function sign(User $user, OutgoingMail $outgoingMail): bool
     {
-        return $user->hasAnyRole(['Direksi', 'Super Admin']) && $outgoingMail->status === 'APPROVED';
+        return $user->hasRole('Direksi') && $outgoingMail->status === 'APPROVED';
     }
 }

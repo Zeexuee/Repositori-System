@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full bg-gray-50">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 
 <head>
     <meta charset="utf-8">
@@ -13,99 +13,296 @@
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
 
     <!-- Scripts and Styles -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body class="h-full font-sans text-gray-900 antialiased bg-gray-50">
-    <div class="min-h-full flex flex-col">
-        <!-- Top Navigation Bar -->
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
-            <div class="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center space-x-3">
-                        <div
-                            class="w-9 h-9 bg-blue-900 rounded flex items-center justify-center text-white font-bold text-lg">
-                            CS
+<body class="h-full font-sans text-slate-900 antialiased ambient-bg selection:bg-slate-900 selection:text-white">
+    <div class="min-h-screen flex flex-col pb-28 sm:pb-32">
+        <!-- Liquid Glass Top Header -->
+        @unless(View::hasSection('hide_header'))
+            <header class="sticky top-0 z-40 px-3 sm:px-8 py-2.5 sm:py-4">
+                <div
+                    class="max-w-7xl mx-auto glass-navbar rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between shadow-lg">
+                    <!-- Sisi Kiri: Title, Indikasi Online/Offline, & Informasi IP -->
+                    <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                        <!-- Indikator Online/Offline -->
+                        <div x-data="{ isOnline: navigator.onLine }" @online.window="isOnline = true"
+                            @offline.window="isOnline = false" class="flex-shrink-0">
+                            <template x-if="isOnline">
+                                <span
+                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-50/50 text-emerald-700 border border-emerald-200/50 backdrop-blur-sm">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span>Online</span>
+                                </span>
+                            </template>
+                            <template x-if="!isOnline">
+                                <span
+                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-rose-50/50 text-rose-700 border border-rose-200/50 backdrop-blur-sm">
+                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                    <span>Offline</span>
+                                </span>
+                            </template>
                         </div>
-                        <span class="font-bold text-lg text-gray-900 tracking-tight">
-                            Sekretariat Perusahaan
+
+                        <!-- Informasi IP -->
+                        <span
+                            class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-slate-100/50 text-slate-700 border border-slate-200/50 font-mono backdrop-blur-sm flex-shrink-0"
+                            title="Alamat IP">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m-9 9a9 9 0 019-9" />
+                            </svg>
+                            <span>IP: {{ request()->ip() }}</span>
                         </span>
                     </div>
-                </div>
 
-                <div class="flex items-center space-x-4">
-                    @auth
-                        <div class="flex items-center space-x-3 text-sm">
-                            <span class="font-medium text-gray-900">{{ auth()->user()->name }}</span>
-                            <span
-                                class="px-2.5 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
-                                {{ auth()->user()->getRoleNames()->first() ?? 'User' }}
-                            </span>
-                            <form action="{{ route('logout') }}" method="POST" class="inline">
-                                @csrf
-                                <button type="submit" class="text-xs font-semibold text-rose-700 hover:text-rose-900 border border-rose-200 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded">
-                                    Keluar
+                    <!-- Sisi Kanan: User Dropdown & Hidden Logout -->
+                    <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+                        @auth
+                            <div class="relative" x-data="{ open: false }" @click.away="open = false">
+                                <button @click="open = !open" type="button"
+                                    class="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-white/40 transition-all focus:outline-none cursor-pointer backdrop-blur-md">
+                                    <div class="hidden md:flex flex-col items-end">
+                                        <span class="text-xs font-semibold text-slate-900">{{ auth()->user()->name }}</span>
+                                        <span class="text-[10px] text-slate-500">{{ auth()->user()->email }}</span>
+                                    </div>
+                                    <span
+                                        class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-slate-900/10 text-slate-800 border border-slate-300/50 backdrop-blur-md shadow-2xs">
+                                        {{ auth()->user()->getRoleNames()->first() ?? 'User' }}
+                                    </span>
+                                    <svg class="w-3.5 h-3.5 text-slate-500 transition-transform duration-200"
+                                        :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7" />
+                                    </svg>
                                 </button>
-                            </form>
-                        </div>
-                    @else
-                        <a href="{{ route('login') }}" class="text-sm font-semibold text-blue-900 hover:underline">Masuk</a>
-                    @endauth
-                </div>
-            </div>
-        </header>
 
-        <div class="flex-1 flex overflow-hidden">
-            <!-- Sidebar Navigation -->
-            <aside class="w-64 bg-white border-r border-gray-200 flex-shrink-0 hidden md:block">
-                <nav class="p-4 space-y-1">
+                                <!-- Dropdown Content -->
+                                <div x-show="open" x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="transform opacity-0 scale-95"
+                                    x-transition:enter-end="transform opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-75"
+                                    x-transition:leave-start="transform opacity-100 scale-100"
+                                    x-transition:leave-end="transform opacity-0 scale-95" x-cloak
+                                    class="absolute right-0 mt-2 w-48 bg-white/75 backdrop-blur-xl border border-white/60 rounded-xl shadow-xl py-1.5 z-50">
+                                    <div class="px-3 py-2 border-b border-slate-100/50 md:hidden">
+                                        <p class="text-xs font-bold text-slate-900 truncate">{{ auth()->user()->name }}</p>
+                                        <p class="text-[10px] text-slate-500 truncate">{{ auth()->user()->email }}</p>
+                                    </div>
+                                    <a href="{{ route('profile.show') }}"
+                                        class="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-white/50 border-b border-slate-100/50 flex items-center space-x-2 transition-all">
+                                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <span>Profil Saya</span>
+                                    </a>
+                                    <form action="{{ route('logout') }}" method="POST">
+                                        @csrf
+                                        <button type="submit"
+                                            class="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50/50 flex items-center space-x-2 transition-all cursor-pointer">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                            </svg>
+                                            <span>Keluar / Logout</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @else
+                            <a href="{{ route('login') }}"
+                                class="text-xs font-semibold text-slate-900 hover:underline">Masuk</a>
+                        @endauth
+                    </div>
+                </div>
+            </header>
+        @endunless
+
+        <!-- Main Content Container (Responsive Mobile Bounds) -->
+        <main class="flex-1 px-3 sm:px-6 lg:px-8 py-3 sm:py-6 max-w-7xl w-full mx-auto">
+            @if (session('success'))
+                <div
+                    class="mb-4 sm:mb-6 p-3.5 sm:p-4 glass-card border-l-4 border-l-emerald-600 text-emerald-950 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between shadow-xs">
+                    <div class="flex items-center space-x-2.5">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>{{ session('success') }}</span>
+                    </div>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div
+                    class="mb-4 sm:mb-6 p-3.5 sm:p-4 glass-card border-l-4 border-l-rose-600 text-rose-950 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between shadow-xs">
+                    <div class="flex items-center space-x-2.5">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 flex-shrink-0" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>{{ session('error') }}</span>
+                    </div>
+                </div>
+            @endif
+
+            <!-- Glass Card Content Wrapper -->
+            <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-lg">
+                @yield('content')
+            </div>
+        </main>
+    </div>
+
+    <!-- Apple-Style Floating Bottom Dock Navigation (Mobile Optimized) -->
+    @auth
+        <nav class="fixed bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[96vw] sm:max-w-none">
+            <div
+                class="glass-dock rounded-full px-3 py-2 sm:px-4 sm:py-2.5 flex items-center space-x-2 sm:space-x-4 shadow-xl">
+
+                <!-- 1. Surat Masuk Dock Item -->
+                <div class="relative group dock-item flex-shrink-0">
                     <a href="{{ route('incoming-mails.index') }}"
-                        class="flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors {{ request()->routeIs('incoming-mails.*') ? 'bg-blue-900 text-white' : 'text-gray-700 hover:bg-gray-100' }}">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('incoming-mails.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
                             </path>
                         </svg>
+                    </a>
+                    <!-- Active Indicator Dot -->
+                    @if (request()->routeIs('incoming-mails.*'))
+                        <span
+                            class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-slate-900 rounded-full shadow-xs"></span>
+                    @endif
+                    <!-- Tooltip -->
+                    <div
+                        class="hidden sm:block absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 glass-tooltip text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap">
                         Surat Masuk
-                    </a>
-
-                    <a href="{{ route('outgoing-mails.index') }}"
-                        class="flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors {{ request()->routeIs('outgoing-mails.*') ? 'bg-blue-900 text-white' : 'text-gray-700 hover:bg-gray-100' }}">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                        </svg>
-                        Surat Keluar
-                    </a>
-                </nav>
-            </aside>
-
-            <!-- Main Content Area -->
-            <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
-                <div class="max-w-7xl mx-auto space-y-6">
-                    @if (session('success'))
-                        <div
-                            class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-md text-sm font-medium">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-
-                    @if (session('error'))
-                        <div class="p-4 bg-rose-50 border border-rose-200 text-rose-900 rounded-md text-sm font-medium">
-                            {{ session('error') }}
-                        </div>
-                    @endif
-
-                    <!-- Content Card Wrapper -->
-                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-                        @yield('content')
                     </div>
                 </div>
-            </main>
-        </div>
-    </div>
 
-    <!-- Loading Spinner Component for Queue Indicators -->
+                <!-- 2. Surat Keluar Dock Item -->
+                <div class="relative group dock-item flex-shrink-0">
+                    <a href="{{ route('outgoing-mails.index') }}"
+                        class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('outgoing-mails.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8">
+                            </path>
+                        </svg>
+                    </a>
+                    <!-- Active Indicator Dot -->
+                    @if (request()->routeIs('outgoing-mails.*'))
+                        <span
+                            class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-slate-900 rounded-full shadow-xs"></span>
+                    @endif
+                    <!-- Tooltip -->
+                    <div
+                        class="hidden sm:block absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 glass-tooltip text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap">
+                        Surat Keluar
+                    </div>
+                </div>
+
+                <!-- 3. Repositori (Card Per Bulan) Dock Item -->
+                <div class="relative group dock-item flex-shrink-0">
+                    <a href="{{ route('repository.index') }}"
+                        class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('repository.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 8h14M5 8a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v0a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4">
+                            </path>
+                        </svg>
+                    </a>
+                    <!-- Active Indicator Dot -->
+                    @if (request()->routeIs('repository.*'))
+                        <span
+                            class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-slate-900 rounded-full shadow-xs"></span>
+                    @endif
+                    <!-- Tooltip -->
+                    <div
+                        class="hidden sm:block absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 glass-tooltip text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap">
+                        Repositori Arsip
+                    </div>
+                </div>
+
+                <!-- 4. Jejak Audit Dock Item (Khusus Direksi) -->
+                @if (auth()->user()?->hasRole('Direksi'))
+                    <div class="relative group dock-item flex-shrink-0">
+                        <a href="{{ route('audit-logs.index') }}"
+                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('audit-logs.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
+                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                                </path>
+                            </svg>
+                        </a>
+                        <!-- Active Indicator Dot -->
+                        @if (request()->routeIs('audit-logs.*'))
+                            <span
+                                class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-slate-900 rounded-full shadow-xs"></span>
+                        @endif
+                        <!-- Tooltip -->
+                        <div
+                            class="hidden sm:block absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 glass-tooltip text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap">
+                            Event Log
+                        </div>
+                    </div>
+
+                    <!-- 5. Manajemen User Dock Item (Khusus Direksi) -->
+                    <div class="relative group dock-item flex-shrink-0">
+                        <a href="{{ route('users.index') }}"
+                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('users.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
+                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                                </path>
+                            </svg>
+                        </a>
+                        <!-- Active Indicator Dot -->
+                        @if (request()->routeIs('users.*'))
+                            <span
+                                class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-slate-900 rounded-full shadow-xs"></span>
+                        @endif
+                        <!-- Tooltip -->
+                        <div
+                            class="hidden sm:block absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 glass-tooltip text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap">
+                            Manajemen User
+                        </div>
+                    </div>
+
+                    <!-- 6. Broadcast Email Dock Item (Khusus Direksi) -->
+                    <div class="relative group dock-item flex-shrink-0">
+                        <a href="{{ route('broadcast-emails.index') }}"
+                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('broadcast-emails.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
+                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                        </a>
+                        <!-- Active Indicator Dot -->
+                        @if (request()->routeIs('broadcast-emails.*'))
+                            <span
+                                class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-slate-900 rounded-full shadow-xs"></span>
+                        @endif
+                        <!-- Tooltip -->
+                        <div
+                            class="hidden sm:block absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 glass-tooltip text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap">
+                            Broadcast Email
+                        </div>
+                    </div>
+                @endif
+
+            </div>
+        </nav>
+    @endauth
+
+    <!-- Loading Spinner Component -->
     <x-loading-spinner />
 </body>
 

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\BroadcastEmail;
 use App\Models\IncomingMail;
 use App\Models\OutgoingMail;
+use App\Models\User;
 use App\Observers\AuditLogObserver;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,5 +28,7 @@ class AppServiceProvider extends ServiceProvider
     {
         IncomingMail::observe(AuditLogObserver::class);
         OutgoingMail::observe(AuditLogObserver::class);
+        User::observe(AuditLogObserver::class);
+        BroadcastEmail::observe(AuditLogObserver::class);
     }
 }
