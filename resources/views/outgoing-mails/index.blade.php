@@ -48,16 +48,36 @@
                             <td class="p-3.5 text-slate-600 text-xs font-medium">{{ $mail->creator?->name ?? 'System' }}</td>
                             <td class="p-3.5">
                                 @php
+                                    $isProgres = in_array($mail->status, ['PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING']);
                                     $badgeClasses = match ($mail->status) {
-                                        'PENDING' => 'bg-amber-50 text-amber-700 border-amber-200 font-bold',
-                                        'APPROVED' => 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold',
+                                        'RECEIVE', 'RECEIVED' => 'bg-sky-50 text-sky-700 border-sky-300 font-bold',
+                                        'PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'bg-amber-50 text-amber-700 border-amber-200 font-bold hover:bg-amber-100 cursor-pointer shadow-2xs transition-all',
+                                        'RETURN', 'RETURNED' => 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold',
                                         default => 'bg-slate-100 text-slate-700 border-slate-200',
                                     };
+                                    $displayStatus = match ($mail->status) {
+                                        'RECEIVED' => 'RECEIVE',
+                                        'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'PROGRES',
+                                        'RETURNED' => 'RETURN',
+                                        default => $mail->status,
+                                    };
                                 @endphp
-                                <span
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border {{ $badgeClasses }}">
-                                    {{ $mail->status }}
-                                </span>
+
+                                @if ($isProgres && auth()->user()?->can('update', $mail))
+                                    <form action="{{ route('outgoing-mails.update', $mail) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin merubah status surat {{ $mail->mail_number ?? '' }} dari PROGRES menjadi RETURN?');">
+                                        @csrf
+                                        @method('PUT')
+                                        <input type="hidden" name="status" value="RETURN">
+                                        <button type="submit" title="Klik untuk langsung merubah status menjadi RETURN" class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border {{ $badgeClasses }}">
+                                            <span>{{ $displayStatus }}</span>
+                                            <span class="text-[10px] text-amber-600 font-bold">↻</span>
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border {{ $badgeClasses }}">
+                                        {{ $displayStatus }}
+                                    </span>
+                                @endif
                             </td>
                             <td class="p-3.5 text-right space-x-2">
                                 <a href="{{ route('outgoing-mails.show', $mail) }}"

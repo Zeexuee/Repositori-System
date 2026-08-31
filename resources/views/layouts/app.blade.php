@@ -23,34 +23,22 @@
         @unless(View::hasSection('hide_header'))
             <header class="sticky top-0 z-40 px-3 sm:px-8 py-2.5 sm:py-4">
                 <div
-                    class="max-w-7xl mx-auto glass-card rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between">
+                    class="max-w-7xl mx-auto glass-navbar rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between shadow-lg">
                     <!-- Sisi Kiri: Title, Indikasi Online/Offline, & Informasi IP -->
                     <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
-                        {{--
-                        <!-- Title Text -->
-                        <div class="min-w-0 mr-1 sm:mr-2">
-                            <h1 class="font-bold text-sm sm:text-lg text-slate-900 tracking-tight leading-tight truncate">
-                                Sekretariat Perusahaan
-                            </h1>
-                            <p class="text-[10px] sm:text-[11px] text-slate-500 font-medium tracking-wide truncate">
-                                Corporate Secretariat Repository System
-                            </p>
-                        </div>
-                        --}}
-
                         <!-- Indikator Online/Offline -->
                         <div x-data="{ isOnline: navigator.onLine }" @online.window="isOnline = true"
                             @offline.window="isOnline = false" class="flex-shrink-0">
                             <template x-if="isOnline">
                                 <span
-                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-50/50 text-emerald-700 border border-emerald-200/50 backdrop-blur-sm">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                                     <span>Online</span>
                                 </span>
                             </template>
                             <template x-if="!isOnline">
                                 <span
-                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-rose-50/50 text-rose-700 border border-rose-200/50 backdrop-blur-sm">
                                     <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                                     <span>Offline</span>
                                 </span>
@@ -59,7 +47,7 @@
 
                         <!-- Informasi IP -->
                         <span
-                            class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 font-mono flex-shrink-0"
+                            class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-slate-100/50 text-slate-700 border border-slate-200/50 font-mono backdrop-blur-sm flex-shrink-0"
                             title="Alamat IP">
                             <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -74,13 +62,13 @@
                         @auth
                             <div class="relative" x-data="{ open: false }" @click.away="open = false">
                                 <button @click="open = !open" type="button"
-                                    class="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-100/80 transition-all focus:outline-none cursor-pointer">
+                                    class="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-white/40 transition-all focus:outline-none cursor-pointer backdrop-blur-md">
                                     <div class="hidden md:flex flex-col items-end">
                                         <span class="text-xs font-semibold text-slate-900">{{ auth()->user()->name }}</span>
                                         <span class="text-[10px] text-slate-500">{{ auth()->user()->email }}</span>
                                     </div>
                                     <span
-                                        class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-slate-900/5 text-slate-800 border border-slate-300 backdrop-blur-md shadow-2xs">
+                                        class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-slate-900/10 text-slate-800 border border-slate-300/50 backdrop-blur-md shadow-2xs">
                                         {{ auth()->user()->getRoleNames()->first() ?? 'User' }}
                                     </span>
                                     <svg class="w-3.5 h-3.5 text-slate-500 transition-transform duration-200"
@@ -90,20 +78,20 @@
                                     </svg>
                                 </button>
 
-                                <!-- Dropdown Content (Disembunyikan) -->
+                                <!-- Dropdown Content -->
                                 <div x-show="open" x-transition:enter="transition ease-out duration-100"
                                     x-transition:enter-start="transform opacity-0 scale-95"
                                     x-transition:enter-end="transform opacity-100 scale-100"
                                     x-transition:leave="transition ease-in duration-75"
                                     x-transition:leave-start="transform opacity-100 scale-100"
                                     x-transition:leave-end="transform opacity-0 scale-95" x-cloak
-                                    class="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-50">
-                                    <div class="px-3 py-2 border-b border-slate-100 md:hidden">
+                                    class="absolute right-0 mt-2 w-48 bg-white/75 backdrop-blur-xl border border-white/60 rounded-xl shadow-xl py-1.5 z-50">
+                                    <div class="px-3 py-2 border-b border-slate-100/50 md:hidden">
                                         <p class="text-xs font-bold text-slate-900 truncate">{{ auth()->user()->name }}</p>
                                         <p class="text-[10px] text-slate-500 truncate">{{ auth()->user()->email }}</p>
                                     </div>
                                     <a href="{{ route('profile.show') }}"
-                                        class="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 border-b border-slate-100 flex items-center space-x-2 transition-all">
+                                        class="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-white/50 border-b border-slate-100/50 flex items-center space-x-2 transition-all">
                                         <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -114,7 +102,7 @@
                                     <form action="{{ route('logout') }}" method="POST">
                                         @csrf
                                         <button type="submit"
-                                            class="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center space-x-2 transition-all cursor-pointer">
+                                            class="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50/50 flex items-center space-x-2 transition-all cursor-pointer">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -179,7 +167,7 @@
                 <!-- 1. Surat Masuk Dock Item -->
                 <div class="relative group dock-item flex-shrink-0">
                     <a href="{{ route('incoming-mails.index') }}"
-                        class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('incoming-mails.*') ? 'bg-slate-900 text-white shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200/80' }}">
+                        class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('incoming-mails.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
@@ -201,7 +189,7 @@
                 <!-- 2. Surat Keluar Dock Item -->
                 <div class="relative group dock-item flex-shrink-0">
                     <a href="{{ route('outgoing-mails.index') }}"
-                        class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('outgoing-mails.*') ? 'bg-slate-900 text-white shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200/80' }}">
+                        class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('outgoing-mails.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8">
@@ -223,7 +211,7 @@
                 <!-- 3. Repositori (Card Per Bulan) Dock Item -->
                 <div class="relative group dock-item flex-shrink-0">
                     <a href="{{ route('repository.index') }}"
-                        class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('repository.*') ? 'bg-slate-900 text-white shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200/80' }}">
+                        class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('repository.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M5 8h14M5 8a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v0a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4">
@@ -246,7 +234,7 @@
                 @if (auth()->user()?->hasRole('Direksi'))
                     <div class="relative group dock-item flex-shrink-0">
                         <a href="{{ route('audit-logs.index') }}"
-                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('audit-logs.*') ? 'bg-slate-900 text-white shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200/80' }}">
+                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('audit-logs.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
                             <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
@@ -268,7 +256,7 @@
                     <!-- 5. Manajemen User Dock Item (Khusus Direksi) -->
                     <div class="relative group dock-item flex-shrink-0">
                         <a href="{{ route('users.index') }}"
-                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('users.*') ? 'bg-slate-900 text-white shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200/80' }}">
+                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('users.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
                             <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
@@ -290,7 +278,7 @@
                     <!-- 6. Broadcast Email Dock Item (Khusus Direksi) -->
                     <div class="relative group dock-item flex-shrink-0">
                         <a href="{{ route('broadcast-emails.index') }}"
-                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('broadcast-emails.*') ? 'bg-slate-900 text-white shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200/80' }}">
+                            class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('broadcast-emails.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
                             <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">

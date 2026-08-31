@@ -35,7 +35,7 @@ class UpdateOutgoingMailRequest extends FormRequest
             ],
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
             'recipient' => ['sometimes', 'required', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:PENDING,APPROVED'],
+            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,PROGRES,PROGRESS,IN_PROGRESS,PENDING,RETURN,RETURNED,DRAFT,APPROVED,SIGNED'],
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
         ];
     }

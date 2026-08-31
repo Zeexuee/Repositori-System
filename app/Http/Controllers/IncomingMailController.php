@@ -339,23 +339,45 @@ class IncomingMailController extends Controller
         $status = Str::upper((string) $incomingMail->status);
 
         if (in_array($status, ['RETURN', 'RETURNED'], true)) {
-            OutgoingMail::create([
-                'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
-                'subject' => '[RETURN] ' . $incomingMail->subject,
-                'recipient' => $incomingMail->sender,
-                'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
-                'created_by' => auth()->id() ?? 1,
-                'status' => 'APPROVED',
-            ]);
+            $outgoingMail = OutgoingMail::where('subject', 'like', '%' . $incomingMail->subject)
+                ->latest()
+                ->first();
+
+            if ($outgoingMail) {
+                $outgoingMail->update([
+                    'status' => 'RETURN',
+                    'subject' => '[RETURN] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', '', $incomingMail->subject),
+                ]);
+            } else {
+                OutgoingMail::create([
+                    'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
+                    'subject' => '[RETURN] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', '', $incomingMail->subject),
+                    'recipient' => $incomingMail->sender,
+                    'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
+                    'created_by' => auth()->id() ?? 1,
+                    'status' => 'RETURN',
+                ]);
+            }
         } elseif (in_array($status, ['PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING'], true)) {
-            OutgoingMail::create([
-                'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
-                'subject' => '[PROGRES] ' . $incomingMail->subject,
-                'recipient' => $incomingMail->sender,
-                'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
-                'created_by' => auth()->id() ?? 1,
-                'status' => 'PENDING',
-            ]);
+            $outgoingMail = OutgoingMail::where('subject', 'like', '%' . $incomingMail->subject)
+                ->latest()
+                ->first();
+
+            if ($outgoingMail) {
+                $outgoingMail->update([
+                    'status' => 'PROGRES',
+                    'subject' => '[PROGRES] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', '', $incomingMail->subject),
+                ]);
+            } else {
+                OutgoingMail::create([
+                    'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
+                    'subject' => '[PROGRES] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', '', $incomingMail->subject),
+                    'recipient' => $incomingMail->sender,
+                    'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
+                    'created_by' => auth()->id() ?? 1,
+                    'status' => 'PROGRES',
+                ]);
+            }
         }
     }
 }

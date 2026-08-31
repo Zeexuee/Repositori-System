@@ -61,19 +61,63 @@
 
         <!-- Field 6: Berkas Lampiran (Full Width on Grid) -->
         <div class="sm:col-span-2 p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2">
-            <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Berkas Lampiran</span>
+            <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Berkas Lampiran Utama</span>
             @if ($outgoingMail->file_path)
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white rounded-lg border border-slate-200">
                     <span class="text-xs text-slate-600 font-mono break-all">{{ $outgoingMail->file_path }}</span>
-                    <a href="{{ route('document.download', ['path' => $outgoingMail->file_path]) }}" 
-                       class="w-full sm:w-auto text-center px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex-shrink-0">
-                        Unduh Dokumen
-                    </a>
+                    <div class="flex items-center space-x-2 w-full sm:w-auto">
+                        <a href="{{ route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]) }}" target="_blank"
+                           class="w-full sm:w-auto text-center px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-xl transition-all shadow-2xs">
+                            Pratinjau
+                        </a>
+                        <a href="{{ route('document.download', ['path' => $outgoingMail->file_path]) }}" 
+                           class="w-full sm:w-auto text-center px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex-shrink-0">
+                            Unduh Dokumen
+                        </a>
+                    </div>
                 </div>
             @else
                 <span class="text-slate-400 italic text-xs block">Tidak ada lampiran berkas.</span>
             @endif
         </div>
+
+        <!-- Field 7: Histori Perubahan Berkas -->
+        @if ($outgoingMail->fileHistories->count() > 0)
+            <div class="sm:col-span-2 p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-3">
+                <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1.5">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Histori Perubahan Berkas ({{ $outgoingMail->fileHistories->count() }})</span>
+                </span>
+                <div class="space-y-2">
+                    @foreach ($outgoingMail->fileHistories as $history)
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-white rounded-lg border border-slate-200 gap-3">
+                            <div class="space-y-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs font-bold text-slate-800 font-mono break-all">{{ $history->file_name ?? basename($history->file_path) }}</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium border border-slate-200">Versi Terganti</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">
+                                    Diganti pada <span class="font-semibold text-slate-700">{{ $history->created_at->format('d/m/Y H:i') }}</span>
+                                    @if ($history->uploader)
+                                        oleh <span class="font-semibold text-slate-700">{{ $history->uploader->name }}</span>
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="flex items-center space-x-2 self-end sm:self-center">
+                                <a href="{{ route('document.download', ['path' => $history->file_path, 'inline' => 1]) }}" target="_blank" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold rounded-lg shadow-2xs transition-all">
+                                    Pratinjau
+                                </a>
+                                <a href="{{ route('document.download', ['path' => $history->file_path]) }}" class="px-3 py-1.5 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-lg shadow-xs transition-all">
+                                    Unduh
+                                </a>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
     </div>
 @endsection

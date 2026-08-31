@@ -46,8 +46,9 @@
                 <div>
                     <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Surat</label>
                     <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                        <option value="PENDING" {{ old('status', 'PENDING') == 'PENDING' ? 'selected' : '' }}>PENDING</option>
-                        <option value="APPROVED" {{ old('status') == 'APPROVED' ? 'selected' : '' }}>APPROVED</option>
+                        <option value="RECEIVE" {{ old('status') == 'RECEIVE' ? 'selected' : '' }}>RECEIVE</option>
+                        <option value="PROGRES" {{ old('status', 'PROGRES') == 'PROGRES' || old('status') == 'PENDING' ? 'selected' : '' }}>PROGRES</option>
+                        <option value="RETURN" {{ old('status') == 'RETURN' ? 'selected' : '' }}>RETURN</option>
                     </select>
                     @error('status')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>

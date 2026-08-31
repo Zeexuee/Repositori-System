@@ -8,6 +8,7 @@ use App\Http\Requests\StoreOutgoingMailRequest;
 use App\Http\Requests\UpdateOutgoingMailRequest;
 use App\Jobs\ProcessDigitalSignatureJob;
 use App\Models\OutgoingMail;
+use App\Models\OutgoingMailFileHistory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -44,7 +45,7 @@ class OutgoingMailController extends Controller
         Gate::authorize('create', OutgoingMail::class);
 
         $validated = $request->validated();
-        $status = $validated['status'] ?? 'PENDING';
+        $status = $validated['status'] ?? 'PROGRES';
 
         $filePath = $request->hasFile('file')
             ? $request->file('file')->store('outgoing-mails', 'local')
@@ -76,7 +77,7 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('view', $outgoingMail);
 
-        $outgoingMail->load('creator');
+        $outgoingMail->load(['creator', 'fileHistories.uploader']);
 
         return view('outgoing-mails.show', compact('outgoingMail'));
     }
@@ -104,6 +105,8 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('update', $outgoingMail);
 
+        $outgoingMail->load('fileHistories.uploader');
+
         return view('outgoing-mails.edit', compact('outgoingMail'));
     }
 
@@ -117,6 +120,15 @@ class OutgoingMailController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('file')) {
+            if (! empty($outgoingMail->file_path)) {
+                OutgoingMailFileHistory::create([
+                    'outgoing_mail_id' => $outgoingMail->id,
+                    'file_path' => $outgoingMail->file_path,
+                    'file_name' => basename($outgoingMail->file_path),
+                    'uploaded_by' => auth()->id(),
+                ]);
+            }
+
             $data['file_path'] = $request->file('file')->store('outgoing-mails', 'local');
         }
 

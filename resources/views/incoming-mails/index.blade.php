@@ -87,7 +87,7 @@
                                 @endphp
 
                                 @if ($isReceive && auth()->user()?->can('update', $mail))
-                                    <form action="{{ route('incoming-mails.update', $mail) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin merubah status dokumen {{ $mail->mail_number }} dari RECEIVE menjadi RETURN?\n\nCatatan: Dokumen akan otomatis dicatat pada Surat Keluar (APPROVED).');">
+                                    <form action="{{ route('incoming-mails.update', $mail) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin merubah status dokumen {{ $mail->mail_number }} dari RECEIVE menjadi RETURN?\n\nCatatan: Dokumen akan otomatis dicatat pada Surat Keluar (RETURN).');">
                                         @csrf
                                         @method('PUT')
                                         <input type="hidden" name="status" value="RETURN">

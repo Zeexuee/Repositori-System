@@ -52,8 +52,9 @@
                 <div>
                     <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Surat</label>
                     <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                        <option value="PENDING" {{ old('status', $outgoingMail->status) == 'PENDING' ? 'selected' : '' }}>PENDING</option>
-                        <option value="APPROVED" {{ old('status', $outgoingMail->status) == 'APPROVED' ? 'selected' : '' }}>APPROVED</option>
+                        <option value="RECEIVE" {{ old('status', $outgoingMail->status) == 'RECEIVE' || old('status', $outgoingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
+                        <option value="PROGRES" {{ old('status', $outgoingMail->status) == 'PROGRES' || old('status', $outgoingMail->status) == 'PENDING' || old('status', $outgoingMail->status) == 'PROGRESS' || old('status', $outgoingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
+                        <option value="RETURN" {{ old('status', $outgoingMail->status) == 'RETURN' || old('status', $outgoingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
                     </select>
                     @error('status')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
@@ -65,8 +66,8 @@
                     <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Ganti Berkas (PDF / Gambar)</label>
                     @if ($outgoingMail->file_path)
                         <div class="mb-2 text-xs font-medium text-slate-600">
-                            Berkas Terunggah: 
-                            <a href="{{ route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]) }}" target="_blank" class="text-slate-900 underline font-semibold">Pratinjau Berkas</a>
+                            Berkas Terunggah (Utama): 
+                            <a href="{{ route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]) }}" target="_blank" class="text-slate-900 underline font-semibold">Pratinjau Berkas Utama</a>
                         </div>
                     @endif
                     <input type="file" name="file" id="file" accept="application/pdf,image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
@@ -75,6 +76,46 @@
                     @enderror
                 </div>
             </div>
+
+            <!-- Histori Perubahan Berkas -->
+            @if ($outgoingMail->fileHistories->count() > 0)
+                <div class="pt-6 border-t border-slate-200/80 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Histori Perubahan Berkas ({{ $outgoingMail->fileHistories->count() }})</span>
+                        </h3>
+                    </div>
+                    <div class="space-y-2">
+                        @foreach ($outgoingMail->fileHistories as $history)
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl gap-3">
+                                <div class="space-y-1">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs font-bold text-slate-800 font-mono break-all">{{ $history->file_name ?? basename($history->file_path) }}</span>
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">Versi Lama</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500">
+                                        Diganti pada <span class="font-medium text-slate-700">{{ $history->created_at->format('d/m/Y H:i') }}</span>
+                                        @if ($history->uploader)
+                                            oleh <span class="font-medium text-slate-700">{{ $history->uploader->name }}</span>
+                                        @endif
+                                    </p>
+                                </div>
+                                <div class="flex items-center space-x-2 self-end sm:self-center">
+                                    <a href="{{ route('document.download', ['path' => $history->file_path, 'inline' => 1]) }}" target="_blank" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold rounded-lg shadow-2xs transition-all">
+                                        Pratinjau
+                                    </a>
+                                    <a href="{{ route('document.download', ['path' => $history->file_path]) }}" class="px-3 py-1.5 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-lg shadow-xs transition-all">
+                                        Unduh
+                                    </a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
         <div class="flex items-center justify-between pt-4 border-t border-slate-200/80">
