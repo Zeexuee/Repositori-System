@@ -38,7 +38,7 @@ class OutgoingMailPolicy
      */
     public function update(User $user, OutgoingMail $outgoingMail): bool
     {
-        return ! in_array($outgoingMail->status, ['APPROVED', 'SIGNED'], true);
+        return ! in_array($outgoingMail->status, ['APPROVED'], true);
     }
 
     /**
@@ -54,6 +54,6 @@ class OutgoingMailPolicy
      */
     public function sign(User $user, OutgoingMail $outgoingMail): bool
     {
-        return $user->hasRole('Direksi') && $outgoingMail->status === 'APPROVED';
+        return ($user->hasRole('Direksi') || $user->hasRole('Super Admin')) && ! in_array($outgoingMail->status, ['RETURN', 'SIGNED'], true);
     }
 }

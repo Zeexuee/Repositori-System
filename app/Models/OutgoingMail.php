@@ -32,10 +32,23 @@ class OutgoingMail extends Model
         'mail_number',
         'subject',
         'recipient',
+        'dispositions_data',
         'file_path',
         'created_by',
         'status',
     ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'dispositions_data' => 'array',
+        ];
+    }
 
     /**
      * Boot model event listeners.
@@ -45,8 +58,29 @@ class OutgoingMail extends Model
         static::saving(function (OutgoingMail $mail) {
             if (! empty($mail->status) && ! empty($mail->subject)) {
                 $statusTag = '[' . Str::upper($mail->status) . ']';
-                if (preg_match('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', $mail->subject)) {
-                    $mail->subject = (string) preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', $statusTag . ' ', $mail->subject);
+                if (preg_match('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|WAITING)\]\s*/i', $mail->subject)) {
+                    $mail->subject = (string) preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|WAITING)\]\s*/i', $statusTag . ' ', $mail->subject);
+                }
+            }
+        });
+
+        static::saved(function (OutgoingMail $mail) {
+            if (! empty($mail->subject) && ! empty($mail->status)) {
+                $cleanSubject = trim((string) preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|WAITING)\]\s*/i', '', $mail->subject));
+
+                if (! empty($cleanSubject)) {
+                    $incomingMails = IncomingMail::where('subject', $cleanSubject)
+                        ->orWhere('subject', 'like', '%' . $cleanSubject . '%')
+                        ->orWhere('mail_number', $mail->mail_number)
+                        ->get();
+
+                    foreach ($incomingMails as $incoming) {
+                        $updateData = ['status' => $mail->status];
+                        if (in_array($mail->status, ['RETURN', 'RETURNED'], true) && empty($incoming->outgoing_date)) {
+                            $updateData['outgoing_date'] = now()->toDateString();
+                        }
+                        $incoming->updateQuietly($updateData);
+                    }
                 }
             }
         });

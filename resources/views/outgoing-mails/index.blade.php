@@ -3,33 +3,56 @@
 @section('title', 'Daftar Surat Keluar')
 
 @section('content')
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/80">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/80 gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Daftar Surat Keluar</h1>
             <p class="text-xs text-slate-500 mt-1">Kelola pencatatan, verifikasi, dan persetujuan surat keluar.</p>
         </div>
-        @can('create', App\Models\OutgoingMail::class)
-            <div class="mt-4 sm:mt-0">
+        <div class="flex items-center space-x-3">
+            <!-- Tombol Waiting -->
+            <a href="{{ route('outgoing-mails.waiting') }}"
+                class="inline-flex items-center space-x-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-semibold rounded-xl transition-all shadow-2xs">
+                <span>Waiting</span>
+                @if(!empty($waitingCount) && $waitingCount > 0)
+                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-900 text-white">{{ $waitingCount }}</span>
+                @endif
+            </a>
+
+            @can('create', App\Models\OutgoingMail::class)
                 <a href="{{ route('outgoing-mails.create') }}"
-                    class="inline-flex items-center space-x-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all shadow-xs">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span>Tambah Surat Keluar</span>
+                    class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all shadow-xs">
+                    Tambah Surat Keluar
                 </a>
-            </div>
-        @endcan
+            @endcan
+        </div>
     </div>
 
-    <div class="mt-6 bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
+    <!-- Search Bar -->
+    <div class="mt-6 flex items-center justify-between">
+        <form method="GET" action="{{ route('outgoing-mails.index') }}" class="flex items-center space-x-2 w-full sm:w-auto">
+            <div class="relative w-full sm:w-72">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nomor/subjek/penerima..."
+                    class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-xs text-slate-900 transition-all shadow-2xs">
+            </div>
+            <button type="submit" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-all cursor-pointer">
+                Cari
+            </button>
+            @if(request('search'))
+                <a href="{{ route('outgoing-mails.index') }}" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all" title="Reset pencarian">
+                    Reset
+                </a>
+            @endif
+        </form>
+    </div>
+
+    <div class="mt-4 bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse min-w-max">
                 <thead>
-                    <tr
-                        class="border-b border-slate-200 bg-slate-100/90 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    <tr class="border-b border-slate-200 bg-slate-100/90 text-xs font-bold text-slate-700 uppercase tracking-wider">
                         <th class="p-3.5">Nomor Surat</th>
                         <th class="p-3.5">Subjek / Perihal</th>
-                        <th class="p-3.5">Penerima</th>
+                        <th class="p-3.5">Penerima / Disposisi</th>
                         <th class="p-3.5">Pembuat</th>
                         <th class="p-3.5">Status</th>
                         <th class="p-3.5 text-right">Aksi</th>
@@ -37,6 +60,9 @@
                 </thead>
                 <tbody class="divide-y divide-slate-200 text-xs">
                     @forelse ($outgoingMails as $mail)
+                        @php
+                            $recipientsList = array_filter(array_map('trim', explode(',', (string) $mail->recipient)));
+                        @endphp
                         <tr class="hover:bg-slate-50/80 transition-colors">
                             <td class="p-3.5 font-bold text-slate-900 font-mono">
                                 {{ $mail->mail_number ?? '-' }}
@@ -44,49 +70,109 @@
                             <td class="p-3.5 text-slate-800 font-medium max-w-xs truncate" title="{{ $mail->subject }}">
                                 {{ $mail->subject }}
                             </td>
-                            <td class="p-3.5 text-slate-700 font-medium">{{ $mail->recipient }}</td>
+                            <td class="p-3.5 max-w-xs">
+                                @if (count($recipientsList) > 1)
+                                    <div class="flex flex-wrap gap-1">
+                                        @foreach ($recipientsList as $r)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-semibold text-slate-700">
+                                                {{ $r }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span class="text-slate-700 font-medium">{{ $mail->recipient ?? '-' }}</span>
+                                @endif
+                            </td>
                             <td class="p-3.5 text-slate-600 text-xs font-medium">{{ $mail->creator?->name ?? 'System' }}</td>
-                            <td class="p-3.5">
+                            <td class="p-3.5" x-data="{ open: false, selectedStatus: '{{ $mail->status }}' }">
                                 @php
-                                    $isProgres = in_array($mail->status, ['PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING']);
                                     $badgeClasses = match ($mail->status) {
+                                        'RETURN', 'RETURNED' => 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold',
+                                        'APPROVED', 'SIGNED' => 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold',
                                         'RECEIVE', 'RECEIVED' => 'bg-sky-50 text-sky-700 border-sky-300 font-bold',
-                                        'PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'bg-amber-50 text-amber-700 border-amber-200 font-bold hover:bg-amber-100 cursor-pointer shadow-2xs transition-all',
-                                        'RETURN', 'RETURNED' => 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold',
+                                        'REVISI', 'REVISION' => 'bg-amber-50 text-amber-900 border-amber-300 font-bold',
+                                        'WAITING' => 'bg-amber-50 text-amber-800 border-amber-300 font-bold',
+                                        'PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'bg-amber-50 text-amber-700 border-amber-300 font-bold',
+                                        'REJECTED', 'SIGN_FAILED' => 'bg-rose-50 text-rose-700 border-rose-300 font-bold',
+                                        'DRAFT' => 'bg-slate-100 text-slate-700 border-slate-300 font-medium',
                                         default => 'bg-slate-100 text-slate-700 border-slate-200',
                                     };
                                     $displayStatus = match ($mail->status) {
                                         'RECEIVED' => 'RECEIVE',
                                         'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'PROGRES',
                                         'RETURNED' => 'RETURN',
+                                        'REVISION' => 'REVISI',
                                         default => $mail->status,
                                     };
+                                    $availableStatuses = [
+                                        'WAITING' => 'Menunggu Penerima',
+                                        'PROGRES' => 'Dalam Proses',
+                                        'RETURN' => 'Selesai / Dikembalikan',
+                                        'REVISI' => 'Revisi Dokumen',
+                                        'DRAFT' => 'Draf Dokumen',
+                                    ];
                                 @endphp
 
-                                @if ($isProgres && auth()->user()?->can('update', $mail))
-                                    <form action="{{ route('outgoing-mails.update', $mail) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin merubah status surat {{ $mail->mail_number ?? '' }} dari PROGRES menjadi RETURN?');">
-                                        @csrf
-                                        @method('PUT')
-                                        <input type="hidden" name="status" value="RETURN">
-                                        <button type="submit" title="Klik untuk langsung merubah status menjadi RETURN" class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border {{ $badgeClasses }}">
+                                @can('update', $mail)
+                                    <div class="relative inline-block text-left">
+                                        <form x-ref="statusForm" action="{{ route('outgoing-mails.update', $mail) }}" method="POST">
+                                            @csrf
+                                            @method('PUT')
+                                            <input type="hidden" name="status" :value="selectedStatus">
+                                        </form>
+
+                                        <button type="button" @click="open = !open"
+                                            title="Klik untuk memilih dan mengubah status"
+                                            class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border transition-all cursor-pointer shadow-2xs hover:ring-2 hover:ring-slate-900/10 {{ $badgeClasses }}">
                                             <span>{{ $displayStatus }}</span>
-                                            <span class="text-[10px] text-amber-600 font-bold">↻</span>
+                                            <svg class="w-3 h-3 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                            </svg>
                                         </button>
-                                    </form>
+
+                                        <!-- Dropdown Menu -->
+                                        <div x-show="open"
+                                            x-cloak
+                                            @click.away="open = false"
+                                            x-transition:enter="transition ease-out duration-100"
+                                            x-transition:enter-start="transform opacity-0 scale-95"
+                                            x-transition:enter-end="transform opacity-100 scale-100"
+                                            x-transition:leave="transition ease-in duration-75"
+                                            x-transition:leave-start="transform opacity-100 scale-100"
+                                            x-transition:leave-end="transform opacity-0 scale-95"
+                                            class="absolute left-0 mt-1.5 w-44 rounded-xl bg-white shadow-xl border border-slate-200 py-1 z-30 focus:outline-hidden">
+                                            <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                                Pilih Status
+                                            </div>
+                                            @foreach ($availableStatuses as $statusCode => $statusDesc)
+                                                <button type="button"
+                                                    @click="if('{{ $statusCode }}' !== '{{ $mail->status }}') { if(confirm('Ubah status surat {{ $mail->mail_number ?? '' }} menjadi {{ $statusCode }}?')) { selectedStatus = '{{ $statusCode }}'; $nextTick(() => $refs.statusForm.submit()); } } open = false;"
+                                                    class="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center justify-between transition-colors {{ $mail->status === $statusCode ? 'bg-slate-50 font-bold' : '' }}">
+                                                    <div class="flex items-center space-x-2">
+                                                        <span class="inline-block w-2 h-2 rounded-full {{ str_starts_with($statusCode, 'RETURN') ? 'bg-emerald-500' : (in_array($statusCode, ['WAITING', 'PROGRES']) ? 'bg-amber-500' : 'bg-slate-400') }}"></span>
+                                                        <span class="text-slate-800">{{ $statusCode }}</span>
+                                                    </div>
+                                                    @if($mail->status === $statusCode)
+                                                        <span class="text-[10px] text-slate-400 font-normal">Aktif</span>
+                                                    @endif
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 @else
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border {{ $badgeClasses }}">
                                         {{ $displayStatus }}
                                     </span>
-                                @endif
+                                @endcan
                             </td>
-                            <td class="p-3.5 text-right space-x-2">
+                            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
                                 <a href="{{ route('outgoing-mails.show', $mail) }}"
-                                    class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded font-semibold text-[11px]">
+                                    class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-lg font-semibold text-[11px] transition-all">
                                     Detail
                                 </a>
                                 @can('update', $mail)
                                     <a href="{{ route('outgoing-mails.edit', $mail) }}"
-                                        class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded font-semibold text-[11px]">
+                                        class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-lg font-semibold text-[11px] transition-all">
                                         Edit
                                     </a>
                                 @endcan
@@ -94,7 +180,12 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="p-8 text-center text-slate-500 italic text-xs">Belum ada data surat keluar.
+                            <td colspan="6" class="p-8 text-center text-slate-500 italic text-xs">
+                                @if (request('search'))
+                                    Tidak ditemukan surat keluar dengan kata kunci "{{ request('search') }}".
+                                @else
+                                    Belum ada data surat keluar.
+                                @endif
                             </td>
                         </tr>
                     @endforelse

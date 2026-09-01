@@ -45,7 +45,7 @@ class ProcessDigitalSignatureJob implements ShouldQueue
         $success = $signatureService->signDocument($this->outgoingMail->file_path, $this->signer);
 
         if ($success) {
-            $this->outgoingMail->update(['status' => 'SIGNED']);
+            $this->outgoingMail->update(['status' => 'RETURN']);
         } else {
             $this->outgoingMail->update(['status' => 'SIGN_FAILED']);
         }

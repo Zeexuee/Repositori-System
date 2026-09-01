@@ -29,11 +29,14 @@ Route::middleware(['auth'])->group(function () {
     // Repositori Dokumen (Card Per Bulan)
     Route::get('/repository', [RepositoryController::class, 'index'])->name('repository.index');
 
-    // Disposisi Surat Masuk
+    // Disposisi Surat Masuk & Revisi
+    Route::post('/incoming-mails/{incomingMail}/revisi', [IncomingMailController::class, 'submitRevision'])->name('incoming-mails.submit-revision');
     Route::post('/incoming-mails/{incomingMail}/dispositions', [MailDispositionController::class, 'store'])->name('incoming-mails.dispositions.store');
     Route::resource('incoming-mails', IncomingMailController::class);
 
-    // Tanda Tangan Digital Surat Keluar
+    // Tanda Tangan Digital & Dokumen Menunggu (Waiting) Surat Keluar
+    Route::get('/outgoing-mails/waiting', [OutgoingMailController::class, 'waiting'])->name('outgoing-mails.waiting');
+    Route::post('/outgoing-mails/{outgoingMail}/sign-disposition', [OutgoingMailController::class, 'signDisposition'])->name('outgoing-mails.sign-disposition');
     Route::post('/outgoing-mails/{outgoingMail}/sign', [OutgoingMailController::class, 'sign'])->name('outgoing-mails.sign');
     Route::resource('outgoing-mails', OutgoingMailController::class);
 

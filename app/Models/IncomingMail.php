@@ -39,6 +39,7 @@ class IncomingMail extends Model
         'document_photo_path',
         'receipt_signature_path',
         'status',
+        'revision_count',
         'disposition_note',
         'notes',
         'recipient_name',
@@ -54,6 +55,7 @@ class IncomingMail extends Model
         return [
             'received_date' => 'date',
             'outgoing_date' => 'date',
+            'revision_count' => 'integer',
         ];
     }
 
@@ -63,6 +65,14 @@ class IncomingMail extends Model
     public function scopeDraft($query)
     {
         return $query->where('status', 'DRAFT');
+    }
+
+    /**
+     * Scope query to only include revisi.
+     */
+    public function scopeRevisi($query)
+    {
+        return $query->where('status', 'REVISI');
     }
 
     /**
@@ -87,5 +97,13 @@ class IncomingMail extends Model
     public function batchItems(): HasMany
     {
         return $this->hasMany(IncomingMail::class, 'batch_id', 'batch_id');
+    }
+
+    /**
+     * Get all revisions for this incoming mail.
+     */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(IncomingMailRevision::class, 'incoming_mail_id')->orderByDesc('created_at');
     }
 }

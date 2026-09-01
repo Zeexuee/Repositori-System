@@ -34,8 +34,15 @@ class UpdateOutgoingMailRequest extends FormRequest
                 Rule::unique('outgoing_mails', 'mail_number')->ignore($outgoingMailId),
             ],
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
-            'recipient' => ['sometimes', 'required', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,PROGRES,PROGRESS,IN_PROGRESS,PENDING,RETURN,RETURNED,DRAFT,APPROVED,SIGNED'],
+            'recipient' => ['nullable', 'string', 'max:2000'],
+            'recipients' => ['nullable', 'array'],
+            'recipients.*' => ['nullable', 'string', 'max:255'],
+            'dispositions' => ['nullable', 'array'],
+            'dispositions.*.name' => ['nullable', 'string', 'max:255'],
+            'dispositions.*.status' => ['nullable', 'string', 'in:WAITING,SIGNED'],
+            'dispositions.*.signature_base64' => ['nullable', 'string'],
+            'dispositions.*.existing_signature_path' => ['nullable', 'string'],
+            'status' => ['nullable', 'string', 'in:WAITING,RECEIVE,RECEIVED,PROGRES,PROGRESS,IN_PROGRESS,PENDING,RETURN,RETURNED,DRAFT,APPROVED,SIGNED,IN_REVIEW,REVISI,REVISION'],
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
         ];
     }
