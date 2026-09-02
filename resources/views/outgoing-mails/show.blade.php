@@ -70,8 +70,28 @@
             @endif
         </div>
 
-        <!-- Field 4: Status -->
-        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1" x-data="{ open: false, selectedStatus: '{{ $outgoingMail->status }}' }">
+        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1" x-data="{
+            open: false,
+            selectedStatus: '{{ $outgoingMail->status }}',
+            dropdownPos: { top: '0px', left: '0px' },
+            toggleDropdown(el) {
+                if (this.open) {
+                    this.open = false;
+                    return;
+                }
+                const rect = el.getBoundingClientRect();
+                const dropdownHeight = 220;
+                const spaceBelow = window.innerHeight - rect.bottom;
+                
+                let top = rect.bottom + 6;
+                if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+                    top = rect.top - dropdownHeight;
+                }
+                let left = Math.max(10, Math.min(rect.left, window.innerWidth - 200));
+                this.dropdownPos = { top: top + 'px', left: left + 'px' };
+                this.open = true;
+            }
+        }" @scroll.window.passive="open = false">
             <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status Dokumen</span>
             @php
                 $statusBadgeClasses = match ($outgoingMail->status) {
@@ -101,7 +121,7 @@
                         <input type="hidden" name="status" :value="selectedStatus">
                     </form>
 
-                    <button type="button" @click="open = !open"
+                    <button type="button" @click="toggleDropdown($el)"
                         title="Klik untuk memilih dan mengubah status"
                         class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer shadow-2xs hover:ring-2 hover:ring-slate-900/10 {{ $statusBadgeClasses }}">
                         <span>{{ $outgoingMail->status }}</span>
@@ -110,34 +130,37 @@
                         </svg>
                     </button>
 
-                    <!-- Dropdown Menu -->
-                    <div x-show="open"
-                        x-cloak
-                        @click.away="open = false"
-                        x-transition:enter="transition ease-out duration-100"
-                        x-transition:enter-start="transform opacity-0 scale-95"
-                        x-transition:enter-end="transform opacity-100 scale-100"
-                        x-transition:leave="transition ease-in duration-75"
-                        x-transition:leave-start="transform opacity-100 scale-100"
-                        x-transition:leave-end="transform opacity-0 scale-95"
-                        class="absolute left-0 mt-1.5 w-44 rounded-xl bg-white shadow-xl border border-slate-200 py-1 z-30 focus:outline-hidden">
-                        <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                            Pilih Status
+                    <!-- Dropdown Menu Teleported to Body -->
+                    <template x-teleport="body">
+                        <div x-show="open"
+                            x-cloak
+                            @click.away="open = false"
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="transform opacity-0 scale-95"
+                            x-transition:enter-end="transform opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="transform opacity-100 scale-100"
+                            x-transition:leave-end="transform opacity-0 scale-95"
+                            :style="{ top: dropdownPos.top, left: dropdownPos.left }"
+                            class="fixed w-44 rounded-xl bg-white shadow-2xl border border-slate-200 py-1 z-[99999] focus:outline-hidden">
+                            <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                Pilih Status
+                            </div>
+                            @foreach ($availableStatuses as $statusCode => $statusDesc)
+                                <button type="button"
+                                    @click="if('{{ $statusCode }}' !== '{{ $outgoingMail->status }}') { if(confirm('Ubah status dokumen surat menjadi {{ $statusCode }}?')) { selectedStatus = '{{ $statusCode }}'; $nextTick(() => $refs.statusForm.submit()); } } open = false;"
+                                    class="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center justify-between transition-colors {{ $outgoingMail->status === $statusCode ? 'bg-slate-50 font-bold' : '' }}">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="inline-block w-2 h-2 rounded-full {{ str_starts_with($statusCode, 'RETURN') ? 'bg-emerald-500' : (in_array($statusCode, ['WAITING', 'PROGRES']) ? 'bg-amber-500' : 'bg-slate-400') }}"></span>
+                                        <span class="text-slate-800">{{ $statusCode }}</span>
+                                    </div>
+                                    @if($outgoingMail->status === $statusCode)
+                                        <span class="text-[10px] text-slate-400 font-normal">Aktif</span>
+                                    @endif
+                                </button>
+                            @endforeach
                         </div>
-                        @foreach ($availableStatuses as $statusCode => $statusDesc)
-                            <button type="button"
-                                @click="if('{{ $statusCode }}' !== '{{ $outgoingMail->status }}') { if(confirm('Ubah status dokumen surat menjadi {{ $statusCode }}?')) { selectedStatus = '{{ $statusCode }}'; $nextTick(() => $refs.statusForm.submit()); } } open = false;"
-                                class="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center justify-between transition-colors {{ $outgoingMail->status === $statusCode ? 'bg-slate-50 font-bold' : '' }}">
-                                <div class="flex items-center space-x-2">
-                                    <span class="inline-block w-2 h-2 rounded-full {{ str_starts_with($statusCode, 'RETURN') ? 'bg-emerald-500' : (in_array($statusCode, ['WAITING', 'PROGRES']) ? 'bg-amber-500' : 'bg-slate-400') }}"></span>
-                                    <span class="text-slate-800">{{ $statusCode }}</span>
-                                </div>
-                                @if($outgoingMail->status === $statusCode)
-                                    <span class="text-[10px] text-slate-400 font-normal">Aktif</span>
-                                @endif
-                            </button>
-                        @endforeach
-                    </div>
+                    </template>
                 </div>
             @else
                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadgeClasses }}">
