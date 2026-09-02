@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BetaFeedbackController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\IncomingMailController;
 use App\Http\Controllers\MailDispositionController;
@@ -57,6 +58,11 @@ Route::middleware(['auth'])->group(function () {
 
     // Manajemen User (Khusus Direksi)
     Route::resource('users', UserController::class);
+
+    // Open Beta Feedback & Bug Reporting
+    Route::post('/beta-feedback', [BetaFeedbackController::class, 'store'])->name('beta-feedback.store');
+    Route::get('/beta-feedback/history', [BetaFeedbackController::class, 'history'])->name('beta-feedback.history');
+    Route::put('/beta-feedback/{feedback}/status', [BetaFeedbackController::class, 'updateStatus'])->name('beta-feedback.update-status');
 });
 
 

@@ -148,29 +148,29 @@
                                             </svg>
                                         </button>
 
-                                        <!-- Dropdown Menu Teleported to Body -->
+                                        <!-- Dropdown Menu Teleported to Body (Liquid Glass Style) -->
                                         <template x-teleport="body">
                                             <div x-show="open"
                                                 x-cloak
                                                 @click.away="open = false"
-                                                x-transition:enter="transition ease-out duration-100"
+                                                x-transition:enter="transition ease-out duration-120"
                                                 x-transition:enter-start="transform opacity-0 scale-95"
                                                 x-transition:enter-end="transform opacity-100 scale-100"
-                                                x-transition:leave="transition ease-in duration-75"
+                                                x-transition:leave="transition ease-in duration-100"
                                                 x-transition:leave-start="transform opacity-100 scale-100"
                                                 x-transition:leave-end="transform opacity-0 scale-95"
                                                 :style="{ top: dropdownPos.top, left: dropdownPos.left }"
-                                                class="fixed w-48 rounded-xl bg-white shadow-2xl border border-slate-200 py-1 z-[99999] focus:outline-hidden">
-                                                <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                                                    Pilih Status
+                                                class="fixed w-52 rounded-2xl bg-white/80 backdrop-blur-2xl border border-white/90 shadow-[0_20px_40px_rgba(15,23,42,0.15),inset_0_1px_1px_rgba(255,255,255,0.9)] p-1.5 z-[99999] space-y-0.5 focus:outline-hidden">
+                                                <div class="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200/50 mb-1">
+                                                    Pilih Status Surat
                                                 </div>
                                                 @foreach ($availableStatuses as $statusCode => $statusDesc)
                                                     <button type="button"
                                                         @click="if('{{ $statusCode }}' !== '{{ $mail->status }}') { if(confirm('Ubah status surat masuk {{ $mail->mail_number }} menjadi {{ $statusCode }}?')) { selectedStatus = '{{ $statusCode }}'; $nextTick(() => $refs.statusForm.submit()); } } open = false;"
-                                                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center justify-between transition-colors {{ $mail->status === $statusCode ? 'bg-slate-50 font-bold' : '' }}">
+                                                        class="w-full text-left px-2.5 py-1.5 text-xs rounded-xl hover:bg-slate-100/80 flex items-center justify-between transition-all font-medium text-slate-800 cursor-pointer {{ $mail->status === $statusCode ? 'bg-slate-100/90 font-bold text-slate-900 shadow-2xs' : '' }}">
                                                         <div class="flex items-center space-x-2">
                                                             <span class="inline-block w-2 h-2 rounded-full {{ str_starts_with($statusCode, 'RETURN') ? 'bg-emerald-500' : (str_starts_with($statusCode, 'RECEIVE') ? 'bg-sky-500' : ($statusCode === 'REVISI' ? 'bg-amber-600' : (in_array($statusCode, ['PROGRES', 'WAITING']) ? 'bg-amber-500' : 'bg-slate-400'))) }}"></span>
-                                                            <span class="text-slate-800">{{ $statusCode }}</span>
+                                                            <span>{{ $statusCode }}</span>
                                                         </div>
                                                         @if($mail->status === $statusCode)
                                                             <span class="text-[10px] text-slate-400 font-normal">Aktif</span>

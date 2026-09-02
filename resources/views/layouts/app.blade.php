@@ -302,6 +302,9 @@
         </nav>
     @endauth
 
+    <!-- Beta Feedback Floating Chat Widget Component -->
+    <x-beta-feedback-widget />
+
     <!-- Loading Spinner Component -->
     <x-loading-spinner />
 </body>
