@@ -17,23 +17,31 @@ class UserSeeder extends Seeder
     {
         $users = [
             [
+                'email' => 'admin@admin.com',
+                'name' => 'Admin Direktur',
+                'password' => '123456',
+                'role' => 'Direksi',
+            ],
+            [
                 'email' => 'staf@sekretariat.corp',
                 'name' => 'Staf Sekretariat',
+                'password' => 'password',
                 'role' => 'Staf',
             ],
             [
                 'email' => 'direksi@sekretariat.corp',
                 'name' => 'Bapak Direktur Utama',
+                'password' => 'password',
                 'role' => 'Direksi',
             ],
         ];
 
         foreach ($users as $userData) {
-            $user = User::firstOrCreate(
+            $user = User::updateOrCreate(
                 ['email' => $userData['email']],
                 [
                     'name' => $userData['name'],
-                    'password' => Hash::make('password'),
+                    'password' => Hash::make($userData['password']),
                 ]
             );
 

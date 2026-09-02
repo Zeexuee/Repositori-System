@@ -56,7 +56,7 @@
                 </label>
                 <div class="relative">
                     <input id="email" name="email" type="email" autocomplete="email" required
-                        value="{{ old('email', 'staf@sekretariat.corp') }}"
+                        value="{{ old('email') }}"
                         placeholder="nama@sekretariat.corp"
                         class="w-full px-4 py-2.5 bg-white/90 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-2xs">
                 </div>
@@ -72,7 +72,6 @@
                 </label>
                 <div class="relative">
                     <input id="password" name="password" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" required
-                        value="password"
                         placeholder="••••••••"
                         class="w-full pl-4 pr-10 py-2.5 bg-white/90 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-2xs">
                     
@@ -119,50 +118,6 @@
                 </button>
             </div>
         </form>
-
-        <!-- Section Quick Login Peran Demo (Simulasi) -->
-        <div class="pt-5 border-t border-slate-200/80">
-            <span class="block text-xs font-bold text-slate-500 uppercase tracking-wider text-center mb-3">
-                Login Cepat Peran Demo (Simulasi)
-            </span>
-            <div class="grid grid-cols-2 gap-2.5">
-                <!-- 1. Staf Sekretariat -->
-                <form action="{{ route('quick-login', ['email' => 'staf@sekretariat.corp']) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="w-full p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-left transition-all cursor-pointer flex flex-col group shadow-2xs hover:shadow-xs">
-                        <span class="font-bold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors">1. Staf</span>
-                        <span class="text-[10px] text-slate-500 truncate">staf@sekretariat.corp</span>
-                    </button>
-                </form>
-
-                <!-- 2. Direksi -->
-                <form action="{{ route('quick-login', ['email' => 'direksi@sekretariat.corp']) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="w-full p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-left transition-all cursor-pointer flex flex-col group shadow-2xs hover:shadow-xs">
-                        <span class="font-bold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors">2. Direksi</span>
-                        <span class="text-[10px] text-slate-500 truncate">direksi@sekretariat.corp</span>
-                    </button>
-                </form>
-
-                <!-- 3. Kepala Divisi -->
-                <form action="{{ route('quick-login', ['email' => 'kadiv@sekretariat.corp']) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="w-full p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-left transition-all cursor-pointer flex flex-col group shadow-2xs hover:shadow-xs">
-                        <span class="font-bold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors">3. Kepala Divisi</span>
-                        <span class="text-[10px] text-slate-500 truncate">kadiv@sekretariat.corp</span>
-                    </button>
-                </form>
-
-                <!-- 4. Super Admin -->
-                <form action="{{ route('quick-login', ['email' => 'admin@sekretariat.corp']) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="w-full p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-left transition-all cursor-pointer flex flex-col group shadow-2xs hover:shadow-xs">
-                        <span class="font-bold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors">4. Super Admin</span>
-                        <span class="text-[10px] text-slate-500 truncate">admin@sekretariat.corp</span>
-                    </button>
-                </form>
-            </div>
-        </div>
 
     </div>
 

@@ -3,6 +3,9 @@
 @section('title', 'Broadcast Email Notifikasi')
 
 @section('content')
+    <!-- Pop-up Simpel Informasi Fitur Dalam Pengembangan -->
+    <x-broadcast-dev-notice />
+
     <!-- Quill Rich Text Editor CDN Assets -->
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
@@ -366,16 +369,17 @@
 
         <!-- Modal Detail Broadcast Email -->
         <div x-show="detailModalOpen" 
+             x-init="$watch('detailModalOpen', value => document.body.classList.toggle('overflow-hidden', value))"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0"
              x-transition:enter-end="opacity-100"
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
+             class="fixed inset-0 z-[99999] overflow-y-auto bg-slate-950/50 flex items-center justify-center p-4 sm:p-6"
              style="display: none;">
             
-            <div @click.away="detailModalOpen = false" 
+            <div @click.away="detailModalOpen = false; document.body.classList.remove('overflow-hidden')" 
                  class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]">
                 
                 <!-- Modal Header -->
