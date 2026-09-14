@@ -8,6 +8,13 @@
     --font-sans: 'Inter', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Otomatis zoom 90% pada semua browser di desktop & tablet (kecuali mobile view < 768px) */
+@media screen and (min-width: 768px) {
+    html {
+        zoom: 0.9;
+    }
+}
+
 /* Light Liquid Glass Design System Utilities */
 @layer utilities {
     .ambient-bg {
