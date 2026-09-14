@@ -69,10 +69,14 @@ class OutgoingMail extends Model
                 $cleanSubject = trim((string) preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|WAITING)\]\s*/i', '', $mail->subject));
 
                 if (! empty($cleanSubject)) {
-                    $incomingMails = IncomingMail::where('subject', $cleanSubject)
-                        ->orWhere('subject', 'like', '%' . $cleanSubject . '%')
-                        ->orWhere('mail_number', $mail->mail_number)
-                        ->get();
+                    $incomingMails = IncomingMail::where(function ($q) use ($cleanSubject, $mail) {
+                        $q->where('subject', $cleanSubject)
+                          ->orWhere('subject', 'like', '%' . $cleanSubject . '%');
+
+                        if (! empty($mail->mail_number) && trim($mail->mail_number) !== '-') {
+                            $q->orWhere('mail_number', $mail->mail_number);
+                        }
+                    })->get();
 
                     foreach ($incomingMails as $incoming) {
                         $updateData = ['status' => $mail->status];
