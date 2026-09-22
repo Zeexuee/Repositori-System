@@ -54,6 +54,7 @@
                     <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                         <option value="RECEIVE" {{ old('status', $outgoingMail->status) == 'RECEIVE' || old('status', $outgoingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
                         <option value="PROGRES" {{ old('status', $outgoingMail->status) == 'PROGRES' || old('status', $outgoingMail->status) == 'PENDING' || old('status', $outgoingMail->status) == 'PROGRESS' || old('status', $outgoingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
+                        <option value="REVISI" {{ old('status', $outgoingMail->status) == 'REVISI' ? 'selected' : '' }}>REVISI</option>
                         <option value="RETURN" {{ old('status', $outgoingMail->status) == 'RETURN' || old('status', $outgoingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
                     </select>
                     @error('status')

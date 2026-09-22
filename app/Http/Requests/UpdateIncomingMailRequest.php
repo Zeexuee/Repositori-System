@@ -29,7 +29,7 @@ class UpdateIncomingMailRequest extends FormRequest
             'sender' => ['sometimes', 'required', 'string', 'max:255'],
             'received_date' => ['sometimes', 'required', 'date'],
             'recipient' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,RETURN,RETURNED,PROGRES,PROGRESS,IN_PROGRESS,REGISTERED,PENDING,COMPLETED,OVERDUE'],
+            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,RETURN,RETURNED,PROGRES,PROGRESS,IN_PROGRESS,REGISTERED,PENDING,COMPLETED,OVERDUE,REVISI'],
             'outgoing_date' => ['nullable', 'date'],
             'disposition_note' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],

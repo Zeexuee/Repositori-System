@@ -72,4 +72,39 @@ class IncomingMailTest extends TestCase
         $response->assertSee('TEST/SURAT/002');
         $response->assertDontSee('TEST/SURAT/001');
     }
+
+    public function test_user_can_update_status_to_revisi_and_sync_to_outgoing_mail(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = IncomingMail::create([
+            'mail_number' => 'TEST/SURAT/003',
+            'received_date' => '2026-09-18',
+            'sender' => 'Kementerian Keuangan',
+            'recipient' => 'Direktur Utama',
+            'status' => 'RECEIVE',
+            'subject' => 'Permintaan Data Operasional',
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'REVISI',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'updated_count' => 1,
+        ]);
+
+        $mail->refresh();
+        $this->assertSame('REVISI', $mail->status);
+
+        $outgoingMail = \App\Models\OutgoingMail::where('recipient', 'Kementerian Keuangan')->latest()->first();
+        $this->assertNotNull($outgoingMail);
+        $this->assertSame('REVISI', $outgoingMail->status);
+        $this->assertStringStartsWith('[REVISI]', $outgoingMail->subject);
+    }
 }

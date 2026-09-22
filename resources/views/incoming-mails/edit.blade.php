@@ -79,8 +79,9 @@
                     <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Surat</label>
                     <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                         <option value="RECEIVE" {{ old('status', $incomingMail->status) == 'RECEIVE' || old('status', $incomingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
-                        <option value="RETURN" {{ old('status', $incomingMail->status) == 'RETURN' || old('status', $incomingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
                         <option value="PROGRES" {{ old('status', $incomingMail->status) == 'PROGRES' || old('status', $incomingMail->status) == 'PENDING' || old('status', $incomingMail->status) == 'PROGRESS' || old('status', $incomingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
+                        <option value="REVISI" {{ old('status', $incomingMail->status) == 'REVISI' ? 'selected' : '' }}>REVISI</option>
+                        <option value="RETURN" {{ old('status', $incomingMail->status) == 'RETURN' || old('status', $incomingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
                     </select>
                     @error('status')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>

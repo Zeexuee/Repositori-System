@@ -61,6 +61,71 @@
             </div>
         </div>
 
+        <!-- Teleported Single Status Dropdown (Topmost, outside all clipping containers) -->
+        <template x-teleport="body">
+            <div x-show="showStatusDropdown" 
+                x-cloak
+                @click.outside="showStatusDropdown = false"
+                class="fixed z-[99999] w-44 bg-white border border-slate-200 rounded-xl shadow-2xl py-1.5 text-left"
+                :style="`top: ${statusDropdownPosition.top}; left: ${statusDropdownPosition.left};`"
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-75"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95">
+                <div class="px-3.5 py-1 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Pilih Status
+                </div>
+                <div class="py-1">
+                    <button type="button" @click="selectStatusOption('RECEIVE')"
+                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
+                        :class="statusDropdownCurrentStatus === 'RECEIVE' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-slate-900"></span>
+                            <span>Receive</span>
+                        </div>
+                        <svg x-show="statusDropdownCurrentStatus === 'RECEIVE'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                    <button type="button" @click="selectStatusOption('PROGRES')"
+                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
+                        :class="statusDropdownCurrentStatus === 'PROGRES' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                            <span>Progres</span>
+                        </div>
+                        <svg x-show="statusDropdownCurrentStatus === 'PROGRES'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                    <button type="button" @click="selectStatusOption('REVISI')"
+                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
+                        :class="statusDropdownCurrentStatus === 'REVISI' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                            <span>Revisi</span>
+                        </div>
+                        <svg x-show="statusDropdownCurrentStatus === 'REVISI'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                    <button type="button" @click="selectStatusOption('RETURN')"
+                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
+                        :class="statusDropdownCurrentStatus === 'RETURN' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full border border-slate-400 bg-white"></span>
+                            <span>Return</span>
+                        </div>
+                        <svg x-show="statusDropdownCurrentStatus === 'RETURN'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </template>
+
         <!-- Success Toast Notification -->
         <div x-show="showSuccessToast" 
             x-cloak
@@ -148,17 +213,25 @@
                         x-transition:leave-end="opacity-0 scale-95"
                         class="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                         <div class="py-1">
-                            <button type="button" @click="bulkUpdateStatus('RETURN'); open = false"
-                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors">
-                                Ubah ke RETURN
+                            <button type="button" @click="bulkUpdateStatus('RECEIVE'); open = false"
+                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                                <span>Ubah ke Receive</span>
+                                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
                             </button>
                             <button type="button" @click="bulkUpdateStatus('PROGRES'); open = false"
-                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors">
-                                Ubah ke PROGRES
+                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                                <span>Ubah ke Progres</span>
+                                <span class="w-2 h-2 rounded-full bg-slate-400"></span>
                             </button>
-                            <button type="button" @click="bulkUpdateStatus('RECEIVE'); open = false"
-                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors">
-                                Ubah ke RECEIVE
+                            <button type="button" @click="bulkUpdateStatus('REVISI'); open = false"
+                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                                <span>Ubah ke Revisi</span>
+                                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                            </button>
+                            <button type="button" @click="bulkUpdateStatus('RETURN'); open = false"
+                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                                <span>Ubah ke Return</span>
+                                <span class="w-2 h-2 rounded-full border border-slate-400 bg-white"></span>
                             </button>
                         </div>
                     </div>
@@ -250,6 +323,13 @@
                 showSuccessToast: false,
                 successMessage: '',
                 
+                // Status dropdown state (teleported to body)
+                showStatusDropdown: false,
+                statusDropdownPosition: { top: '0px', left: '0px' },
+                statusDropdownMailId: null,
+                statusDropdownMailNumber: '',
+                statusDropdownCurrentStatus: '',
+                
                 // Watch modal state untuk lock body scroll
                 init() {
                     // Setup global functions untuk onclick handler
@@ -257,9 +337,21 @@
                         this.toggleSelection(id);
                     };
                     
-                    window.dispatchSingleStatusChange = (id, mailNumber, currentStatus) => {
-                        this.handleSingleStatusChange({ id, mailNumber, currentStatus });
+                    window.dispatchSingleStatusChange = (id, mailNumber, currentStatus, targetStatus) => {
+                        this.handleSingleStatusChange({ id, mailNumber, currentStatus, targetStatus });
                     };
+                    
+                    window.openStatusDropdown = (event, id, mailNumber, currentStatus) => {
+                        this.openStatusDropdown(event, id, mailNumber, currentStatus);
+                    };
+
+                    window.addEventListener('scroll', () => {
+                        if (this.showStatusDropdown) this.showStatusDropdown = false;
+                    }, true);
+
+                    window.addEventListener('resize', () => {
+                        if (this.showStatusDropdown) this.showStatusDropdown = false;
+                    });
                     
                     // Update checkbox states on initial load
                     this.$nextTick(() => {
@@ -326,6 +418,9 @@
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
+                            if (window.Alpine) {
+                                window.Alpine.initTree(this.$refs.tableBody);
+                            }
                             this.updateCheckboxStates();
                         });
                         
@@ -414,22 +509,61 @@
                     return this.selectedIds.filter(id => this.allIds.includes(id)).length;
                 },
 
+                openStatusDropdown(event, id, mailNumber, currentStatus) {
+                    event.stopPropagation();
+                    const btn = event.currentTarget;
+                    const rect = btn.getBoundingClientRect();
+
+                    let zoom = 1;
+                    const rawZoom = document.documentElement.style.zoom || window.getComputedStyle(document.documentElement).zoom;
+                    if (rawZoom) {
+                        zoom = typeof rawZoom === 'string' && rawZoom.includes('%') ? (parseFloat(rawZoom) / 100) : parseFloat(rawZoom);
+                    }
+                    if (isNaN(zoom) || zoom <= 0) zoom = 0.9;
+
+                    const top = (rect.bottom / zoom) + 6;
+                    const left = (rect.left / zoom) + ((rect.width / zoom) / 2) - 88;
+                    const clampedLeft = Math.max(12, Math.min(left, (window.innerWidth / zoom) - 188));
+
+                    this.statusDropdownPosition = {
+                        top: `${Math.round(top)}px`,
+                        left: `${Math.round(clampedLeft)}px`
+                    };
+                    this.statusDropdownMailId = id;
+                    this.statusDropdownMailNumber = mailNumber;
+                    this.statusDropdownCurrentStatus = currentStatus;
+                    this.showStatusDropdown = true;
+                },
+
+                selectStatusOption(targetStatus) {
+                    this.showStatusDropdown = false;
+                    this.handleSingleStatusChange({
+                        id: this.statusDropdownMailId,
+                        mailNumber: this.statusDropdownMailNumber,
+                        currentStatus: this.statusDropdownCurrentStatus,
+                        targetStatus: targetStatus
+                    });
+                },
+
                 bulkUpdateStatus(targetStatus) {
                     if (this.selectedIds.length === 0) return;
 
                     const count = this.selectedIds.length;
-                    const statusLabel = targetStatus === 'RETURN' ? 'RETURN' : (targetStatus === 'PROGRES' ? 'PROGRES' : 'RECEIVE');
+                    const statusLabel = targetStatus === 'RETURN' ? 'RETURN' : (targetStatus === 'PROGRES' ? 'PROGRES' : (targetStatus === 'REVISI' ? 'REVISI' : 'RECEIVE'));
 
                     let message = `Apakah Anda yakin ingin mengubah status <strong>${count} dokumen terpilih</strong> menjadi <strong>${statusLabel}</strong>?`;
                     if (targetStatus === 'RETURN') {
                         message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (RETURN).</span>`;
                     } else if (targetStatus === 'PROGRES') {
                         message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (PROGRES).</span>`;
+                    } else if (targetStatus === 'REVISI') {
+                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (REVISI).</span>`;
                     }
 
                     // Show confirmation modal
                     this.confirmMessage = message;
                     this.confirmTargetStatus = targetStatus;
+                    this.singleUpdateId = null;
                     this.showConfirmModal = true;
                 },
 
@@ -523,6 +657,9 @@
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
+                            if (window.Alpine) {
+                                window.Alpine.initTree(this.$refs.tableBody);
+                            }
                             this.updateCheckboxStates();
                         });
                         
@@ -532,10 +669,21 @@
                 },
 
                 handleSingleStatusChange(detail) {
-                    const message = `Apakah Anda yakin ingin merubah status dokumen <strong>${detail.mailNumber}</strong> dari <strong>${detail.currentStatus}</strong> menjadi <strong>RETURN</strong>?<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat pada Surat Keluar (RETURN).</span>`;
+                    const targetStatus = detail.targetStatus || 'RETURN';
+                    const statusLabel = targetStatus === 'RETURN' ? 'RETURN' : (targetStatus === 'PROGRES' ? 'PROGRES' : (targetStatus === 'REVISI' ? 'REVISI' : 'RECEIVE'));
+
+                    let message = `Apakah Anda yakin ingin mengubah status dokumen <strong>${detail.mailNumber}</strong> dari <strong>${detail.currentStatus}</strong> menjadi <strong>${statusLabel}</strong>?`;
                     
+                    if (targetStatus === 'RETURN') {
+                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (RETURN).</span>`;
+                    } else if (targetStatus === 'PROGRES') {
+                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (PROGRES).</span>`;
+                    } else if (targetStatus === 'REVISI') {
+                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (REVISI).</span>`;
+                    }
+
                     this.confirmMessage = message;
-                    this.confirmTargetStatus = 'RETURN';
+                    this.confirmTargetStatus = targetStatus;
                     this.singleUpdateId = detail.id;
                     this.showConfirmModal = true;
                 }

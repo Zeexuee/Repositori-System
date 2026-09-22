@@ -118,7 +118,7 @@ class IncomingMailController extends Controller
         $validated = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['required', 'string', 'exists:incoming_mails,id'],
-            'status' => ['required', 'string', 'in:RECEIVE,RETURN,PROGRES,PROGRESS,IN_PROGRESS,RECEIVED,RETURNED'],
+            'status' => ['required', 'string', 'in:RECEIVE,RETURN,PROGRES,PROGRESS,IN_PROGRESS,RECEIVED,RETURNED,REVISI'],
         ]);
 
         $status = Str::upper($validated['status']);
@@ -128,6 +128,8 @@ class IncomingMailController extends Controller
             $status = 'PROGRES';
         } elseif ($status === 'RETURNED') {
             $status = 'RETURN';
+        } elseif ($status === 'REVISI') {
+            $status = 'REVISI';
         }
 
         $mails = IncomingMail::whereIn('id', $validated['ids'])->get();
@@ -450,12 +452,12 @@ class IncomingMailController extends Controller
             if ($outgoingMail) {
                 $outgoingMail->update([
                     'status' => 'RETURN',
-                    'subject' => '[RETURN] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', '', $incomingMail->subject),
+                    'subject' => '[RETURN] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
                 ]);
             } else {
                 OutgoingMail::create([
                     'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
-                    'subject' => '[RETURN] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', '', $incomingMail->subject),
+                    'subject' => '[RETURN] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
                     'recipient' => $incomingMail->sender,
                     'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
                     'created_by' => auth()->id() ?? 1,
@@ -470,16 +472,36 @@ class IncomingMailController extends Controller
             if ($outgoingMail) {
                 $outgoingMail->update([
                     'status' => 'PROGRES',
-                    'subject' => '[PROGRES] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', '', $incomingMail->subject),
+                    'subject' => '[PROGRES] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
                 ]);
             } else {
                 OutgoingMail::create([
                     'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
-                    'subject' => '[PROGRES] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING)\]\s*/i', '', $incomingMail->subject),
+                    'subject' => '[PROGRES] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
                     'recipient' => $incomingMail->sender,
                     'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
                     'created_by' => auth()->id() ?? 1,
                     'status' => 'PROGRES',
+                ]);
+            }
+        } elseif ($status === 'REVISI') {
+            $outgoingMail = OutgoingMail::where('subject', 'like', '%' . $incomingMail->subject)
+                ->latest()
+                ->first();
+
+            if ($outgoingMail) {
+                $outgoingMail->update([
+                    'status' => 'REVISI',
+                    'subject' => '[REVISI] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
+                ]);
+            } else {
+                OutgoingMail::create([
+                    'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
+                    'subject' => '[REVISI] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
+                    'recipient' => $incomingMail->sender,
+                    'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
+                    'created_by' => auth()->id() ?? 1,
+                    'status' => 'REVISI',
                 ]);
             }
         }
