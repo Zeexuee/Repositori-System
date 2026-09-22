@@ -23,11 +23,17 @@ Security, auditability, and absolute adherence to business logic are the highest
 - **Immutable Audit Trail:** Every action (Create, Read, Update, Delete/Archive, Download, Sign) must be logged with User ID, IP Address, Action Type, and Timestamp. Audit logs must never be mutable.
 - **Storage Isolation:** Never store physical documents on local disk (`storage/app/public`). All document uploads must go directly to Amazon S3. Database should only store the S3 path/URL.
 
-## 4. UI/UX & Frontend Constraints
-- **Design System:** Use Modern Corporate Flat / Semi-Flat UI.
-- **PROHIBITED DESIGN:** Do NOT use "Liquid Glass", "Glassmorphism", excessive blur, or translucent backgrounds. 
-- **Accessibility:** Ensure high contrast ratios complying with WCAG 2.1 standards. Use solid backgrounds (white/light gray) for document viewers and data tables to prevent visual fatigue.
-- **Modularity:** Use a strict Card-Based Layout to separate functional areas.
+## 4. STANDAR DESAIN UI/UX & DROPDOWN COMBOBOX (MANDATORY)
+Semua form input pemilihan di seluruh aplikasi WAJIB menggunakan standar berikut:
+1. **Search-as-you-type Liquid Glass Combobox:**
+   - Semua input dropdown relasi/data (misal: Pelanggan, Produk, Branch) WAJIB menggunakan pola *Searchable Combobox* interaktif dengan estetika **Liquid Glass Solid** (`apple-glass-panel bg-white/95 backdrop-blur-3xl border border-white/80 shadow-2xl rounded-2xl`).
+   - **Tingkat Transparansi Rendah (Solid & Jelas Terbaca):** Box dropdown wajib memiliki opasitas tinggi (minimal `bg-white/95` atau `bg-white/[0.98]`) agar teks atau elemen tabel di baliknya tidak tembus pandang dan tidak mengganggu keterbacaan.
+   - **Efek Buram Komponen yang Tertimpa (*Backdrop Blur*):** Area, tabel, atau baris kontainer di bawah menu dropdown yang tertimpa wajib diburamkan secara mendalam (`backdrop-blur-2xl` atau `backdrop-blur-3xl`).
+   - **Opsi Registrasi On-the-Fly di Urutan Paling Atas:** Opsi otomatis **`+ Tambah Baru`** WAJIB selalu diposisikan di **URUTAN PERTAMA / PALING ATAS** dari menu dropdown sejak awal (baik saat kolom input masih kosong maupun saat pengguna sedang mengetik), sehingga admin dapat membuat entri baru *on-the-fly* secara instan tanpa meninggalkan halaman (detail lengkap dapat diselesaikan di lain waktu).
+2. **Manajemen Stacking Context & Overflow:**
+   - Kontainer tabel dan kartu form WAJIB menggunakan `overflow-visible` dan *z-index* bertingkat (`z-50`) agar menu dropdown mengapung (*floating*) di atas baris dan kontainer bawah tanpa terpotong (*no clipping*).
+3. **Kepatuhan Tema Colorless & Icon-less:**
+   - Seluruh elemen tetap mematuhi tema monokrom korporat (`slate-900`, `white`, `badge-dark`, subtle borders) dan bebas dari ikon dekoratif pada teks konten.
 
 ## 5. Security & RBAC
 - Implement strict Role-Based Access Control (RBAC). 

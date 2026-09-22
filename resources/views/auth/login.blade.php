@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id" class="h-full">
+<html lang="id" class="h-full" style="zoom: 90%;">
 
 <head>
     <meta charset="utf-8">
@@ -7,6 +7,26 @@
     <title>Masuk System - Corporate Secretariat Repository</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
+
+    <!-- Universal 90% System Zoom for All Browsers -->
+    <style>
+        html {
+            zoom: 90%;
+            zoom: 0.9;
+        }
+
+        @supports not (zoom: 0.9) {
+            html {
+                -moz-transform: scale(0.9);
+                -moz-transform-origin: top center;
+                transform: scale(0.9);
+                transform-origin: top center;
+                width: 111.1111%;
+                min-height: 111.1111%;
+            }
+        }
+    </style>
+
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

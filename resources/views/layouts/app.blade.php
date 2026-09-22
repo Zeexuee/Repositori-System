@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" style="zoom: 90%;">
 
 <head>
     <meta charset="utf-8">
@@ -12,6 +12,25 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
 
+    <!-- Universal 90% System Zoom for All Browsers -->
+    <style>
+        html {
+            zoom: 90%;
+            zoom: 0.9;
+        }
+
+        @supports not (zoom: 0.9) {
+            html {
+                -moz-transform: scale(0.9);
+                -moz-transform-origin: top center;
+                transform: scale(0.9);
+                transform-origin: top center;
+                width: 111.1111%;
+                min-height: 111.1111%;
+            }
+        }
+    </style>
+
     <!-- Scripts and Styles -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -21,9 +40,9 @@
     <div class="min-h-screen flex flex-col pb-28 sm:pb-32">
         <!-- Liquid Glass Top Header -->
         @unless(View::hasSection('hide_header'))
-            <header class="sticky top-0 z-40 px-3 sm:px-8 py-2.5 sm:py-4">
+            <header class="sticky top-0 z-40 px-2 sm:px-6 py-2.5 sm:py-4">
                 <div
-                    class="max-w-7xl mx-auto glass-navbar rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between shadow-lg">
+                    class="{{ View::hasSection('container_width') ? View::yieldContent('container_width') : 'max-w-[98vw] w-full' }} mx-auto glass-navbar rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between shadow-lg">
                     <!-- Sisi Kiri: Title, Indikasi Online/Offline, & Informasi IP -->
                     <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
                         <!-- Indikator Online/Offline -->
@@ -31,15 +50,15 @@
                             @offline.window="isOnline = false" class="flex-shrink-0">
                             <template x-if="isOnline">
                                 <span
-                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-50/50 text-emerald-700 border border-emerald-200/50 backdrop-blur-sm">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300/70 backdrop-blur-sm">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>
                                     <span>Online</span>
                                 </span>
                             </template>
                             <template x-if="!isOnline">
                                 <span
-                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-rose-50/50 text-rose-700 border border-rose-200/50 backdrop-blur-sm">
-                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                    class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300/70 backdrop-blur-sm">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                                     <span>Offline</span>
                                 </span>
                             </template>
@@ -102,8 +121,8 @@
                                     <form action="{{ route('logout') }}" method="POST">
                                         @csrf
                                         <button type="submit"
-                                            class="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50/50 flex items-center space-x-2 transition-all cursor-pointer">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            class="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-white/50 flex items-center space-x-2 transition-all cursor-pointer">
+                                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                             </svg>
@@ -122,37 +141,23 @@
         @endunless
 
         <!-- Main Content Container (Responsive Mobile Bounds) -->
-        <main class="flex-1 px-3 sm:px-6 lg:px-8 py-3 sm:py-6 max-w-7xl w-full mx-auto">
+        <main class="flex-1 px-2 sm:px-4 lg:px-6 py-3 sm:py-6 {{ View::hasSection('container_width') ? View::yieldContent('container_width') : 'max-w-[98vw] w-full' }} mx-auto">
             @if (session('success'))
                 <div
-                    class="mb-4 sm:mb-6 p-3.5 sm:p-4 glass-card border-l-4 border-l-emerald-600 text-emerald-950 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between shadow-xs">
-                    <div class="flex items-center space-x-2.5">
-                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span>{{ session('success') }}</span>
-                    </div>
+                    class="mb-4 sm:mb-6 p-3.5 sm:p-4 glass-card border-l-4 border-l-slate-900 text-slate-900 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-xs">
+                    <span>{{ session('success') }}</span>
                 </div>
             @endif
 
             @if (session('error'))
                 <div
-                    class="mb-4 sm:mb-6 p-3.5 sm:p-4 glass-card border-l-4 border-l-rose-600 text-rose-950 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between shadow-xs">
-                    <div class="flex items-center space-x-2.5">
-                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 flex-shrink-0" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span>{{ session('error') }}</span>
-                    </div>
+                    class="mb-4 sm:mb-6 p-3.5 sm:p-4 glass-card border-l-4 border-l-slate-500 text-slate-900 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-xs">
+                    <span>{{ session('error') }}</span>
                 </div>
             @endif
 
             <!-- Glass Card Content Wrapper -->
-            <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-lg">
+            <div class="glass-card rounded-2xl sm:rounded-3xl {{ View::hasSection('card_padding') ? View::yieldContent('card_padding') : 'p-3 sm:p-5 lg:p-6' }} shadow-lg">
                 @yield('content')
             </div>
         </main>

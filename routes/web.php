@@ -31,6 +31,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Disposisi Surat Masuk
     Route::post('/incoming-mails/{incomingMail}/dispositions', [MailDispositionController::class, 'store'])->name('incoming-mails.dispositions.store');
+    Route::post('/incoming-mails/bulk-update-status', [IncomingMailController::class, 'bulkUpdateStatus'])->name('incoming-mails.bulk-update-status');
     Route::resource('incoming-mails', IncomingMailController::class);
 
     // Tanda Tangan Digital Surat Keluar

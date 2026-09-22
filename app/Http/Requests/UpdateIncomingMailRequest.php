@@ -23,17 +23,13 @@ class UpdateIncomingMailRequest extends FormRequest
      */
     public function rules(): array
     {
-        $isDraft = filter_var($this->input('is_draft'), FILTER_VALIDATE_BOOLEAN) || $this->input('action') === 'draft';
-
         return [
-            'is_draft' => ['nullable'],
-            'action' => ['nullable', 'string'],
-            'mail_number' => $isDraft ? ['nullable', 'string', 'max:255'] : ['sometimes', 'required', 'string', 'max:255'],
-            'subject' => $isDraft ? ['nullable', 'string', 'max:255'] : ['sometimes', 'required', 'string', 'max:255'],
+            'mail_number' => ['sometimes', 'required', 'string', 'max:255'],
+            'subject' => ['sometimes', 'required', 'string', 'max:255'],
             'sender' => ['sometimes', 'required', 'string', 'max:255'],
             'received_date' => ['sometimes', 'required', 'date'],
             'recipient' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:DRAFT,RECEIVE,RECEIVED,RETURN,RETURNED,PROGRES,PROGRESS,IN_PROGRESS,REGISTERED,PENDING,COMPLETED,OVERDUE'],
+            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,RETURN,RETURNED,PROGRES,PROGRESS,IN_PROGRESS,REGISTERED,PENDING,COMPLETED,OVERDUE'],
             'outgoing_date' => ['nullable', 'date'],
             'disposition_note' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],

@@ -1,11 +1,30 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" style="zoom: 90%;">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>{{ config('app.name', 'Laravel') }}</title>
+
+    <!-- Universal 90% System Zoom for All Browsers -->
+    <style>
+        html {
+            zoom: 90%;
+            zoom: 0.9;
+        }
+
+        @supports not (zoom: 0.9) {
+            html {
+                -moz-transform: scale(0.9);
+                -moz-transform-origin: top center;
+                transform: scale(0.9);
+                transform-origin: top center;
+                width: 111.1111%;
+                min-height: 111.1111%;
+            }
+        }
+    </style>
 
     @fonts
 

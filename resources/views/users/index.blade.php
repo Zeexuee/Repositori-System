@@ -9,10 +9,7 @@
             <p class="text-xs text-slate-500 mt-1"></p>
         </div>
         <div>
-            <a href="{{ route('users.create') }}" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-xs inline-flex items-center space-x-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
+            <a href="{{ route('users.create') }}" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-xs inline-flex items-center">
                 <span>Tambah Pengguna Baru</span>
             </a>
         </div>
@@ -42,7 +39,7 @@
                                     <div>
                                         <span class="font-bold text-slate-900 block text-xs">{{ $user->name }}</span>
                                         @if (auth()->id() === $user->id)
-                                            <span class="text-[10px] text-blue-600 font-semibold">(Akun Anda)</span>
+                                            <span class="text-[10px] text-slate-500 font-semibold">(Akun Anda)</span>
                                         @endif
                                     </div>
                                 </div>
@@ -53,11 +50,11 @@
                                     $roleName = $user->getRoleNames()->first() ?? 'Staf';
                                 @endphp
                                 @if ($roleName === 'Direksi')
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 text-white border border-slate-900">
                                         Direksi
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
                                         Staf
                                     </span>
                                 @endif
@@ -74,7 +71,7 @@
                                         <form action="{{ route('users.destroy', $user) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus akun {{ $user->name }}?');">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg transition-all border border-rose-200 cursor-pointer">
+                                            <button type="submit" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-all border border-slate-200 cursor-pointer">
                                                 Hapus
                                             </button>
                                         </form>

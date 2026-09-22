@@ -7,11 +7,6 @@
         <div>
             <div class="flex items-center space-x-2">
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Edit Surat Masuk</h1>
-                @if($incomingMail->status === 'DRAFT')
-                    <span class="px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 rounded-lg">
-                        Status: DRAFT
-                    </span>
-                @endif
             </div>
             <p class="text-xs text-slate-500 mt-1">Lengkapi data surat masuk dan tanda tangan pengantar untuk finalisasi dokumen.</p>
         </div>
@@ -20,10 +15,9 @@
         </div>
     </div>
 
-    <form action="{{ route('incoming-mails.update', $incomingMail) }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-6" x-data="{ loading: false, isDraft: false }" @submit="loading = true">
+    <form action="{{ route('incoming-mails.update', $incomingMail) }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-6" x-data="{ loading: false }" @submit="loading = true">
         @csrf
         @method('PUT')
-        <input type="hidden" name="is_draft" x-model="isDraft">
 
         <!-- Section 1: Data Utama -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
@@ -35,7 +29,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Nomer surat -->
                 <div>
-                    <label for="mail_number" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Surat <span class="text-rose-500">*</span></label>
+                    <label for="mail_number" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Surat <span class="text-slate-900 font-bold">*</span></label>
                     <input type="text" name="mail_number" id="mail_number" value="{{ old('mail_number', $incomingMail->mail_number) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                     @error('mail_number')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
@@ -44,7 +38,7 @@
 
                 <!-- Tanggal Masuk -->
                 <div>
-                    <label for="received_date" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Masuk <span class="text-rose-500">*</span></label>
+                    <label for="received_date" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Masuk <span class="text-slate-900 font-bold">*</span></label>
                     <input type="date" name="received_date" id="received_date" value="{{ old('received_date', $incomingMail->received_date?->format('Y-m-d')) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                     @error('received_date')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
@@ -64,8 +58,8 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Dari (Pengirim) -->
                 <div>
-                    <label for="sender" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Dari (Biro Pengirim) <span class="text-rose-500">*</span></label>
-                    <input type="text" name="sender" id="sender" value="{{ old('sender', $incomingMail->sender) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs font-semibold">
+                    <label for="sender" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Dari (Biro Pengirim) <span class="text-slate-900 font-bold">*</span></label>
+                    <input type="text" name="sender" id="sender" value="{{ old('sender', $incomingMail->sender) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                     @error('sender')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
                     @enderror
@@ -80,16 +74,13 @@
                     @enderror
                 </div>
 
-                <!-- Status -->
+                <!-- Status Surat -->
                 <div>
-                    <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Dokumen</label>
-                    <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs font-semibold">
+                    <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Surat</label>
+                    <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                         <option value="RECEIVE" {{ old('status', $incomingMail->status) == 'RECEIVE' || old('status', $incomingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
                         <option value="RETURN" {{ old('status', $incomingMail->status) == 'RETURN' || old('status', $incomingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
-                        <option value="PROGRES" {{ old('status', $incomingMail->status) == 'PROGRES' || old('status', $incomingMail->status) == 'PROGRESS' || old('status', $incomingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
-                        @if($incomingMail->status === 'DRAFT')
-                            <option value="DRAFT" {{ old('status', $incomingMail->status) == 'DRAFT' ? 'selected' : '' }}>DRAFT</option>
-                        @endif
+                        <option value="PROGRES" {{ old('status', $incomingMail->status) == 'PROGRES' || old('status', $incomingMail->status) == 'PENDING' || old('status', $incomingMail->status) == 'PROGRESS' || old('status', $incomingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
                     </select>
                     @error('status')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
@@ -97,9 +88,9 @@
                 </div>
             </div>
 
-            <!-- Perihal -->
+            <!-- Perihal Surat -->
             <div>
-                <label for="subject" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Perihal <span class="text-rose-500">*</span></label>
+                <label for="subject" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Perihal <span class="text-slate-900 font-bold">*</span></label>
                 <input type="text" name="subject" id="subject" value="{{ old('subject', $incomingMail->subject) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                 @error('subject')
                     <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
@@ -243,41 +234,16 @@
                 Batal
             </a>
 
-            <div class="flex items-center space-x-3">
-                @if($incomingMail->status === 'DRAFT')
-                    <button type="submit" 
-                            @click="isDraft = true" 
-                            :disabled="loading" 
-                            class="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 rounded-xl hover:bg-slate-200 transition-all shadow-2xs">
-                        Update Perubahan Draft
-                    </button>
-
-                    <button type="submit" 
-                            @click="isDraft = false" 
-                            :disabled="loading" 
-                            class="px-6 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center space-x-2 transition-all shadow-xs">
-                        <span x-show="!loading">Finalisasi & Catat Resmi</span>
-                        <span x-show="loading" class="flex items-center space-x-2">
-                            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Memproses...</span>
-                        </span>
-                    </button>
-                @else
-                    <button type="submit" :disabled="loading" class="px-6 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center space-x-2 transition-all shadow-xs">
-                        <span x-show="!loading">Simpan Perubahan</span>
-                        <span x-show="loading" class="flex items-center space-x-2">
-                            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Memproses...</span>
-                        </span>
-                    </button>
-                @endif
-            </div>
+            <button type="submit" :disabled="loading" class="px-6 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center space-x-2 transition-all shadow-xs">
+                <span x-show="!loading">Simpan Perubahan</span>
+                <span x-show="loading" class="flex items-center space-x-2">
+                    <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Memproses...</span>
+                </span>
+            </button>
         </div>
     </form>
 

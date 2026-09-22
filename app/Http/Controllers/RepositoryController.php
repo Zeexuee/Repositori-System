@@ -81,7 +81,8 @@ class RepositoryController extends Controller
             $incomingMails = $incomingQuery->latest('received_date')->get();
 
             // Query Outgoing Mails for selected month only
-            $outgoingQuery = OutgoingMail::whereYear('created_at', $year)
+            $outgoingQuery = OutgoingMail::with('creator')
+                ->whereYear('created_at', $year)
                 ->whereMonth('created_at', $mNum);
 
             if (! empty($search)) {

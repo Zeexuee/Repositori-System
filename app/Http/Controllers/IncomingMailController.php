@@ -10,6 +10,7 @@ use App\Jobs\ProcessOcrJob;
 use App\Models\IncomingMail;
 use App\Models\OutgoingMail;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,29 +18,143 @@ use Illuminate\View\View;
 
 class IncomingMailController extends Controller
 {
-    /**
-     * Display a listing of incoming mails with server-side pagination and draft filters.
-     */
-    public function index(): View
+    public function index(Request $request)
     {
         Gate::authorize('viewAny', IncomingMail::class);
 
-        $statusFilter = request('status_filter', 'all');
+        $query = IncomingMail::query();
 
-        $query = IncomingMail::latest();
-
-        if ($statusFilter === 'draft') {
-            $query->draft();
-        } elseif ($statusFilter === 'submitted') {
-            $query->submitted();
+        // Pencarian Cepat Global (mencakup semua 9 kolom)
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('mail_number', 'like', "%{$search}%")
+                    ->orWhere('received_date', 'like', "%{$search}%")
+                    ->orWhere('sender', 'like', "%{$search}%")
+                    ->orWhere('recipient', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhere('subject', 'like', "%{$search}%")
+                    ->orWhere('outgoing_date', 'like', "%{$search}%")
+                    ->orWhere('disposition_note', 'like', "%{$search}%")
+                    ->orWhere('recipient_name', 'like', "%{$search}%")
+                    ->orWhere('receipt_number', 'like', "%{$search}%");
+            });
         }
 
-        $incomingMails = $query->paginate(15)->withQueryString();
+        // Pencarian / Filter Spesifik:
+        // 1. Nomor Surat
+        if ($request->filled('mail_number')) {
+            $query->where('mail_number', 'like', '%' . trim((string) $request->input('mail_number')) . '%');
+        }
 
-        $draftCount = IncomingMail::draft()->count();
-        $submittedCount = IncomingMail::submitted()->count();
+        // 2. Tanggal (Tanggal Masuk)
+        if ($request->filled('received_date')) {
+            $query->whereDate('received_date', $request->input('received_date'));
+        }
 
-        return view('incoming-mails.index', compact('incomingMails', 'statusFilter', 'draftCount', 'submittedCount'));
+        // 3. Dari (Biro Pengirim)
+        if ($request->filled('sender')) {
+            $query->where('sender', 'like', '%' . trim((string) $request->input('sender')) . '%');
+        }
+
+        // 4. Kepada
+        if ($request->filled('recipient')) {
+            $query->where('recipient', 'like', '%' . trim((string) $request->input('recipient')) . '%');
+        }
+
+        // 5. Status
+        if ($request->filled('status')) {
+            $status = strtoupper(trim((string) $request->input('status')));
+            if ($status === 'RECEIVED') {
+                $status = 'RECEIVE';
+            } elseif ($status === 'RETURNED') {
+                $status = 'RETURN';
+            } elseif (in_array($status, ['PROGRESS', 'IN_PROGRESS', 'PENDING'], true)) {
+                $status = 'PROGRES';
+            }
+            $query->where('status', $status);
+        }
+
+        // 6. Perihal
+        if ($request->filled('subject')) {
+            $query->where('subject', 'like', '%' . trim((string) $request->input('subject')) . '%');
+        }
+
+        // 7. Tanggal Keluar
+        if ($request->filled('outgoing_date')) {
+            $query->whereDate('outgoing_date', $request->input('outgoing_date'));
+        }
+
+        // 8. Disposisi
+        if ($request->filled('disposition_note')) {
+            $query->where('disposition_note', 'like', '%' . trim((string) $request->input('disposition_note')) . '%');
+        }
+
+        // 9. Nama Penerima
+        if ($request->filled('recipient_name')) {
+            $query->where('recipient_name', 'like', '%' . trim((string) $request->input('recipient_name')) . '%');
+        }
+
+        $incomingMails = $query->latest()->paginate(15)->withQueryString();
+
+        // Return JSON untuk AJAX request
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'html' => view('incoming-mails.partials.table-rows', compact('incomingMails'))->render(),
+                'pagination' => view('incoming-mails.partials.pagination', compact('incomingMails'))->render(),
+                'total' => $incomingMails->total(),
+                'allIds' => $incomingMails->pluck('id')->map(fn($id) => (string) $id)->values(),
+            ]);
+        }
+
+        return view('incoming-mails.index', compact('incomingMails'));
+    }
+
+    /**
+     * Bulk update status for selected incoming mails.
+     */
+    public function bulkUpdateStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'string', 'exists:incoming_mails,id'],
+            'status' => ['required', 'string', 'in:RECEIVE,RETURN,PROGRES,PROGRESS,IN_PROGRESS,RECEIVED,RETURNED'],
+        ]);
+
+        $status = Str::upper($validated['status']);
+        if ($status === 'RECEIVED') {
+            $status = 'RECEIVE';
+        } elseif (in_array($status, ['PROGRESS', 'IN_PROGRESS'], true)) {
+            $status = 'PROGRES';
+        } elseif ($status === 'RETURNED') {
+            $status = 'RETURN';
+        }
+
+        $mails = IncomingMail::whereIn('id', $validated['ids'])->get();
+        $updatedCount = 0;
+
+        foreach ($mails as $mail) {
+            if (Gate::allows('update', $mail)) {
+                $mail->update(['status' => $status]);
+                $this->syncToOutgoingMail($mail);
+                $updatedCount++;
+            }
+        }
+
+        $message = "Status berhasil diperbarui menjadi {$status} untuk {$updatedCount} dokumen terpilih.";
+
+        // Return JSON untuk AJAX request
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'updated_count' => $updatedCount,
+            ]);
+        }
+
+        return redirect()
+            ->route('incoming-mails.index')
+            ->with('success', $message);
     }
 
     /**
@@ -89,8 +204,7 @@ class IncomingMailController extends Controller
         Gate::authorize('create', IncomingMail::class);
 
         $validated = $request->validated();
-        $isDraft = filter_var($request->input('is_draft'), FILTER_VALIDATE_BOOLEAN) || $request->input('action') === 'draft';
-        $globalStatus = $isDraft ? 'DRAFT' : ($request->input('status') ?: 'RECEIVE');
+        $globalStatus = $request->input('status') ?: 'RECEIVE';
 
         // Shared Batch metadata & signature
         $batchId = (string) Str::uuid();
@@ -148,22 +262,24 @@ class IncomingMailController extends Controller
                     $documentPhotoPath = $request->file($photoKey)->store('incoming-mails/photos', 'local');
                 }
 
-                $mailNumber = ! empty($doc['mail_number']) ? $doc['mail_number'] : 'SM-DRAFT-' . Str::upper(Str::random(6));
+                $mailNumber = ! empty($doc['mail_number']) ? $doc['mail_number'] : $receiptNumber;
                 $subject = ! empty($doc['subject']) ? $doc['subject'] : '(Tanpa Perihal)';
                 $docStatus = ! empty($doc['status']) ? $doc['status'] : $globalStatus;
+                $docRecipient = ! empty($doc['recipient']) ? $doc['recipient'] : ($validated['recipient'] ?? null);
 
                 $incomingMail = IncomingMail::create(array_merge($commonAttributes, [
                     'mail_number' => $mailNumber,
                     'subject' => $subject,
+                    'recipient' => $docRecipient,
                     'status' => $docStatus,
-                    'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : null,
+                    'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : $validated['received_date'],
                     'disposition_note' => ! empty($doc['disposition_note']) ? $doc['disposition_note'] : null,
                     'notes' => ! empty($doc['notes']) ? $doc['notes'] : null,
                     'file_path' => $filePath,
                     'document_photo_path' => $documentPhotoPath,
                 ]));
 
-                if (! $isDraft && $filePath) {
+                if ($filePath) {
                     ProcessOcrJob::dispatch($incomingMail);
                 }
 
@@ -188,33 +304,29 @@ class IncomingMailController extends Controller
                 $documentPhotoPath = $request->file('document_photo')->store('incoming-mails/photos', 'local');
             }
 
-            $mailNumber = ! empty($validated['mail_number']) ? $validated['mail_number'] : 'SM-DRAFT-' . Str::upper(Str::random(6));
+            $mailNumber = ! empty($validated['mail_number']) ? $validated['mail_number'] : $receiptNumber;
             $subject = ! empty($validated['subject']) ? $validated['subject'] : '(Tanpa Perihal)';
 
             $incomingMail = IncomingMail::create(array_merge($commonAttributes, [
                 'mail_number' => $mailNumber,
                 'subject' => $subject,
-                'outgoing_date' => $validated['outgoing_date'] ?? null,
+                'outgoing_date' => ! empty($validated['outgoing_date']) ? $validated['outgoing_date'] : $validated['received_date'],
                 'disposition_note' => $validated['disposition_note'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'file_path' => $filePath,
                 'document_photo_path' => $documentPhotoPath,
             ]));
 
-            if (! $isDraft && $filePath) {
+            if ($filePath) {
                 ProcessOcrJob::dispatch($incomingMail);
             }
 
             $this->syncToOutgoingMail($incomingMail);
         }
 
-        $msg = $isDraft
-            ? 'Draft Tanda Terima kolektif berhasil disimpan.'
-            : 'Tanda Terima kolektif & Surat Masuk berhasil dicatat.';
-
         return redirect()
             ->route('incoming-mails.index')
-            ->with('success', $msg);
+            ->with('success', 'Tanda Terima kolektif & Surat Masuk berhasil dicatat.');
     }
 
     /**
@@ -250,14 +362,6 @@ class IncomingMailController extends Controller
         Gate::authorize('update', $incomingMail);
 
         $data = $request->validated();
-        $wasDraft = $incomingMail->status === 'DRAFT';
-        $isDraft = filter_var($request->input('is_draft'), FILTER_VALIDATE_BOOLEAN) || $request->input('action') === 'draft';
-
-        if ($isDraft) {
-            $data['status'] = 'DRAFT';
-        } elseif ($wasDraft && (! isset($data['status']) || $data['status'] === 'DRAFT')) {
-            $data['status'] = 'RECEIVE';
-        }
 
         if ($request->hasFile('file')) {
             $fileObj = $request->file('file');
@@ -307,8 +411,8 @@ class IncomingMailController extends Controller
             }
         }
 
-        // Trigger OCR if changing from draft to active and has file
-        if ($wasDraft && $incomingMail->status !== 'DRAFT' && $incomingMail->file_path) {
+        // Trigger OCR if new file uploaded
+        if ($request->hasFile('file') && $incomingMail->file_path) {
             ProcessOcrJob::dispatch($incomingMail);
         }
 

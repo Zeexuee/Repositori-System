@@ -7,11 +7,6 @@
         <div>
             <div class="flex items-center space-x-2">
                 <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Detail Surat Masuk</h1>
-                @if($incomingMail->status === 'DRAFT')
-                    <span class="px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 rounded-lg">
-                        DRAFT
-                    </span>
-                @endif
             </div>
             <p class="text-xs text-slate-500 mt-0.5 font-mono">
                 No: {{ $incomingMail->mail_number }}
@@ -30,7 +25,7 @@
                 <form action="{{ route('incoming-mails.destroy', $incomingMail) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus surat masuk ini?');">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-rose-600 rounded-xl hover:bg-rose-700 shadow-xs transition-all">
+                    <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 shadow-xs transition-all cursor-pointer">
                         Hapus Dokumen
                     </button>
                 </form>
@@ -78,7 +73,7 @@
 
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status Surat</span>
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold {{ $incomingMail->status === 'DRAFT' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-900 text-white' }}">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white">
                         {{ $incomingMail->status }}
                     </span>
                 </div>

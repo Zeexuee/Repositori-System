@@ -8,6 +8,23 @@
     --font-sans: 'Inter', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Universal 90% System Zoom for All Browsers */
+html {
+    zoom: 90%;
+    zoom: 0.9;
+}
+
+@supports not (zoom: 0.9) {
+    html {
+        -moz-transform: scale(0.9);
+        -moz-transform-origin: top center;
+        transform: scale(0.9);
+        transform-origin: top center;
+        width: 111.1111%;
+        min-height: 111.1111%;
+    }
+}
+
 /* Light Liquid Glass Design System Utilities */
 @layer utilities {
     .ambient-bg {

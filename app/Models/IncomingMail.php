@@ -57,21 +57,6 @@ class IncomingMail extends Model
         ];
     }
 
-    /**
-     * Scope query to only include drafts.
-     */
-    public function scopeDraft($query)
-    {
-        return $query->where('status', 'DRAFT');
-    }
-
-    /**
-     * Scope query to exclude drafts.
-     */
-    public function scopeSubmitted($query)
-    {
-        return $query->where('status', '!=', 'DRAFT');
-    }
 
     /**
      * Get the dispositions for the incoming mail.

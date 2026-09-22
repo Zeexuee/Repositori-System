@@ -16,7 +16,7 @@
                 <form action="{{ route('outgoing-mails.destroy', $outgoingMail) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus draf/surat keluar ini?');" class="w-full sm:w-auto">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="w-full sm:w-auto px-4 py-2 text-xs font-bold text-white bg-rose-600 rounded-xl hover:bg-rose-700 shadow-xs transition-all">
+                    <button type="submit" class="w-full sm:w-auto px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 shadow-xs transition-all cursor-pointer">
                         Hapus Dokumen
                     </button>
                 </form>
@@ -84,11 +84,8 @@
         <!-- Field 7: Histori Perubahan Berkas -->
         @if ($outgoingMail->fileHistories->count() > 0)
             <div class="sm:col-span-2 p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-3">
-                <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1.5">
-                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Histori Perubahan Berkas ({{ $outgoingMail->fileHistories->count() }})</span>
+                <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Histori Perubahan Berkas ({{ $outgoingMail->fileHistories->count() }})
                 </span>
                 <div class="space-y-2">
                     @foreach ($outgoingMail->fileHistories as $history)
