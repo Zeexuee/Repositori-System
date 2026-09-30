@@ -8,16 +8,22 @@ use App\Http\Requests\StoreIncomingMailRequest;
 use App\Http\Requests\UpdateIncomingMailRequest;
 use App\Jobs\ProcessOcrJob;
 use App\Models\IncomingMail;
-use App\Models\OutgoingMail;
+use App\Models\User;
+use App\Services\IncomingMailStatusSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class IncomingMailController extends Controller
 {
+    public function __construct(
+        private readonly IncomingMailStatusSyncService $statusSyncService
+    ) {}
+
     public function index(Request $request)
     {
         Gate::authorize('viewAny', IncomingMail::class);
@@ -44,7 +50,7 @@ class IncomingMailController extends Controller
         // Pencarian / Filter Spesifik:
         // 1. Nomor Surat
         if ($request->filled('mail_number')) {
-            $query->where('mail_number', 'like', '%' . trim((string) $request->input('mail_number')) . '%');
+            $query->where('mail_number', 'like', '%'.trim((string) $request->input('mail_number')).'%');
         }
 
         // 2. Tanggal (Tanggal Masuk)
@@ -54,12 +60,12 @@ class IncomingMailController extends Controller
 
         // 3. Dari (Biro Pengirim)
         if ($request->filled('sender')) {
-            $query->where('sender', 'like', '%' . trim((string) $request->input('sender')) . '%');
+            $query->where('sender', 'like', '%'.trim((string) $request->input('sender')).'%');
         }
 
         // 4. Kepada
         if ($request->filled('recipient')) {
-            $query->where('recipient', 'like', '%' . trim((string) $request->input('recipient')) . '%');
+            $query->where('recipient', 'like', '%'.trim((string) $request->input('recipient')).'%');
         }
 
         // 5. Status
@@ -79,7 +85,7 @@ class IncomingMailController extends Controller
 
         // 6. Perihal
         if ($request->filled('subject')) {
-            $query->where('subject', 'like', '%' . trim((string) $request->input('subject')) . '%');
+            $query->where('subject', 'like', '%'.trim((string) $request->input('subject')).'%');
         }
 
         // 7. Tanggal Keluar
@@ -89,12 +95,12 @@ class IncomingMailController extends Controller
 
         // 8. Disposisi
         if ($request->filled('disposition_note')) {
-            $query->where('disposition_note', 'like', '%' . trim((string) $request->input('disposition_note')) . '%');
+            $query->where('disposition_note', 'like', '%'.trim((string) $request->input('disposition_note')).'%');
         }
 
         // 9. Nama Penerima
         if ($request->filled('recipient_name')) {
-            $query->where('recipient_name', 'like', '%' . trim((string) $request->input('recipient_name')) . '%');
+            $query->where('recipient_name', 'like', '%'.trim((string) $request->input('recipient_name')).'%');
         }
 
         $incomingMails = $query->latest()->paginate(15)->withQueryString();
@@ -105,7 +111,7 @@ class IncomingMailController extends Controller
                 'html' => view('incoming-mails.partials.table-rows', compact('incomingMails'))->render(),
                 'pagination' => view('incoming-mails.partials.pagination', compact('incomingMails'))->render(),
                 'total' => $incomingMails->total(),
-                'allIds' => $incomingMails->pluck('id')->map(fn($id) => (string) $id)->values(),
+                'allIds' => $incomingMails->pluck('id')->map(fn ($id) => (string) $id)->values(),
             ]);
         }
 
@@ -120,7 +126,7 @@ class IncomingMailController extends Controller
         $validated = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['required', 'string', 'exists:incoming_mails,id'],
-            'status' => ['required', 'string', 'in:RECEIVE,RETURN,PROGRES,PROGRESS,IN_PROGRESS,RECEIVED,RETURNED,REVISI,DISPOSISI'],
+            'status' => ['required', 'string', 'in:RECEIVE,PROGRES,PROGRESS,IN_PROGRESS,RECEIVED,REVISI,DISPOSISI'],
         ]);
 
         $status = Str::upper($validated['status']);
@@ -128,8 +134,6 @@ class IncomingMailController extends Controller
             $status = 'RECEIVE';
         } elseif (in_array($status, ['PROGRESS', 'IN_PROGRESS'], true)) {
             $status = 'PROGRES';
-        } elseif ($status === 'RETURNED') {
-            $status = 'RETURN';
         } elseif ($status === 'REVISI') {
             $status = 'REVISI';
         } elseif ($status === 'DISPOSISI') {
@@ -142,7 +146,7 @@ class IncomingMailController extends Controller
         foreach ($mails as $mail) {
             if (Gate::allows('update', $mail)) {
                 $mail->update(['status' => $status]);
-                $this->syncToOutgoingMail($mail);
+                $this->statusSyncService->sync($mail, auth()->id());
                 $updatedCount++;
             }
         }
@@ -229,7 +233,7 @@ class IncomingMailController extends Controller
             $sigData = explode(',', (string) $request->receipt_signature)[1] ?? '';
             if (! empty($sigData)) {
                 $decoded = base64_decode($sigData);
-                $sigFileName = 'incoming-mails/signatures/' . Str::uuid() . '.png';
+                $sigFileName = 'incoming-mails/signatures/'.Str::uuid().'.png';
                 Storage::disk('local')->put($sigFileName, $decoded);
                 $receiptSignaturePath = $sigFileName;
             }
@@ -295,7 +299,7 @@ class IncomingMailController extends Controller
                     ProcessOcrJob::dispatch($incomingMail);
                 }
 
-                $this->syncToOutgoingMail($incomingMail);
+                $this->statusSyncService->sync($incomingMail, auth()->id());
             }
         } else {
             // Single document mode
@@ -333,7 +337,7 @@ class IncomingMailController extends Controller
                 ProcessOcrJob::dispatch($incomingMail);
             }
 
-            $this->syncToOutgoingMail($incomingMail);
+            $this->statusSyncService->sync($incomingMail, auth()->id());
         }
 
         return redirect()
@@ -348,8 +352,13 @@ class IncomingMailController extends Controller
     {
         Gate::authorize('view', $incomingMail);
 
-        $incomingMail->load(['dispositions.sender', 'dispositions.receiver', 'batchItems']);
-        $users = \App\Models\User::orderBy('name')->get();
+        $incomingMail->load([
+            'dispositions.sender',
+            'dispositions.receiver',
+            'batchItems',
+            'returnRecipients.creator',
+        ]);
+        $users = User::orderBy('name')->get();
 
         return view('incoming-mails.show', compact('incomingMail', 'users'));
     }
@@ -402,6 +411,21 @@ class IncomingMailController extends Controller
 
         $data = $request->validated();
 
+        if (array_key_exists('status', $data)) {
+            $requestedStatus = Str::upper((string) $data['status']);
+            $requestedStatus = $requestedStatus === 'RETURNED' ? 'RETURN' : $requestedStatus;
+            $currentStatus = Str::upper((string) $incomingMail->status);
+            $currentStatus = $currentStatus === 'RETURNED' ? 'RETURN' : $currentStatus;
+
+            if ((in_array($requestedStatus, ['RETURN', 'WAITING_RETURN'], true)
+                    && $requestedStatus !== $currentStatus)
+                || ($currentStatus === 'WAITING_RETURN' && $requestedStatus !== 'WAITING_RETURN')) {
+                throw ValidationException::withMessages([
+                    'status' => 'Status pengembalian hanya dapat diubah melalui proses tanda tangan di halaman daftar surat masuk.',
+                ]);
+            }
+        }
+
         if ($request->hasFile('file')) {
             $fileObj = $request->file('file');
             $mime = (string) $fileObj->getMimeType();
@@ -422,7 +446,7 @@ class IncomingMailController extends Controller
             $sigData = explode(',', (string) $request->receipt_signature)[1] ?? '';
             if (! empty($sigData)) {
                 $decoded = base64_decode($sigData);
-                $sigFileName = 'incoming-mails/signatures/' . Str::uuid() . '.png';
+                $sigFileName = 'incoming-mails/signatures/'.Str::uuid().'.png';
                 Storage::disk('local')->put($sigFileName, $decoded);
                 $data['receipt_signature_path'] = $sigFileName;
             }
@@ -431,7 +455,7 @@ class IncomingMailController extends Controller
         $incomingMail->update($data);
 
         // Sync OutgoingMail if status is RETURN or PROGRES
-        $this->syncToOutgoingMail($incomingMail);
+        $this->statusSyncService->sync($incomingMail, auth()->id());
 
         // If batch_id exists, sync common fields to other batch items if needed
         if ($incomingMail->batch_id) {
@@ -472,75 +496,5 @@ class IncomingMailController extends Controller
         return redirect()
             ->route('incoming-mails.index')
             ->with('success', 'Surat Masuk berhasil dihapus.');
-    }
-
-    /**
-     * Automatically create OutgoingMail record if status is RETURN or PROGRES.
-     */
-    protected function syncToOutgoingMail(IncomingMail $incomingMail): void
-    {
-        $status = Str::upper((string) $incomingMail->status);
-
-        if (in_array($status, ['RETURN', 'RETURNED'], true)) {
-            $outgoingMail = OutgoingMail::where('subject', 'like', '%' . $incomingMail->subject)
-                ->latest()
-                ->first();
-
-            if ($outgoingMail) {
-                $outgoingMail->update([
-                    'status' => 'RETURN',
-                    'subject' => '[RETURN] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
-                ]);
-            } else {
-                OutgoingMail::create([
-                    'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
-                    'subject' => '[RETURN] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
-                    'recipient' => $incomingMail->sender,
-                    'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
-                    'created_by' => auth()->id() ?? 1,
-                    'status' => 'RETURN',
-                ]);
-            }
-        } elseif (in_array($status, ['PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING'], true)) {
-            $outgoingMail = OutgoingMail::where('subject', 'like', '%' . $incomingMail->subject)
-                ->latest()
-                ->first();
-
-            if ($outgoingMail) {
-                $outgoingMail->update([
-                    'status' => 'PROGRES',
-                    'subject' => '[PROGRES] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
-                ]);
-            } else {
-                OutgoingMail::create([
-                    'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
-                    'subject' => '[PROGRES] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
-                    'recipient' => $incomingMail->sender,
-                    'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
-                    'created_by' => auth()->id() ?? 1,
-                    'status' => 'PROGRES',
-                ]);
-            }
-        } elseif ($status === 'REVISI') {
-            $outgoingMail = OutgoingMail::where('subject', 'like', '%' . $incomingMail->subject)
-                ->latest()
-                ->first();
-
-            if ($outgoingMail) {
-                $outgoingMail->update([
-                    'status' => 'REVISI',
-                    'subject' => '[REVISI] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
-                ]);
-            } else {
-                OutgoingMail::create([
-                    'mail_number' => 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1),
-                    'subject' => '[REVISI] ' . preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', '', $incomingMail->subject),
-                    'recipient' => $incomingMail->sender,
-                    'file_path' => $incomingMail->file_path ?? $incomingMail->document_photo_path,
-                    'created_by' => auth()->id() ?? 1,
-                    'status' => 'REVISI',
-                ]);
-            }
-        }
     }
 }

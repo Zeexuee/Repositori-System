@@ -176,7 +176,11 @@
                             <option value="RECEIVE" {{ old('status', $incomingMail->status) == 'RECEIVE' || old('status', $incomingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
                             <option value="PROGRES" {{ old('status', $incomingMail->status) == 'PROGRES' || old('status', $incomingMail->status) == 'PENDING' || old('status', $incomingMail->status) == 'PROGRESS' || old('status', $incomingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
                             <option value="REVISI" {{ old('status', $incomingMail->status) == 'REVISI' ? 'selected' : '' }}>REVISI</option>
-                            <option value="RETURN" {{ old('status', $incomingMail->status) == 'RETURN' || old('status', $incomingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
+                            @if (in_array(old('status', $incomingMail->status), ['RETURN', 'RETURNED'], true))
+                                <option value="RETURN" selected>RETURN (dikelola melalui proses tanda tangan)</option>
+                            @elseif (old('status', $incomingMail->status) === 'WAITING_RETURN')
+                                <option value="WAITING_RETURN" selected>WAITING RETURN (lanjutkan dari halaman daftar)</option>
+                            @endif
                             <option value="DISPOSISI" {{ old('status', $incomingMail->status) == 'DISPOSISI' ? 'selected' : '' }}>DISPOSISI</option>
                         </select>
                         @error('status')

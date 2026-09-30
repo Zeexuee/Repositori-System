@@ -61,6 +61,128 @@
             </div>
         </div>
 
+        <!-- Return Signature Workflow Modal -->
+        <template x-teleport="body">
+            <div x-show="showReturnModal" x-cloak
+                class="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6"
+                role="dialog" aria-modal="true" aria-labelledby="return-workflow-title"
+                @keydown.escape.window="closeReturnModal()">
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+
+                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="px-5 sm:px-7 py-5 border-b border-slate-200 flex items-start justify-between gap-4">
+                        <div>
+                            <h2 id="return-workflow-title" class="text-lg font-bold text-slate-900">Tanda Tangan Pengembalian Dokumen</h2>
+                            <p class="text-xs text-slate-500 mt-1">
+                                <span x-text="returnMailLabel"></span> · <span x-text="returnMailIds.length"></span> dokumen
+                            </p>
+                        </div>
+                        <button type="button" @click="closeReturnModal()" :disabled="isSavingReturn"
+                            aria-label="Tutup proses pengembalian"
+                            class="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="px-5 sm:px-7 py-5 overflow-y-auto bg-slate-50/70 space-y-4">
+                        <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 leading-relaxed">
+                            Tambahkan semua penerima dokumen. Isi nama orang yang menandatangani dan bubuhkan tanda tangan untuk penerima yang sudah mengambil dokumen. Progres yang belum lengkap dapat disimpan melalui <strong>Lanjut Nanti</strong>.
+                        </div>
+
+                        <div x-show="isLoadingReturn" class="py-12 flex items-center justify-center gap-3 text-sm font-semibold text-slate-600">
+                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Memuat progres pengembalian...
+                        </div>
+
+                        <div x-show="!isLoadingReturn" class="space-y-4">
+                            <template x-for="(recipient, index) in returnRecipients" :key="recipient.client_key">
+                                <fieldset class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
+                                    <legend class="px-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                        Penerima <span x-text="index + 1"></span>
+                                    </legend>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label :for="`return-recipient-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penerima / Unit</label>
+                                            <input type="text" :id="`return-recipient-${recipient.client_key}`"
+                                                x-model="recipient.recipient_name" @input="returnDirty = true" maxlength="255"
+                                                placeholder="Contoh: Divisi Keuangan"
+                                                class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900" required>
+                                        </div>
+                                        <div>
+                                            <label :for="`return-signer-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penandatangan</label>
+                                            <input type="text" :id="`return-signer-${recipient.client_key}`"
+                                                x-model="recipient.signer_name" @input="returnDirty = true" maxlength="255"
+                                                placeholder="Boleh dikosongkan jika belum hadir"
+                                                class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="flex items-center justify-between gap-3 mb-1.5">
+                                            <span class="text-xs font-bold text-slate-700">Tanda Tangan Penerima</span>
+                                            <span x-show="recipient.has_signature" class="text-[11px] font-semibold text-emerald-700">Tanda tangan tersimpan</span>
+                                        </div>
+                                        <canvas width="800" height="220"
+                                            x-init="$nextTick(() => setupReturnCanvas(recipient, $el))"
+                                            @pointerdown.prevent="startReturnSignature($event, recipient)"
+                                            @pointermove.prevent="drawReturnSignature($event, recipient)"
+                                            @pointerup.prevent="finishReturnSignature($event, recipient)"
+                                            @pointercancel.prevent="finishReturnSignature($event, recipient)"
+                                            aria-label="Area tanda tangan penerima"
+                                            class="w-full h-40 bg-white border border-slate-300 rounded-xl touch-none cursor-crosshair"></canvas>
+                                        <div class="mt-2 flex items-center justify-between gap-3">
+                                            <p class="text-[11px] text-slate-500">Gunakan mouse, pena digital, atau sentuhan.</p>
+                                            <button type="button" @click="clearReturnSignature(recipient)"
+                                                class="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100">
+                                                Bersihkan
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex justify-end" x-show="returnRecipients.length > 1">
+                                        <button type="button" @click="removeReturnRecipient(index)"
+                                            class="text-xs font-semibold text-rose-700 hover:underline">Hapus penerima ini</button>
+                                    </div>
+                                </fieldset>
+                            </template>
+
+                            <button type="button" @click="addReturnRecipient()"
+                                class="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:border-slate-500 transition-colors">
+                                + Tambah Penerima
+                            </button>
+                        </div>
+
+                        <p x-show="returnError" x-text="returnError" role="alert" aria-live="assertive"
+                            class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800"></p>
+                    </div>
+
+                    <div class="px-5 sm:px-7 py-4 border-t border-slate-200 bg-white flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <button type="button" @click="closeReturnModal()" :disabled="isSavingReturn"
+                            class="px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50">
+                            Batal
+                        </button>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <button type="button" @click="saveReturnWorkflow('save_later')"
+                                :disabled="isSavingReturn || isLoadingReturn"
+                                class="px-5 py-2.5 text-xs font-bold text-slate-800 bg-slate-100 border border-slate-300 rounded-xl hover:bg-slate-200 disabled:opacity-50">
+                                Lanjut Nanti
+                            </button>
+                            <button type="button" @click="saveReturnWorkflow('complete')"
+                                :disabled="isSavingReturn || isLoadingReturn"
+                                class="px-5 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center justify-center gap-2">
+                                <svg x-show="isSavingReturn" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                Selesaikan Pengembalian
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
         <!-- Draft Modal -->
         <div x-show="showDraftModal" 
             x-cloak
@@ -407,6 +529,19 @@
                 confirmTargetStatus: '',
                 isSubmitting: false,
                 singleUpdateId: null,
+
+                // Return signature workflow state
+                showReturnModal: false,
+                isLoadingReturn: false,
+                isSavingReturn: false,
+                returnDirty: false,
+                returnError: '',
+                returnMailIds: [],
+                returnMailLabel: '',
+                returnRecipients: [],
+                returnCanvases: {},
+                returnDrawingKey: null,
+                returnPreviousFocus: null,
                 
                 // Draft Modal state
                 showDraftModal: false,
@@ -438,6 +573,10 @@
                         this.openStatusDropdown(event, id, mailNumber, currentStatus);
                     };
 
+                    window.resumeReturnWorkflow = (id, mailNumber) => {
+                        this.openReturnWorkflow([id], mailNumber, true);
+                    };
+
                     window.addEventListener('scroll', () => {
                         if (this.showStatusDropdown) this.showStatusDropdown = false;
                     }, true);
@@ -453,19 +592,232 @@
                     
                     // Watch modal state untuk prevent body scroll
                     this.$watch('showConfirmModal', (value) => {
-                        if (value || this.showDraftModal) {
+                        if (value || this.showDraftModal || this.showReturnModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
                         }
                     });
                     this.$watch('showDraftModal', (value) => {
-                        if (value || this.showConfirmModal) {
+                        if (value || this.showConfirmModal || this.showReturnModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
                         }
                     });
+                    this.$watch('showReturnModal', (value) => {
+                        if (value || this.showConfirmModal || this.showDraftModal) {
+                            document.body.style.overflow = 'hidden';
+                        } else {
+                            document.body.style.overflow = '';
+                        }
+                    });
+                },
+
+                newReturnRecipient(data = {}) {
+                    return {
+                        id: data.id || null,
+                        client_key: data.client_key || (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`),
+                        recipient_name: data.recipient_name || '',
+                        signer_name: data.signer_name || '',
+                        signature: null,
+                        signature_url: data.signature_url || null,
+                        has_signature: Boolean(data.has_signature),
+                        remove_signature: false,
+                    };
+                },
+
+                async openReturnWorkflow(mailIds, label, resume = false) {
+                    this.showStatusDropdown = false;
+                    this.returnPreviousFocus = document.activeElement;
+                    this.returnMailIds = [...mailIds];
+                    this.returnMailLabel = label || 'Dokumen terpilih';
+                    this.returnRecipients = [this.newReturnRecipient()];
+                    this.returnCanvases = {};
+                    this.returnError = '';
+                    this.returnDirty = false;
+                    this.showReturnModal = true;
+
+                    if (!resume) return;
+
+                    this.isLoadingReturn = true;
+                    try {
+                        const baseUrl = @js(url('/incoming-mails'));
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailIds[0])}/return-recipients`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Progres pengembalian gagal dimuat.');
+                        }
+
+                        this.returnMailLabel = data.mail?.mail_number || this.returnMailLabel;
+                        this.returnRecipients = data.recipients?.length
+                            ? data.recipients.map(recipient => this.newReturnRecipient(recipient))
+                            : [this.newReturnRecipient()];
+                    } catch (error) {
+                        console.error('Return workflow load error:', error);
+                        this.returnError = error.message || 'Progres pengembalian gagal dimuat.';
+                    } finally {
+                        this.isLoadingReturn = false;
+                    }
+                },
+
+                closeReturnModal() {
+                    if (this.isSavingReturn) return;
+                    if (this.returnDirty && !window.confirm('Perubahan yang belum disimpan akan hilang. Tutup proses ini?')) return;
+
+                    this.returnDirty = false;
+                    this.showReturnModal = false;
+                    this.returnError = '';
+                    this.$nextTick(() => this.returnPreviousFocus?.focus?.());
+                },
+
+                addReturnRecipient() {
+                    this.returnRecipients.push(this.newReturnRecipient());
+                    this.returnDirty = true;
+                },
+
+                removeReturnRecipient(index) {
+                    if (this.returnRecipients.length === 1) return;
+                    const [removed] = this.returnRecipients.splice(index, 1);
+                    delete this.returnCanvases[removed.client_key];
+                    this.returnDirty = true;
+                },
+
+                setupReturnCanvas(recipient, canvas) {
+                    const context = canvas.getContext('2d');
+                    context.lineWidth = 3;
+                    context.lineCap = 'round';
+                    context.lineJoin = 'round';
+                    context.strokeStyle = '#0f172a';
+                    this.returnCanvases[recipient.client_key] = canvas;
+
+                    if (recipient.signature_url) {
+                        const image = new Image();
+                        image.onload = () => context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                        image.src = recipient.signature_url;
+                    }
+                },
+
+                returnCanvasPosition(event, canvas) {
+                    const rect = canvas.getBoundingClientRect();
+                    return {
+                        x: (event.clientX - rect.left) * (canvas.width / rect.width),
+                        y: (event.clientY - rect.top) * (canvas.height / rect.height),
+                    };
+                },
+
+                startReturnSignature(event, recipient) {
+                    const canvas = this.returnCanvases[recipient.client_key];
+                    if (!canvas) return;
+                    canvas.setPointerCapture?.(event.pointerId);
+                    const point = this.returnCanvasPosition(event, canvas);
+                    const context = canvas.getContext('2d');
+                    context.beginPath();
+                    context.moveTo(point.x, point.y);
+                    this.returnDrawingKey = recipient.client_key;
+                },
+
+                drawReturnSignature(event, recipient) {
+                    if (this.returnDrawingKey !== recipient.client_key) return;
+                    const canvas = this.returnCanvases[recipient.client_key];
+                    if (!canvas) return;
+                    const point = this.returnCanvasPosition(event, canvas);
+                    const context = canvas.getContext('2d');
+                    context.lineTo(point.x, point.y);
+                    context.stroke();
+                },
+
+                finishReturnSignature(event, recipient) {
+                    if (this.returnDrawingKey !== recipient.client_key) return;
+                    const canvas = this.returnCanvases[recipient.client_key];
+                    this.returnDrawingKey = null;
+                    if (!canvas) return;
+                    canvas.releasePointerCapture?.(event.pointerId);
+                    recipient.signature = canvas.toDataURL('image/png');
+                    recipient.has_signature = true;
+                    recipient.remove_signature = false;
+                    this.returnDirty = true;
+                },
+
+                clearReturnSignature(recipient) {
+                    const canvas = this.returnCanvases[recipient.client_key];
+                    canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+                    recipient.signature = null;
+                    recipient.signature_url = null;
+                    recipient.has_signature = false;
+                    recipient.remove_signature = true;
+                    this.returnDirty = true;
+                },
+
+                async saveReturnWorkflow(action) {
+                    if (this.isSavingReturn) return;
+
+                    const missingRecipient = this.returnRecipients.find(recipient => !recipient.recipient_name.trim());
+                    if (missingRecipient) {
+                        this.returnError = 'Nama setiap penerima wajib diisi.';
+                        return;
+                    }
+
+                    if (action === 'complete') {
+                        const incomplete = this.returnRecipients.find(recipient =>
+                            !recipient.signer_name.trim() || (!recipient.signature && !recipient.has_signature)
+                        );
+                        if (incomplete) {
+                            this.returnError = 'Lengkapi nama penandatangan dan tanda tangan seluruh penerima sebelum menyelesaikan pengembalian.';
+                            return;
+                        }
+                    }
+
+                    this.isSavingReturn = true;
+                    this.returnError = '';
+
+                    try {
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                        const response = await fetch(@js(route('incoming-mails.return-workflow.store')), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                mail_ids: this.returnMailIds,
+                                action,
+                                recipients: this.returnRecipients.map(recipient => ({
+                                    id: recipient.id,
+                                    recipient_name: recipient.recipient_name.trim(),
+                                    signer_name: recipient.signer_name.trim() || null,
+                                    signature: recipient.signature,
+                                    remove_signature: recipient.remove_signature,
+                                })),
+                            }),
+                        });
+
+                        const result = await response.json();
+                        if (!response.ok) {
+                            const validationMessage = Object.values(result.errors || {}).flat()[0];
+                            throw new Error(validationMessage || result.message || 'Progres pengembalian gagal disimpan.');
+                        }
+
+                        this.returnDirty = false;
+                        this.showReturnModal = false;
+                        this.successMessage = result.message;
+                        this.showSuccessToast = true;
+                        setTimeout(() => { this.showSuccessToast = false; }, 5000);
+                        this.selectedIds = [];
+                        await this.refreshTableData();
+                    } catch (error) {
+                        console.error('Return workflow save error:', error);
+                        this.returnError = error.message || 'Progres pengembalian gagal disimpan.';
+                    } finally {
+                        this.isSavingReturn = false;
+                    }
                 },
 
                 async openDraftModal(url = null) {
@@ -687,6 +1039,15 @@
                 bulkUpdateStatus(targetStatus) {
                     if (this.selectedIds.length === 0) return;
 
+                    if (targetStatus === 'RETURN') {
+                        const count = this.selectedIds.length;
+                        this.openReturnWorkflow(
+                            this.selectedIds,
+                            count === 1 ? '1 dokumen terpilih' : `${count} dokumen terpilih`
+                        );
+                        return;
+                    }
+
                     const count = this.selectedIds.length;
                     const statusLabel = targetStatus === 'RETURN' ? 'RETURN' : (targetStatus === 'PROGRES' ? 'PROGRES' : (targetStatus === 'REVISI' ? 'REVISI' : 'RECEIVE'));
 
@@ -809,7 +1170,13 @@
 
                 handleSingleStatusChange(detail) {
                     const targetStatus = detail.targetStatus || 'RETURN';
-                    const statusLabel = targetStatus === 'RETURN' ? 'RETURN' : (targetStatus === 'PROGRES' ? 'PROGRES' : (targetStatus === 'REVISI' ? 'REVISI' : 'RECEIVE'));
+
+                    if (targetStatus === 'RETURN') {
+                        this.openReturnWorkflow([detail.id], detail.mailNumber);
+                        return;
+                    }
+
+                    const statusLabel = targetStatus === 'PROGRES' ? 'PROGRES' : (targetStatus === 'REVISI' ? 'REVISI' : 'RECEIVE');
 
                     let message = `Apakah Anda yakin ingin mengubah status dokumen <strong>${detail.mailNumber}</strong> dari <strong>${detail.currentStatus}</strong> menjadi <strong>${statusLabel}</strong>?`;
                     

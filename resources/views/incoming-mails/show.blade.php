@@ -74,7 +74,7 @@
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status Surat</span>
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white">
-                        {{ $incomingMail->status }}
+                        {{ $incomingMail->status === 'WAITING_RETURN' ? 'WAITING RETURN' : $incomingMail->status }}
                     </span>
                 </div>
             </div>
@@ -145,6 +145,73 @@
                 <span class="font-bold text-slate-900 text-sm block">{{ $incomingMail->recipient_name ?? '-' }}</span>
             </div>
         </div>
+
+        @if ($incomingMail->returnRecipients->isNotEmpty())
+            @php
+                $signedReturnRecipients = $incomingMail->returnRecipients->filter(fn ($recipient) => $recipient->signed_at !== null)->count();
+                $totalReturnRecipients = $incomingMail->returnRecipients->count();
+            @endphp
+            <section class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4" aria-labelledby="return-recipients-heading">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div>
+                        <h2 id="return-recipients-heading" class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Pengembalian Dokumen
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">
+                            {{ $signedReturnRecipients }} dari {{ $totalReturnRecipients }} penerima telah menandatangani.
+                        </p>
+                    </div>
+                    <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold border {{ $incomingMail->status === 'WAITING_RETURN' ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-slate-900 text-white border-slate-900' }}">
+                        {{ $incomingMail->status === 'WAITING_RETURN' ? 'WAITING RETURN' : $incomingMail->status }}
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="w-full min-w-[720px] text-left text-sm">
+                        <caption class="sr-only">Daftar penerima dan penandatangan pengembalian dokumen</caption>
+                        <thead class="bg-slate-100 text-[11px] uppercase tracking-wider text-slate-600">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">No.</th>
+                                <th scope="col" class="px-4 py-3">Penerima / Unit</th>
+                                <th scope="col" class="px-4 py-3">Penandatangan</th>
+                                <th scope="col" class="px-4 py-3">Waktu Tanda Tangan</th>
+                                <th scope="col" class="px-4 py-3 text-right">Bukti</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 bg-white">
+                            @foreach ($incomingMail->returnRecipients as $index => $returnRecipient)
+                                <tr>
+                                    <td class="px-4 py-3 font-semibold text-slate-500">{{ $index + 1 }}</td>
+                                    <td class="px-4 py-3 font-semibold text-slate-900">{{ $returnRecipient->recipient_name }}</td>
+                                    <td class="px-4 py-3 text-slate-700">{{ $returnRecipient->signer_name ?? 'Belum diisi' }}</td>
+                                    <td class="px-4 py-3 text-slate-600 font-mono text-xs">
+                                        {{ $returnRecipient->signed_at?->format('d/m/Y H:i') ?? 'Belum ditandatangani' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        @if ($returnRecipient->signature_path)
+                                            <a href="{{ route('document.download', ['path' => $returnRecipient->signature_path, 'inline' => 1]) }}" target="_blank"
+                                                class="inline-flex px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 border border-slate-200">
+                                                Lihat Tanda Tangan
+                                            </a>
+                                        @else
+                                            <span class="text-xs text-slate-400 italic">Belum ada</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                @if ($incomingMail->status === 'WAITING_RETURN' && auth()->user()?->can('update', $incomingMail))
+                    <div class="flex justify-end">
+                        <a href="{{ route('incoming-mails.index') }}" class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl text-xs font-bold">
+                            Kembali dan Lanjutkan melalui Status
+                        </a>
+                    </div>
+                @endif
+            </section>
+        @endif
 
         <!-- Section 3: Lampiran & Tanda Terima -->
         <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">

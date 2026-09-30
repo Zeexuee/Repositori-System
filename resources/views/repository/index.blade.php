@@ -30,12 +30,12 @@
                     role="search" @submit.prevent="performSearch()">
                     <input type="hidden" name="month" value="{{ $selectedMonth }}">
                     <div class="relative w-full">
-                        <input type="search" name="search" x-model="searchQuery"
+                        <input type="text" name="search" x-model="searchQuery"
                             @input.debounce.500ms="performSearch()" @keydown.escape="clearSearch()"
                             maxlength="200" autocomplete="off" enterkeyhint="search"
                             aria-label="Cari dokumen dalam arsip bulan ini" :aria-busy="isSearching"
                             placeholder="Cari nomor surat, tanggal, status, perihal, pengirim, penerima..."
-                            class="w-full px-5 py-3 bg-white border-2 border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 shadow-sm transition-all pr-12">
+                            class="w-full px-5 py-3 bg-white border-2 border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 shadow-sm transition-all pr-12 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden">
                         <div x-show="isSearching" x-cloak class="absolute right-4 top-1/2 -translate-y-1/2"
                             aria-hidden="true">
                             <svg class="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

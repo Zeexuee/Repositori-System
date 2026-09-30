@@ -57,13 +57,21 @@ class IncomingMail extends Model
         ];
     }
 
-
     /**
      * Get the dispositions for the incoming mail.
      */
     public function dispositions(): HasMany
     {
         return $this->hasMany(MailDisposition::class, 'incoming_mail_id');
+    }
+
+    /**
+     * Get the recipients recorded for the return workflow.
+     */
+    public function returnRecipients(): HasMany
+    {
+        return $this->hasMany(IncomingMailReturnRecipient::class)
+            ->orderBy('sort_order');
     }
 
     /**

@@ -69,6 +69,7 @@
                                                 $badgeClasses = match ($mail->status) {
                                                     'RECEIVE', 'RECEIVED' => 'bg-slate-900 text-white border-slate-900 font-bold',
                                                     'RETURN', 'RETURNED' => 'bg-white text-slate-800 border-slate-300 font-bold',
+                                                    'WAITING_RETURN' => 'bg-blue-50 text-blue-800 border-blue-300 font-bold',
                                                     'PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'bg-slate-200 text-slate-900 border-slate-400 font-bold',
                                                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                                                 };
@@ -76,6 +77,7 @@
                                                     'RECEIVED' => 'RECEIVE',
                                                     'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'PROGRES',
                                                     'RETURNED' => 'RETURN',
+                                                    'WAITING_RETURN' => 'WAITING RETURN',
                                                     default => $mail->status,
                                                 };
                                             @endphp

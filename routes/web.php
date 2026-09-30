@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BroadcastEmailController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\IncomingMailController;
+use App\Http\Controllers\IncomingMailReturnController;
 use App\Http\Controllers\MailDispositionController;
 use App\Http\Controllers\OutgoingMailController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepositoryController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +35,8 @@ Route::middleware(['auth'])->group(function () {
     // Disposisi Surat Masuk
     Route::post('/incoming-mails/{incomingMail}/dispositions', [MailDispositionController::class, 'store'])->name('incoming-mails.dispositions.store');
     Route::post('/incoming-mails/bulk-update-status', [IncomingMailController::class, 'bulkUpdateStatus'])->name('incoming-mails.bulk-update-status');
+    Route::get('/incoming-mails/{incomingMail}/return-recipients', [IncomingMailReturnController::class, 'show'])->name('incoming-mails.return-recipients.show');
+    Route::post('/incoming-mails/return-workflow', [IncomingMailReturnController::class, 'store'])->name('incoming-mails.return-workflow.store');
     Route::resource('incoming-mails', IncomingMailController::class);
 
     // Tanda Tangan Digital Surat Keluar
@@ -44,17 +49,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/audit-logs/export-trash', [AuditLogController::class, 'exportTrash'])->name('audit-logs.export-trash');
 
     // Profil Pengguna & Pengaturan Akun
-    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
-    Route::put('/profile/name', [\App\Http\Controllers\ProfileController::class, 'updateName'])->name('profile.update-name');
-    Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.update-password');
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+    Route::put('/profile/name', [ProfileController::class, 'updateName'])->name('profile.update-name');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.update-password');
     // Broadcast Email (Khusus Direksi)
-    Route::get('/broadcast-emails', [\App\Http\Controllers\BroadcastEmailController::class, 'index'])->name('broadcast-emails.index');
-    Route::get('/broadcast-emails/history', [\App\Http\Controllers\BroadcastEmailController::class, 'history'])->name('broadcast-emails.history');
-    Route::post('/broadcast-emails/send', [\App\Http\Controllers\BroadcastEmailController::class, 'send'])->name('broadcast-emails.send');
-    Route::get('/broadcast-emails/{broadcast}/attachments/{index}', [\App\Http\Controllers\BroadcastEmailController::class, 'downloadAttachment'])->name('broadcast-emails.download-attachment');
+    Route::get('/broadcast-emails', [BroadcastEmailController::class, 'index'])->name('broadcast-emails.index');
+    Route::get('/broadcast-emails/history', [BroadcastEmailController::class, 'history'])->name('broadcast-emails.history');
+    Route::post('/broadcast-emails/send', [BroadcastEmailController::class, 'send'])->name('broadcast-emails.send');
+    Route::get('/broadcast-emails/{broadcast}/attachments/{index}', [BroadcastEmailController::class, 'downloadAttachment'])->name('broadcast-emails.download-attachment');
 
     // Manajemen User (Khusus Direksi)
     Route::resource('users', UserController::class);
 });
-
-
