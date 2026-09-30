@@ -47,35 +47,28 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Status Surat -->
-                <div>
-                    <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Surat</label>
-                    <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                        <option value="RECEIVE" {{ old('status', $outgoingMail->status) == 'RECEIVE' || old('status', $outgoingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
-                        <option value="PROGRES" {{ old('status', $outgoingMail->status) == 'PROGRES' || old('status', $outgoingMail->status) == 'PENDING' || old('status', $outgoingMail->status) == 'PROGRESS' || old('status', $outgoingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
-                        <option value="REVISI" {{ old('status', $outgoingMail->status) == 'REVISI' ? 'selected' : '' }}>REVISI</option>
-                        <option value="RETURN" {{ old('status', $outgoingMail->status) == 'RETURN' || old('status', $outgoingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
-                    </select>
-                    @error('status')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
+            <!-- Upload Berkas PDF / Gambar -->
+            <div>
+                <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Ganti Berkas (PDF / Gambar)</label>
+                @if ($outgoingMail->file_path)
+                    <div class="mb-2 text-xs font-medium text-slate-600">
+                        Berkas Terunggah (Utama): 
+                        <a href="{{ route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]) }}" target="_blank" class="text-slate-900 underline font-semibold">Pratinjau Berkas Utama</a>
+                    </div>
+                @endif
+                <input type="file" name="file" id="file" accept="application/pdf,image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+                @error('file')
+                    <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                @enderror
+            </div>
 
-                <!-- Upload Berkas PDF / Gambar -->
-                <div>
-                    <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Ganti Berkas (PDF / Gambar)</label>
-                    @if ($outgoingMail->file_path)
-                        <div class="mb-2 text-xs font-medium text-slate-600">
-                            Berkas Terunggah (Utama): 
-                            <a href="{{ route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]) }}" target="_blank" class="text-slate-900 underline font-semibold">Pratinjau Berkas Utama</a>
-                        </div>
-                    @endif
-                    <input type="file" name="file" id="file" accept="application/pdf,image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
-                    @error('file')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
+            <!-- Catatan Disposisi -->
+            <div>
+                <label for="disposition_note" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Disposisi (Opsional)</label>
+                <textarea name="disposition_note" id="disposition_note" rows="3" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">{{ old('disposition_note', $outgoingMail->disposition_note) }}</textarea>
+                @error('disposition_note')
+                    <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Histori Perubahan Berkas -->

@@ -45,29 +45,37 @@ class OutgoingMailController extends Controller
         Gate::authorize('create', OutgoingMail::class);
 
         $validated = $request->validated();
-        $status = $validated['status'] ?? 'PROGRES';
+        $documents = $validated['documents'] ?? [];
+        $createdCount = 0;
 
-        $filePath = $request->hasFile('file')
-            ? $request->file('file')->store('outgoing-mails', 'local')
-            : null;
+        foreach ($documents as $index => $doc) {
+            $status = 'PENDING';
 
-        $mailNumber = ! empty($validated['mail_number'])
-            ? $validated['mail_number']
-            : 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1);
+            $fileKey = "documents.{$index}.file";
+            $filePath = $request->hasFile($fileKey)
+                ? $request->file($fileKey)->store('outgoing-mails', 'local')
+                : null;
 
-        OutgoingMail::create(array_merge(
-            $validated,
-            [
+            $mailNumber = ! empty($doc['mail_number'])
+                ? $doc['mail_number']
+                : 'SK-' . now()->format('Ymd') . '-' . sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1);
+
+            OutgoingMail::create([
                 'mail_number' => $mailNumber,
+                'subject' => $doc['subject'],
+                'recipient' => $doc['recipient'],
                 'file_path' => $filePath,
                 'created_by' => auth()->id(),
                 'status' => $status,
-            ]
-        ));
+                'disposition_note' => $doc['disposition_note'] ?? null,
+            ]);
+
+            $createdCount++;
+        }
 
         return redirect()
             ->route('outgoing-mails.index')
-            ->with('success', 'Surat Keluar berhasil dicatat (Status: ' . $status . ').');
+            ->with('success', "{$createdCount} Surat Keluar berhasil dicatat (Status: PENDING).");
     }
 
     /**

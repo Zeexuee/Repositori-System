@@ -307,6 +307,8 @@
         </nav>
     @endauth
 
+    @stack('scripts')
+
     <!-- Loading Spinner Component -->
     <x-loading-spinner />
 </body>

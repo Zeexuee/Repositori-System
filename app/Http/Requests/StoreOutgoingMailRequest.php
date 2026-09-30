@@ -24,11 +24,12 @@ class StoreOutgoingMailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mail_number' => ['nullable', 'string', 'max:255', 'unique:outgoing_mails,mail_number'],
-            'subject' => ['required', 'string', 'max:255'],
-            'recipient' => ['required', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,PROGRES,PROGRESS,IN_PROGRESS,PENDING,RETURN,RETURNED,DRAFT,APPROVED,SIGNED,REVISI'],
-            'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'documents' => ['required', 'array', 'min:1'],
+            'documents.*.mail_number' => ['nullable', 'string', 'max:255', 'unique:outgoing_mails,mail_number'],
+            'documents.*.subject' => ['required', 'string', 'max:255'],
+            'documents.*.recipient' => ['required', 'string', 'max:255'],
+            'documents.*.file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'documents.*.disposition_note' => ['nullable', 'string'],
         ];
     }
 }

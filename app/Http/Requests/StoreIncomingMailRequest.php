@@ -43,7 +43,7 @@ class StoreIncomingMailRequest extends FormRequest
             // Single document input fields
             'mail_number' => ['nullable', 'string', 'max:255'],
             'subject' => $topSubjectRule,
-            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,RETURN,RETURNED,PROGRES,PROGRESS,IN_PROGRESS,REGISTERED,PENDING,COMPLETED,OVERDUE,REVISI'],
+            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,RETURN,RETURNED,PROGRES,PROGRESS,IN_PROGRESS,REGISTERED,PENDING,COMPLETED,OVERDUE,REVISI,DISPOSISI,DRAFT'],
             'outgoing_date' => ['nullable', 'date'],
             'disposition_note' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
@@ -58,7 +58,7 @@ class StoreIncomingMailRequest extends FormRequest
             'documents.*.outgoing_date' => ['nullable', 'date'],
             'documents.*.disposition_note' => ['nullable', 'string'],
             'documents.*.notes' => ['nullable', 'string'],
-            'documents.*.status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,RETURN,RETURNED,PROGRES,PROGRESS,IN_PROGRESS,REGISTERED,PENDING,COMPLETED,OVERDUE,REVISI'],
+            'documents.*.status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,RETURN,RETURNED,PROGRES,PROGRESS,IN_PROGRESS,REGISTERED,PENDING,COMPLETED,OVERDUE,REVISI,DISPOSISI,DRAFT'],
             'documents.*.file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'documents.*.document_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
         ];

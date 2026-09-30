@@ -73,6 +73,8 @@ class IncomingMailController extends Controller
                 $status = 'PROGRES';
             }
             $query->where('status', $status);
+        } else {
+            $query->where('status', '!=', 'DRAFT');
         }
 
         // 6. Perihal
@@ -118,7 +120,7 @@ class IncomingMailController extends Controller
         $validated = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['required', 'string', 'exists:incoming_mails,id'],
-            'status' => ['required', 'string', 'in:RECEIVE,RETURN,PROGRES,PROGRESS,IN_PROGRESS,RECEIVED,RETURNED,REVISI'],
+            'status' => ['required', 'string', 'in:RECEIVE,RETURN,PROGRES,PROGRESS,IN_PROGRESS,RECEIVED,RETURNED,REVISI,DISPOSISI'],
         ]);
 
         $status = Str::upper($validated['status']);
@@ -130,6 +132,8 @@ class IncomingMailController extends Controller
             $status = 'RETURN';
         } elseif ($status === 'REVISI') {
             $status = 'REVISI';
+        } elseif ($status === 'DISPOSISI') {
+            $status = 'DISPOSISI';
         }
 
         $mails = IncomingMail::whereIn('id', $validated['ids'])->get();
@@ -207,6 +211,9 @@ class IncomingMailController extends Controller
 
         $validated = $request->validated();
         $globalStatus = $request->input('status') ?: 'RECEIVE';
+        if ($request->input('is_draft') == '1') {
+            $globalStatus = 'DRAFT';
+        }
 
         // Shared Batch metadata & signature
         $batchId = (string) Str::uuid();
@@ -267,6 +274,9 @@ class IncomingMailController extends Controller
                 $mailNumber = ! empty($doc['mail_number']) ? $doc['mail_number'] : $receiptNumber;
                 $subject = ! empty($doc['subject']) ? $doc['subject'] : '(Tanpa Perihal)';
                 $docStatus = ! empty($doc['status']) ? $doc['status'] : $globalStatus;
+                if ($request->input('is_draft') == '1') {
+                    $docStatus = 'DRAFT';
+                }
                 $docRecipient = ! empty($doc['recipient']) ? $doc['recipient'] : ($validated['recipient'] ?? null);
 
                 $incomingMail = IncomingMail::create(array_merge($commonAttributes, [
@@ -353,7 +363,34 @@ class IncomingMailController extends Controller
 
         $incomingMail->load('batchItems');
 
-        return view('incoming-mails.edit', compact('incomingMail'));
+        $defaultCategories = [
+            'Kementerian BUMN',
+            'Direksi / Board of Directors',
+            'Divisi Hukum & Legal',
+            'Divisi Keuangan & Akuntansi',
+            'Divisi SDM & General Affairs',
+            'Divisi IT & Digital Transformation',
+            'Satuan Pengawasan Intern (SPI)',
+            'Sekretariat Perusahaan',
+            'Pihak Ketiga / Vendor',
+        ];
+
+        $dbSenders = IncomingMail::whereNotNull('sender')
+            ->select('sender')
+            ->distinct()
+            ->pluck('sender')
+            ->toArray();
+
+        $dbRecipients = IncomingMail::whereNotNull('recipient')
+            ->select('recipient')
+            ->distinct()
+            ->pluck('recipient')
+            ->toArray();
+
+        $senders = array_values(array_unique(array_merge($defaultCategories, $dbSenders)));
+        $recipients = array_values(array_unique(array_merge($defaultCategories, $dbRecipients)));
+
+        return view('incoming-mails.edit', compact('incomingMail', 'senders', 'recipients'));
     }
 
     /**

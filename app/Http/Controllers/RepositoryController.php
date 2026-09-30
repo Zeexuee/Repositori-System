@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\IncomingMail;
 use App\Models\OutgoingMail;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -15,26 +16,30 @@ class RepositoryController extends Controller
     /**
      * Display a listing of repository document archives grouped by month.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
-        $selectedMonth = $request->query('month');
-        $search = $request->query('search');
-        $sender = $request->query('sender');
-        $recipient = $request->query('recipient');
+        $validated = $request->validate([
+            'month' => ['nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            'search' => ['nullable', 'string', 'max:200'],
+            'sender' => ['nullable', 'string', 'max:255'],
+            'recipient' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $selectedMonth = trim((string) ($validated['month'] ?? '')) ?: null;
+        $search = trim((string) ($validated['search'] ?? ''));
+        $sender = trim((string) ($validated['sender'] ?? ''));
+        $recipient = trim((string) ($validated['recipient'] ?? ''));
 
         $sendersList = collect();
         $recipientsList = collect();
         $activeMonthData = null;
         $monthsData = [];
 
-        if (! empty($selectedMonth) && preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
-            // STAFF HAS SELECTED A SPECIFIC MONTH CARD (e.g. ?month=2026-08)
-            // SQL queries strictly restricted to selected month for performance
-            [$year, $mNum] = explode('-', $selectedMonth);
-            $year = (int) $year;
-            $mNum = (int) $mNum;
+        if ($selectedMonth !== null) {
+            // Restrict archive queries to the selected month for performance.
+            [$year, $mNum] = array_map('intval', explode('-', $selectedMonth));
 
-            // Populate autocomplete lists for the filter dropdowns in selected month
+            // Populate autocomplete lists for the filter dropdowns in selected month.
             $sendersList = IncomingMail::whereYear('received_date', $year)
                 ->whereMonth('received_date', $mNum)
                 ->whereNotNull('sender')
@@ -59,45 +64,59 @@ class RepositoryController extends Controller
                 ->unique()
                 ->values();
 
-            // Query Incoming Mails for selected month only
             $incomingQuery = IncomingMail::whereYear('received_date', $year)
                 ->whereMonth('received_date', $mNum);
 
-            if (! empty($search)) {
-                $incomingQuery->where(function ($q) use ($search) {
-                    $q->where('mail_number', 'like', "%{$search}%")
-                      ->orWhere('subject', 'like', "%{$search}%")
-                      ->orWhere('disposition_note', 'like', "%{$search}%")
-                      ->orWhere('recipient_name', 'like', "%{$search}%");
+            if ($search !== '') {
+                $incomingQuery->where(function ($query) use ($search) {
+                    $query->where('mail_number', 'like', "%{$search}%")
+                        ->orWhere('received_date', 'like', "%{$search}%")
+                        ->orWhere('sender', 'like', "%{$search}%")
+                        ->orWhere('recipient', 'like', "%{$search}%")
+                        ->orWhere('status', 'like', "%{$search}%")
+                        ->orWhere('subject', 'like', "%{$search}%")
+                        ->orWhere('outgoing_date', 'like', "%{$search}%")
+                        ->orWhere('disposition_note', 'like', "%{$search}%")
+                        ->orWhere('recipient_name', 'like', "%{$search}%")
+                        ->orWhere('receipt_number', 'like', "%{$search}%");
                 });
             }
-            if (! empty($sender)) {
+
+            if ($sender !== '') {
                 $incomingQuery->where('sender', 'like', "%{$sender}%");
             }
-            if (! empty($recipient)) {
+
+            if ($recipient !== '') {
                 $incomingQuery->where('recipient', 'like', "%{$recipient}%");
             }
 
             $incomingMails = $incomingQuery->latest('received_date')->get();
 
-            // Query Outgoing Mails for selected month only
             $outgoingQuery = OutgoingMail::with('creator')
                 ->whereYear('created_at', $year)
                 ->whereMonth('created_at', $mNum);
 
-            if (! empty($search)) {
-                $outgoingQuery->where(function ($q) use ($search) {
-                    $q->where('mail_number', 'like', "%{$search}%")
-                      ->orWhere('subject', 'like', "%{$search}%")
-                      ->orWhere('notes', 'like', "%{$search}%");
+            if ($search !== '') {
+                $outgoingQuery->where(function ($query) use ($search) {
+                    $query->where('mail_number', 'like', "%{$search}%")
+                        ->orWhere('created_at', 'like', "%{$search}%")
+                        ->orWhere('subject', 'like', "%{$search}%")
+                        ->orWhere('disposition_note', 'like', "%{$search}%")
+                        ->orWhere('recipient', 'like', "%{$search}%")
+                        ->orWhere('status', 'like', "%{$search}%")
+                        ->orWhereHas('creator', function ($creatorQuery) use ($search) {
+                            $creatorQuery->where('name', 'like', "%{$search}%");
+                        });
                 });
             }
-            if (! empty($sender)) {
-                $outgoingQuery->whereHas('creator', function ($q) use ($sender) {
-                    $q->where('name', 'like', "%{$sender}%");
+
+            if ($sender !== '') {
+                $outgoingQuery->whereHas('creator', function ($query) use ($sender) {
+                    $query->where('name', 'like', "%{$sender}%");
                 });
             }
-            if (! empty($recipient)) {
+
+            if ($recipient !== '') {
                 $outgoingQuery->where('recipient', 'like', "%{$recipient}%");
             }
 
@@ -116,8 +135,15 @@ class RepositoryController extends Controller
                 'incoming' => $incomingMails,
                 'outgoing' => $outgoingMails,
             ];
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'html' => view('repository.partials.tables', compact('activeMonthData'))->render(),
+                    'total' => $activeMonthData['total_count'],
+                ]);
+            }
         } else {
-            // MAIN OVERVIEW PAGE: Fetch all incoming & outgoing mails to build month summary cards
+            // Build monthly summary cards for the archive overview.
             $incomingMails = IncomingMail::latest('received_date')->get();
             $outgoingMails = OutgoingMail::latest('created_at')->get();
 
@@ -131,7 +157,7 @@ class RepositoryController extends Controller
                 if (! isset($monthsData[$key])) {
                     $monthsData[$key] = [
                         'key' => $key,
-                        'label' => Carbon::parse($key . '-01')->translatedFormat('F Y'),
+                        'label' => Carbon::parse($key.'-01')->translatedFormat('F Y'),
                         'year' => $date->format('Y'),
                         'month_num' => $date->format('m'),
                         'incoming_count' => 0,
@@ -154,7 +180,7 @@ class RepositoryController extends Controller
                 if (! isset($monthsData[$key])) {
                     $monthsData[$key] = [
                         'key' => $key,
-                        'label' => Carbon::parse($key . '-01')->translatedFormat('F Y'),
+                        'label' => Carbon::parse($key.'-01')->translatedFormat('F Y'),
                         'year' => $date->format('Y'),
                         'month_num' => $date->format('m'),
                         'incoming_count' => 0,

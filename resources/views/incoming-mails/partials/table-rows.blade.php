@@ -29,6 +29,7 @@
                     'PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'bg-slate-200 text-slate-900 border-slate-400 hover:bg-slate-300 font-bold',
                     'REVISI' => 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 font-bold',
                     'RETURN', 'RETURNED' => 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50 font-bold',
+                    'DRAFT' => 'bg-indigo-50 text-indigo-800 border-indigo-300 hover:bg-indigo-100 font-bold',
                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                 };
                 $displayStatus = match ($mail->status) {
@@ -73,10 +74,17 @@
                 Detail
             </a>
             @can('update', $mail)
-                <a href="{{ route('incoming-mails.edit', $mail) }}"
-                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold rounded-lg text-xs transition-all border border-slate-200">
-                    Edit
-                </a>
+                @if($mail->status === 'DRAFT')
+                    <a href="{{ route('incoming-mails.edit', $mail) }}"
+                        class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs transition-all shadow-xs border border-indigo-600">
+                        Lanjutkan Draft
+                    </a>
+                @else
+                    <a href="{{ route('incoming-mails.edit', $mail) }}"
+                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold rounded-lg text-xs transition-all border border-slate-200">
+                        Edit
+                    </a>
+                @endif
             @endcan
         </td>
     </tr>

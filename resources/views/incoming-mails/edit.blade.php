@@ -3,252 +3,370 @@
 @section('title', 'Edit Surat Masuk')
 
 @section('content')
-    <div class="pb-4 border-b border-slate-200/80 flex items-center justify-between">
-        <div>
-            <div class="flex items-center space-x-2">
+    <div x-data="{ loading: false }" class="space-y-6">
+        <div class="pb-4 border-b border-slate-200/80 flex items-center justify-between">
+            <div>
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Edit Surat Masuk</h1>
+                <p class="text-xs text-slate-500 mt-1">Lengkapi data surat masuk dan tanda tangan pengantar untuk finalisasi dokumen.</p>
             </div>
-            <p class="text-xs text-slate-500 mt-1">Lengkapi data surat masuk dan tanda tangan pengantar untuk finalisasi dokumen.</p>
+            <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
+                <span>No. Surat: <strong class="text-slate-900 font-mono">{{ $incomingMail->mail_number ?: '-' }}</strong></span>
+            </div>
         </div>
-        <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
-            <span>No. Surat: <strong class="text-slate-900 font-mono">{{ $incomingMail->mail_number }}</strong></span>
-        </div>
+
+        <form action="{{ route('incoming-mails.update', $incomingMail) }}" method="POST" enctype="multipart/form-data" class="space-y-6" @submit="loading = true">
+            @csrf
+            @method('PUT')
+
+            <!-- Section 1: Informasi Utama & Pengirim -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
+                <div class="pb-3 border-b border-slate-100">
+                    <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+                        <span>Informasi Utama & Pengirim</span>
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Dari (Pengirim) -->
+                    <div x-data="searchableSelect({
+                        initialValue: {{ json_encode(old('sender', $incomingMail->sender)) }},
+                        defaultOptions: {{ json_encode($senders ?? []) }}
+                    })" class="relative" @click.away="open = false">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Dari / Biro Pengirim <span class="text-slate-900 font-bold">*</span>
+                        </label>
+                        <input type="hidden" name="sender" :value="value">
+
+                        <!-- Trigger Button -->
+                        <button type="button" 
+                                @click="open = !open; if(open) $nextTick(() => $refs.searchInput.focus())"
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 flex items-center justify-between shadow-2xs transition-all cursor-pointer">
+                            <span x-text="value ? value : 'Pilih / Cari Biro Pengirim...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-bold': value }"></span>
+                            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown List -->
+                        <div x-show="open" x-cloak 
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="transform opacity-0 scale-95"
+                             x-transition:enter-end="transform opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="transform opacity-100 scale-100"
+                             x-transition:leave-end="transform opacity-0 scale-95"
+                             class="absolute z-30 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden p-2 space-y-2">
+                            
+                            <div class="relative">
+                                <input x-ref="searchInput" 
+                                       type="text" 
+                                       x-model="search" 
+                                       class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">×</span>
+                            </div>
+
+                            <div class="max-h-44 overflow-y-auto space-y-1">
+                                <template x-for="item in filteredOptions" :key="item">
+                                    <button type="button" 
+                                            @click="selectOption(item)" 
+                                            class="w-full text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
+                                            :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
+                                        <span x-text="item"></span>
+                                        <span x-show="value === item" class="text-xs">✓</span>
+                                    </button>
+                                </template>
+
+                                <div x-show="search.trim() !== '' && !filteredOptions.map(o => o.toLowerCase()).includes(search.trim().toLowerCase())" class="pt-1 border-t border-slate-100">
+                                    <button type="button" 
+                                            @click="addNewOption(search.trim())" 
+                                            class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer">
+                                        <span>Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        @error('sender')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Tanggal Masuk -->
+                    <div>
+                        <label for="received_date" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Masuk <span class="text-slate-900 font-bold">*</span></label>
+                        <input type="date" name="received_date" id="received_date" value="{{ old('received_date', $incomingMail->received_date?->format('Y-m-d')) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                        @error('received_date')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Nama Penerima -->
+                    <div>
+                        <label for="recipient_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nama Penerima Fisik</label>
+                        <input type="text" name="recipient_name" id="recipient_name" value="{{ old('recipient_name', $incomingMail->recipient_name) }}" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                        @error('recipient_name')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Detail Dokumen -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
+                <div class="pb-3 border-b border-slate-100 flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+                        <span>Detail Dokumen Surat</span>
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Nomor Surat -->
+                    <div>
+                        <label for="mail_number" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Surat <span class="text-slate-400 font-normal normal-case">(Opsional)</span></label>
+                        <input type="text" name="mail_number" id="mail_number" value="{{ old('mail_number', $incomingMail->mail_number) }}" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                        @error('mail_number')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Kepada (Penerima) Dokumen Ini -->
+                    <div>
+                        <label for="recipient" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Kepada / Penuju Dokumen <span class="text-slate-900 font-bold">*</span>
+                        </label>
+                        <input type="text" 
+                               list="recipient-presets"
+                               name="recipient" 
+                               id="recipient"
+                               value="{{ old('recipient', $incomingMail->recipient) }}" 
+                               required
+                               class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                        @error('recipient')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <!-- Perihal -->
+                <div>
+                    <label for="subject" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Perihal <span class="text-slate-900 font-bold">*</span>
+                    </label>
+                    <input type="text" name="subject" id="subject" value="{{ old('subject', $incomingMail->subject) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                    @error('subject')
+                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Tanggal Keluar/Surat -->
+                    <div>
+                        <label for="outgoing_date" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Surat Keluar <span class="text-slate-400 font-normal normal-case">(Opsional)</span></label>
+                        <input type="date" name="outgoing_date" id="outgoing_date" value="{{ old('outgoing_date', $incomingMail->outgoing_date?->format('Y-m-d')) }}" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                        @error('outgoing_date')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Status Surat -->
+                    <div>
+                        <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Dokumen</label>
+                        <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                            <option value="RECEIVE" {{ old('status', $incomingMail->status) == 'RECEIVE' || old('status', $incomingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
+                            <option value="PROGRES" {{ old('status', $incomingMail->status) == 'PROGRES' || old('status', $incomingMail->status) == 'PENDING' || old('status', $incomingMail->status) == 'PROGRESS' || old('status', $incomingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
+                            <option value="REVISI" {{ old('status', $incomingMail->status) == 'REVISI' ? 'selected' : '' }}>REVISI</option>
+                            <option value="RETURN" {{ old('status', $incomingMail->status) == 'RETURN' || old('status', $incomingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
+                            <option value="DISPOSISI" {{ old('status', $incomingMail->status) == 'DISPOSISI' ? 'selected' : '' }}>DISPOSISI</option>
+                        </select>
+                        @error('status')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Disposisi -->
+                    <div>
+                        <label for="disposition_note" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Disposisi (Opsional)</label>
+                        <textarea name="disposition_note" id="disposition_note" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">{{ old('disposition_note', $incomingMail->disposition_note) }}</textarea>
+                        @error('disposition_note')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Keterangan -->
+                    <div>
+                        <label for="notes" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Keterangan Tambahan (Opsional)</label>
+                        <textarea name="notes" id="notes" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">{{ old('notes', $incomingMail->notes) }}</textarea>
+                        @error('notes')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Lampiran Foto Dokumen & Tanda Terima -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
+                <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+                    <span>Foto Dokumen & Tanda Terima</span>
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Upload Dokumen / Foto -->
+                    <div x-data="{ hasFile: false, fileName: '' }">
+                        <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Upload Dokumen (PDF / Foto Kamera)
+                        </label>
+
+                        @if ($incomingMail->file_path || $incomingMail->document_photo_path)
+                            <div class="mb-3 p-3 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between">
+                                <span class="text-xs font-medium text-slate-700">Berkas Terunggah</span>
+                                <a href="{{ route('document.download', ['path' => $incomingMail->file_path ?? $incomingMail->document_photo_path, 'inline' => 1]) }}" target="_blank" class="text-xs text-slate-900 hover:underline font-semibold">
+                                    Pratinjau
+                                </a>
+                            </div>
+                        @endif
+
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 transition-all space-y-3">
+                            <input type="file" 
+                                   name="file" 
+                                   id="file" 
+                                   x-ref="photoInput"
+                                   accept="application/pdf,image/*" 
+                                   capture="environment" 
+                                   @change="hasFile = $event.target.files.length > 0; fileName = hasFile ? $event.target.files[0].name : ''"
+                                   class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+
+                            <div x-show="hasFile" x-cloak class="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                <span class="text-xs font-medium text-emerald-800 truncate max-w-[220px]" x-text="'File baru: ' + fileName"></span>
+                                <button type="button" 
+                                        @click="$refs.photoInput.value = ''; hasFile = false; fileName = ''"
+                                        class="px-2.5 py-1 text-xs font-bold text-rose-700 bg-white border border-rose-200 rounded-md hover:bg-rose-50 shadow-2xs transition-all flex-shrink-0 cursor-pointer">
+                                    Batal Upload
+                                </button>
+                            </div>
+                        </div>
+                        @error('file')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Tanda Terima Signature Canvas Pad ONLY -->
+                    <div x-data="signaturePad()" class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Tanda Terima Pengantar (Canvas)
+                        </label>
+
+                        @if ($incomingMail->receipt_signature_path)
+                            <div class="mb-3 p-3 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between">
+                                <span class="text-xs font-medium text-slate-700">Tanda Tangan Terdaftar</span>
+                                <a href="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path, 'inline' => 1]) }}" target="_blank" class="text-xs text-slate-900 hover:underline font-semibold">
+                                    Pratinjau
+                                </a>
+                            </div>
+                        @endif
+                        
+                        <div class="bg-slate-50 p-3 border border-slate-200 rounded-xl space-y-3">
+                            <div class="relative bg-white rounded-xl border border-slate-300 overflow-hidden shadow-2xs">
+                                <canvas x-ref="canvas" 
+                                        width="600" 
+                                        height="200" 
+                                        @mousedown="onStart($event)"
+                                        @mousemove="onMove($event)"
+                                        @mouseup="onEnd($event)"
+                                        @mouseleave="onEnd($event)"
+                                        @touchstart.prevent="onStart($event)"
+                                        @touchmove.prevent="onMove($event)"
+                                        @touchend.prevent="onEnd($event)"
+                                        class="w-full h-40 touch-none cursor-crosshair block bg-white"></canvas>
+                            </div>
+                            
+                            <input type="hidden" name="receipt_signature" :value="signatureBase64">
+
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-medium text-slate-600" x-text="hasSignature ? 'Tanda tangan baru digoreskan' : ''"></span>
+                                <button type="button" @click="clearCanvas()" class="px-3 py-1 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-all cursor-pointer">
+                                    Bersihkan Pad
+                                </button>
+                            </div>
+                        </div>
+                        @error('receipt_signature')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-between pt-4 border-t border-slate-200/80">
+                <a href="{{ route('incoming-mails.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs">
+                    Batal
+                </a>
+
+                <button type="submit" :disabled="loading" class="px-6 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center space-x-2 transition-all shadow-xs cursor-pointer">
+                    <span x-show="!loading">Simpan Perubahan</span>
+                    <span x-show="loading" class="flex items-center space-x-2">
+                        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Memproses...</span>
+                    </span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Datalist Options for Recipients -->
+        <datalist id="recipient-presets">
+            @foreach ($recipients ?? [] as $recipientOption)
+                <option value="{{ $recipientOption }}"></option>
+            @endforeach
+        </datalist>
     </div>
 
-    <form action="{{ route('incoming-mails.update', $incomingMail) }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-6" x-data="{ loading: false }" @submit="loading = true">
-        @csrf
-        @method('PUT')
-
-        <!-- Section 1: Data Utama -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
-            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
-                <span>Data Utama Surat</span>
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Nomer surat -->
-                <div>
-                    <label for="mail_number" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Surat <span class="text-slate-900 font-bold">*</span></label>
-                    <input type="text" name="mail_number" id="mail_number" value="{{ old('mail_number', $incomingMail->mail_number) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                    @error('mail_number')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Tanggal Masuk -->
-                <div>
-                    <label for="received_date" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Masuk <span class="text-slate-900 font-bold">*</span></label>
-                    <input type="date" name="received_date" id="received_date" value="{{ old('received_date', $incomingMail->received_date?->format('Y-m-d')) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                    @error('received_date')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Tanggal Keluar/Surat -->
-                <div>
-                    <label for="outgoing_date" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Surat</label>
-                    <input type="date" name="outgoing_date" id="outgoing_date" value="{{ old('outgoing_date', $incomingMail->outgoing_date?->format('Y-m-d')) }}" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                    @error('outgoing_date')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Dari (Pengirim) -->
-                <div>
-                    <label for="sender" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Dari (Biro Pengirim) <span class="text-slate-900 font-bold">*</span></label>
-                    <input type="text" name="sender" id="sender" value="{{ old('sender', $incomingMail->sender) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                    @error('sender')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Kepada -->
-                <div>
-                    <label for="recipient" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Kepada</label>
-                    <input type="text" name="recipient" id="recipient" value="{{ old('recipient', $incomingMail->recipient) }}" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                    @error('recipient')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Status Surat -->
-                <div>
-                    <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Surat</label>
-                    <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                        <option value="RECEIVE" {{ old('status', $incomingMail->status) == 'RECEIVE' || old('status', $incomingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
-                        <option value="PROGRES" {{ old('status', $incomingMail->status) == 'PROGRES' || old('status', $incomingMail->status) == 'PENDING' || old('status', $incomingMail->status) == 'PROGRESS' || old('status', $incomingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
-                        <option value="REVISI" {{ old('status', $incomingMail->status) == 'REVISI' ? 'selected' : '' }}>REVISI</option>
-                        <option value="RETURN" {{ old('status', $incomingMail->status) == 'RETURN' || old('status', $incomingMail->status) == 'RETURNED' ? 'selected' : '' }}>RETURN</option>
-                    </select>
-                    @error('status')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <!-- Perihal Surat -->
-            <div>
-                <label for="subject" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Perihal <span class="text-slate-900 font-bold">*</span></label>
-                <input type="text" name="subject" id="subject" value="{{ old('subject', $incomingMail->subject) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                @error('subject')
-                    <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
-
-        <!-- Section 2: Disposisi, Keterangan & Penerima -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
-            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
-                <span>Disposisi & Penerima</span>
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Disposisi -->
-                <div>
-                    <label for="disposition_note" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Disposisi</label>
-                    <textarea name="disposition_note" id="disposition_note" rows="3" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">{{ old('disposition_note', $incomingMail->disposition_note) }}</textarea>
-                    @error('disposition_note')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Keterangan -->
-                <div>
-                    <label for="notes" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Keterangan</label>
-                    <textarea name="notes" id="notes" rows="3" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">{{ old('notes', $incomingMail->notes) }}</textarea>
-                    @error('notes')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <!-- Nama Penerima -->
-            <div>
-                <label for="recipient_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nama Penerima</label>
-                <input type="text" name="recipient_name" id="recipient_name" value="{{ old('recipient_name', $incomingMail->recipient_name) }}" class="w-full md:w-1/2 px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                @error('recipient_name')
-                    <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
-
-        <!-- Section 3: Lampiran Foto Dokumen & Tanda Terima -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
-            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
-                <span>Foto Dokumen & Tanda Terima</span>
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Upload Dokumen / Foto -->
-                <div x-data="{ hasFile: false, fileName: '' }">
-                    <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Upload Dokumen (PDF / Foto Kamera)
-                    </label>
-
-                    @if ($incomingMail->file_path || $incomingMail->document_photo_path)
-                        <div class="mb-3 p-3 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between">
-                            <span class="text-xs font-medium text-slate-700">Berkas Terunggah</span>
-                            <a href="{{ route('document.download', ['path' => $incomingMail->file_path ?? $incomingMail->document_photo_path, 'inline' => 1]) }}" target="_blank" class="text-xs text-slate-900 hover:underline font-semibold">
-                                Pratinjau
-                            </a>
-                        </div>
-                    @endif
-
-                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 transition-all space-y-3">
-                        <input type="file" 
-                               name="file" 
-                               id="file" 
-                               x-ref="photoInput"
-                               accept="application/pdf,image/*" 
-                               capture="environment" 
-                               @change="hasFile = $event.target.files.length > 0; fileName = hasFile ? $event.target.files[0].name : ''"
-                               class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
-
-                        <div x-show="hasFile" x-cloak class="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
-                            <span class="text-xs font-medium text-emerald-800 truncate max-w-[220px]" x-text="'File baru: ' + fileName"></span>
-                            <button type="button" 
-                                    @click="$refs.photoInput.value = ''; hasFile = false; fileName = ''"
-                                    class="px-2.5 py-1 text-xs font-bold text-rose-700 bg-white border border-rose-200 rounded-md hover:bg-rose-50 shadow-2xs transition-all flex-shrink-0">
-                                Batal Upload
-                            </button>
-                        </div>
-                    </div>
-                    @error('file')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Tanda Terima Signature Canvas Pad ONLY -->
-                <div x-data="signaturePad()" class="space-y-1.5">
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Tanda Terima Pengantar (Canvas)
-                    </label>
-
-                    @if ($incomingMail->receipt_signature_path)
-                        <div class="mb-3 p-3 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between">
-                            <span class="text-xs font-medium text-slate-700">Tanda Tangan Terdaftar</span>
-                            <a href="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path, 'inline' => 1]) }}" target="_blank" class="text-xs text-slate-900 hover:underline font-semibold">
-                                Pratinjau
-                            </a>
-                        </div>
-                    @endif
-                    
-                    <div class="bg-slate-50 p-3 border border-slate-200 rounded-xl space-y-3">
-                        <div class="relative bg-white rounded-xl border border-slate-300 overflow-hidden shadow-2xs">
-                            <canvas x-ref="canvas" 
-                                    width="600" 
-                                    height="200" 
-                                    @mousedown="onStart($event)"
-                                    @mousemove="onMove($event)"
-                                    @mouseup="onEnd($event)"
-                                    @mouseleave="onEnd($event)"
-                                    @touchstart.prevent="onStart($event)"
-                                    @touchmove.prevent="onMove($event)"
-                                    @touchend.prevent="onEnd($event)"
-                                    class="w-full h-40 touch-none cursor-crosshair block bg-white"></canvas>
-                        </div>
-                        
-                        <input type="hidden" name="receipt_signature" :value="signatureBase64">
-
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="font-medium text-slate-600" x-text="hasSignature ? 'Tanda tangan baru digoreskan' : ''"></span>
-                            <button type="button" @click="clearCanvas()" class="px-3 py-1 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-all">
-                                Bersihkan Pad
-                            </button>
-                        </div>
-                    </div>
-                    @error('receipt_signature')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex items-center justify-between pt-4 border-t border-slate-200/80">
-            <a href="{{ route('incoming-mails.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs">
-                Batal
-            </a>
-
-            <button type="submit" :disabled="loading" class="px-6 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center space-x-2 transition-all shadow-xs">
-                <span x-show="!loading">Simpan Perubahan</span>
-                <span x-show="loading" class="flex items-center space-x-2">
-                    <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Memproses...</span>
-                </span>
-            </button>
-        </div>
-    </form>
-
     <script>
+        function searchableSelect(config) {
+            const defaultOpts = Array.isArray(config.defaultOptions) ? [...config.defaultOptions] : [];
+            const initVal = config.initialValue || '';
+            if (initVal && !defaultOpts.includes(initVal)) {
+                defaultOpts.unshift(initVal);
+            }
+
+            return {
+                open: false,
+                search: '',
+                value: initVal,
+                options: defaultOpts,
+
+                get filteredOptions() {
+                    if (!this.search.trim()) {
+                        return this.options;
+                    }
+                    return this.options.filter(opt => 
+                        opt.toLowerCase().includes(this.search.trim().toLowerCase())
+                    );
+                },
+
+                selectOption(opt) {
+                    this.value = opt;
+                    this.search = '';
+                    this.open = false;
+                },
+
+                addNewOption(newOpt) {
+                    if (!newOpt) return;
+                    if (!this.options.includes(newOpt)) {
+                        this.options.push(newOpt);
+                    }
+                    this.value = newOpt;
+                    this.search = '';
+                    this.open = false;
+                }
+            };
+        }
+
         function signaturePad() {
             return {
                 isDrawing: false,

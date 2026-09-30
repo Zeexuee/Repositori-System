@@ -61,6 +61,72 @@
             </div>
         </div>
 
+        <!-- Draft Modal -->
+        <div x-show="showDraftModal" 
+            x-cloak
+            class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style="margin: 0 !important;"
+            @keydown.escape.window="showDraftModal = false">
+            
+            <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showDraftModal = false"></div>
+            
+            <div class="relative bg-white rounded-2xl shadow-2xl max-w-7xl w-full border-2 border-slate-900 overflow-hidden flex flex-col max-h-[85vh]"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95">
+                
+                <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-white">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Daftar Dokumen Draft</h3>
+                        <p class="text-xs text-slate-500 mt-1">Lanjutkan pengerjaan dokumen yang belum selesai disimpan.</p>
+                    </div>
+                    <button type="button" @click="showDraftModal = false" class="text-slate-400 hover:text-slate-900 transition-colors p-2 rounded-lg hover:bg-slate-100">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                
+                <div class="p-6 overflow-y-auto flex-1 bg-slate-50 relative">
+                    <div x-show="isLoadingDrafts" class="absolute inset-0 bg-slate-50/80 flex items-center justify-center z-10 backdrop-blur-[1px]">
+                        <div class="flex items-center space-x-3 bg-white px-5 py-3 rounded-xl shadow-xl border border-slate-200">
+                            <svg class="animate-spin h-5 w-5 text-slate-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-sm font-bold text-slate-900">Memuat Draft...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse min-w-full">
+                                <thead>
+                                    <tr class="border-b border-slate-200 bg-slate-100 text-xs sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider">
+                                        <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap w-14">No.</th>
+                                        <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Nomor Surat</th>
+                                        <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Tanggal Masuk</th>
+                                        <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Dari</th>
+                                        <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Kepada</th>
+                                        <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Status</th>
+                                        <th class="py-4 px-4 sm:px-5 min-w-[280px]">Perihal</th>
+                                        <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Tanggal Keluar</th>
+                                        <th class="py-4 px-4 sm:px-5 min-w-[200px]">Disposisi</th>
+                                        <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Nama Penerima</th>
+                                        <th class="py-4 px-4 sm:px-5 text-right whitespace-nowrap">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 text-sm" x-ref="draftTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="mt-4" x-ref="draftPaginationContainer"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Teleported Single Status Dropdown (Topmost, outside all clipping containers) -->
         <template x-teleport="body">
             <div x-show="showStatusDropdown" 
@@ -119,6 +185,17 @@
                             <span>Return</span>
                         </div>
                         <svg x-show="statusDropdownCurrentStatus === 'RETURN'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                    <button type="button" @click="selectStatusOption('DISPOSISI')"
+                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
+                        :class="statusDropdownCurrentStatus === 'DISPOSISI' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                            <span>Di disposisikan</span>
+                        </div>
+                        <svg x-show="statusDropdownCurrentStatus === 'DISPOSISI'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
                         </svg>
                     </button>
@@ -233,6 +310,11 @@
                                 <span>Ubah ke Return</span>
                                 <span class="w-2 h-2 rounded-full border border-slate-400 bg-white"></span>
                             </button>
+                            <button type="button" @click="bulkUpdateStatus('DISPOSISI'); open = false"
+                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                                <span>Ubah ke Di disposisikan</span>
+                                <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -242,6 +324,13 @@
                     :class="isSelectionMode ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs'"
                     class="inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all border cursor-pointer">
                     <span x-text="isSelectionMode ? 'Batal Select' : 'Select'">Select</span>
+                </button>
+
+                <!-- Tombol Draft -->
+                <button type="button" @click="openDraftModal()"
+                    class="inline-flex items-center px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 shadow-2xs border border-indigo-200 text-xs font-bold rounded-xl transition-all cursor-pointer">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    <span>Draft</span>
                 </button>
 
                 @can('create', App\Models\IncomingMail::class)
@@ -319,6 +408,10 @@
                 isSubmitting: false,
                 singleUpdateId: null,
                 
+                // Draft Modal state
+                showDraftModal: false,
+                isLoadingDrafts: false,
+                
                 // Toast state
                 showSuccessToast: false,
                 successMessage: '',
@@ -360,12 +453,58 @@
                     
                     // Watch modal state untuk prevent body scroll
                     this.$watch('showConfirmModal', (value) => {
-                        if (value) {
+                        if (value || this.showDraftModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
                         }
                     });
+                    this.$watch('showDraftModal', (value) => {
+                        if (value || this.showConfirmModal) {
+                            document.body.style.overflow = 'hidden';
+                        } else {
+                            document.body.style.overflow = '';
+                        }
+                    });
+                },
+
+                async openDraftModal(url = null) {
+                    this.showDraftModal = true;
+                    this.isLoadingDrafts = true;
+                    
+                    try {
+                        const targetUrl = url || new URL('{{ route('incoming-mails.index') }}?status=DRAFT', window.location.origin).toString();
+                        
+                        const response = await fetch(targetUrl, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            }
+                        });
+                        
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        
+                        const data = await response.json();
+                        
+                        this.$refs.draftTableBody.innerHTML = data.html;
+                        this.$refs.draftPaginationContainer.innerHTML = data.pagination;
+                        
+                        this.$nextTick(() => {
+                            const links = this.$refs.draftPaginationContainer.querySelectorAll('a');
+                            links.forEach(link => {
+                                link.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    this.openDraftModal(link.href);
+                                });
+                            });
+                        });
+                        
+                    } catch (error) {
+                        console.error('Draft load error:', error);
+                        this.$refs.draftTableBody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-500 italic text-sm">Terjadi kesalahan saat memuat draft.</td></tr>';
+                    } finally {
+                        this.isLoadingDrafts = false;
+                    }
                 },
 
                 toggleSelectionMode() {
