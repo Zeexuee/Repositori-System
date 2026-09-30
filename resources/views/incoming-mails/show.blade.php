@@ -73,8 +73,19 @@
 
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status Surat</span>
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white">
-                        {{ $incomingMail->status === 'WAITING_RETURN' ? 'WAITING RETURN' : $incomingMail->status }}
+                    @php
+                        $canonicalStatus = App\Support\IncomingMailStatus::canonical($incomingMail->status);
+                        $statusBadge = match ($canonicalStatus) {
+                            App\Support\IncomingMailStatus::REVISI => 'bg-amber-50 text-amber-800 border-amber-300',
+                            App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300',
+                            App\Support\IncomingMailStatus::RETURN => 'bg-white text-slate-800 border-slate-300',
+                            App\Support\IncomingMailStatus::DRAFT => 'bg-indigo-50 text-indigo-800 border-indigo-300',
+                            App\Support\IncomingMailStatus::DISPOSISI => 'bg-slate-200 text-slate-900 border-slate-400',
+                            default => 'bg-slate-900 text-white border-slate-900',
+                        };
+                    @endphp
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
+                        {{ App\Support\IncomingMailStatus::label($incomingMail->status) }}
                     </span>
                 </div>
             </div>
@@ -146,6 +157,45 @@
             </div>
         </div>
 
+        @if ($incomingMail->revisionNotes->isNotEmpty())
+            <section class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4" aria-labelledby="revision-notes-heading">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div>
+                        <h2 id="revision-notes-heading" class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Riwayat Revisi
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">
+                            {{ $incomingMail->revisionNotes->count() }} catatan tercatat, terbaru di atas.
+                        </p>
+                    </div>
+                    @if ($canonicalStatus === App\Support\IncomingMailStatus::REVISI)
+                        <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                            Sedang dalam revisi
+                        </span>
+                    @endif
+                </div>
+
+                <ul class="space-y-3">
+                    @foreach ($incomingMail->revisionNotes as $revisionNote)
+                        <li class="p-4 rounded-xl border {{ $revisionNote->isRequest() ? 'bg-amber-50/60 border-amber-200' : 'bg-emerald-50/60 border-emerald-200' }}">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <span class="text-[10px] font-bold uppercase tracking-wider {{ $revisionNote->isRequest() ? 'text-amber-800' : 'text-emerald-800' }}">
+                                    {{ $revisionNote->isRequest() ? 'Permintaan Revisi' : 'Revisi Diselesaikan' }}
+                                </span>
+                                <span class="text-[11px] font-mono text-slate-500">
+                                    {{ $revisionNote->created_at?->format('d/m/Y H:i') }}
+                                    · {{ $revisionNote->creator?->name ?? 'Sistem' }}
+                                </span>
+                            </div>
+                            <p class="mt-2 text-sm text-slate-800 whitespace-pre-line leading-relaxed">
+                                {{ $revisionNote->note ?? 'Tanpa catatan.' }}
+                            </p>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
+
         @if ($incomingMail->returnRecipients->isNotEmpty())
             @php
                 $signedReturnRecipients = $incomingMail->returnRecipients->filter(fn ($recipient) => $recipient->signed_at !== null)->count();
@@ -161,8 +211,8 @@
                             {{ $signedReturnRecipients }} dari {{ $totalReturnRecipients }} penerima telah menandatangani.
                         </p>
                     </div>
-                    <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold border {{ $incomingMail->status === 'WAITING_RETURN' ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-slate-900 text-white border-slate-900' }}">
-                        {{ $incomingMail->status === 'WAITING_RETURN' ? 'WAITING RETURN' : $incomingMail->status }}
+                    <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
+                        {{ App\Support\IncomingMailStatus::label($incomingMail->status) }}
                     </span>
                 </div>
 
@@ -203,7 +253,7 @@
                     </table>
                 </div>
 
-                @if ($incomingMail->status === 'WAITING_RETURN' && auth()->user()?->can('update', $incomingMail))
+                @if ($canonicalStatus === App\Support\IncomingMailStatus::WAITING_RETURN && auth()->user()?->can('update', $incomingMail))
                     <div class="flex justify-end">
                         <a href="{{ route('incoming-mails.index') }}" class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl text-xs font-bold">
                             Kembali dan Lanjutkan melalui Status

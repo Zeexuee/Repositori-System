@@ -25,26 +25,22 @@
         </td>
         <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
             @php
-                $badgeClasses = match ($mail->status) {
-                    'RECEIVE', 'RECEIVED' => 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800',
-                    'PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'bg-slate-200 text-slate-900 border-slate-400 hover:bg-slate-300 font-bold',
-                    'REVISI' => 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 font-bold',
-                    'WAITING_RETURN' => 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100 font-bold',
-                    'RETURN', 'RETURNED' => 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50 font-bold',
-                    'DRAFT' => 'bg-indigo-50 text-indigo-800 border-indigo-300 hover:bg-indigo-100 font-bold',
+                $canonicalStatus = App\Support\IncomingMailStatus::canonical($mail->status);
+                $displayStatus = App\Support\IncomingMailStatus::label($mail->status);
+                $isFinalStatus = App\Support\IncomingMailStatus::allowedTransitions($canonicalStatus) === [];
+                $badgeClasses = match ($canonicalStatus) {
+                    App\Support\IncomingMailStatus::RECEIVE => 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800',
+                    App\Support\IncomingMailStatus::REVISI => 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 font-bold',
+                    App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100 font-bold',
+                    App\Support\IncomingMailStatus::RETURN => 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50 font-bold',
+                    App\Support\IncomingMailStatus::DRAFT => 'bg-indigo-50 text-indigo-800 border-indigo-300 hover:bg-indigo-100 font-bold',
+                    App\Support\IncomingMailStatus::DISPOSISI => 'bg-slate-200 text-slate-900 border-slate-400 hover:bg-slate-300 font-bold',
                     default => 'bg-slate-100 text-slate-700 border-slate-300',
-                };
-                $displayStatus = match ($mail->status) {
-                    'RECEIVED' => 'RECEIVE',
-                    'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'PROGRES',
-                    'RETURNED' => 'RETURN',
-                    'WAITING_RETURN' => 'WAITING RETURN',
-                    default => $mail->status,
                 };
             @endphp
 
-            @if (auth()->user()?->can('update', $mail))
-                @if ($mail->status === 'WAITING_RETURN')
+            @if (auth()->user()?->can('update', $mail) && ! $isFinalStatus)
+                @if ($canonicalStatus === App\Support\IncomingMailStatus::WAITING_RETURN)
                     <button type="button"
                         @click="window.resumeReturnWorkflow(@js((string) $mail->id), @js((string) $mail->mail_number))"
                         title="Lanjutkan pengisian tanda tangan pengembalian"
@@ -67,7 +63,8 @@
                     </button>
                 @endif
             @else
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border {{ $badgeClasses }}">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border {{ $badgeClasses }}"
+                    @if ($isFinalStatus) title="{{ $displayStatus }} adalah status akhir dan tidak dapat diubah lagi" @endif>
                     {{ $displayStatus }}
                 </span>
             @endif

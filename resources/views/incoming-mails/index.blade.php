@@ -61,6 +61,58 @@
             </div>
         </div>
 
+        <!-- Revision Note Modal -->
+        <template x-teleport="body">
+            <div x-show="showRevisionModal" x-cloak
+                class="fixed inset-0 z-[100000] flex items-center justify-center p-4"
+                role="dialog" aria-modal="true" aria-labelledby="revision-note-title"
+                @keydown.escape.window="closeRevisionModal()">
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+
+                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-lg overflow-hidden"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="px-6 py-5 border-b border-slate-200">
+                        <h2 id="revision-note-title" class="text-lg font-bold text-slate-900" x-text="revisionModalTitle"></h2>
+                        <p class="text-xs text-slate-500 mt-1" x-text="revisionModalSubtitle"></p>
+                    </div>
+
+                    <div class="px-6 py-5 space-y-3">
+                        <label for="revision-note-input" class="block text-xs font-bold text-slate-700">
+                            <span x-text="revisionIsRequired ? 'Catatan Kebutuhan Revisi' : 'Catatan Penyelesaian Revisi'"></span>
+                            <span x-show="revisionIsRequired" class="text-rose-600">*</span>
+                            <span x-show="!revisionIsRequired" class="font-normal text-slate-400">(opsional)</span>
+                        </label>
+                        <textarea id="revision-note-input" x-model="revisionNote" rows="5" maxlength="2000"
+                            :required="revisionIsRequired"
+                            :aria-required="revisionIsRequired"
+                            :placeholder="revisionIsRequired
+                                ? 'Jelaskan bagian mana yang perlu diperbaiki.'
+                                : 'Jelaskan bagaimana revisi diselesaikan (boleh dikosongkan).'"
+                            class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
+                        <p class="text-[11px] text-slate-400 text-right">
+                            <span x-text="revisionNote.length"></span>/2000
+                        </p>
+                        <p x-show="revisionError" x-text="revisionError" role="alert" aria-live="assertive"
+                            class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800"></p>
+                    </div>
+
+                    <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+                        <button type="button" @click="closeRevisionModal()" :disabled="isSubmitting"
+                            class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-xl disabled:opacity-50">
+                            Batal
+                        </button>
+                        <button type="button" @click="submitRevisionNote()" :disabled="isSubmitting"
+                            class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl disabled:opacity-50 inline-flex items-center gap-2">
+                            <svg x-show="isSubmitting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Simpan dan Ubah Status
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
         <!-- Return Signature Workflow Modal -->
         <template x-teleport="body">
             <div x-show="showReturnModal" x-cloak
@@ -171,6 +223,12 @@
                                 class="px-5 py-2.5 text-xs font-bold text-slate-800 bg-slate-100 border border-slate-300 rounded-xl hover:bg-slate-200 disabled:opacity-50">
                                 Lanjut Nanti
                             </button>
+                            <button type="button" @click="skipRemainingSignatures()"
+                                :disabled="isSavingReturn || isLoadingReturn"
+                                title="Tutup pengembalian tanpa menunggu tanda tangan penerima yang tersisa"
+                                class="px-5 py-2.5 text-xs font-bold text-amber-900 bg-amber-50 border border-amber-300 rounded-xl hover:bg-amber-100 disabled:opacity-50">
+                                Lewati Proses Tanda Tangan yang Tersisa
+                            </button>
                             <button type="button" @click="saveReturnWorkflow('complete')"
                                 :disabled="isSavingReturn || isLoadingReturn"
                                 class="px-5 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center justify-center gap-2">
@@ -263,64 +321,20 @@
                 x-transition:leave-start="opacity-100 scale-100"
                 x-transition:leave-end="opacity-0 scale-95">
                 <div class="px-3.5 py-1 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Pilih Status
+                    Status Berikutnya
                 </div>
-                <div class="py-1">
-                    <button type="button" @click="selectStatusOption('RECEIVE')"
-                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
-                        :class="statusDropdownCurrentStatus === 'RECEIVE' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-slate-900"></span>
-                            <span>Receive</span>
-                        </div>
-                        <svg x-show="statusDropdownCurrentStatus === 'RECEIVE'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </button>
-                    <button type="button" @click="selectStatusOption('PROGRES')"
-                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
-                        :class="statusDropdownCurrentStatus === 'PROGRES' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-                            <span>Progres</span>
-                        </div>
-                        <svg x-show="statusDropdownCurrentStatus === 'PROGRES'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </button>
-                    <button type="button" @click="selectStatusOption('REVISI')"
-                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
-                        :class="statusDropdownCurrentStatus === 'REVISI' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                            <span>Revisi</span>
-                        </div>
-                        <svg x-show="statusDropdownCurrentStatus === 'REVISI'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </button>
-                    <button type="button" @click="selectStatusOption('RETURN')"
-                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
-                        :class="statusDropdownCurrentStatus === 'RETURN' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full border border-slate-400 bg-white"></span>
-                            <span>Return</span>
-                        </div>
-                        <svg x-show="statusDropdownCurrentStatus === 'RETURN'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </button>
-                    <button type="button" @click="selectStatusOption('DISPOSISI')"
-                        class="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between"
-                        :class="statusDropdownCurrentStatus === 'DISPOSISI' ? 'text-slate-900 bg-slate-50 font-bold' : 'text-slate-700'">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-slate-600"></span>
-                            <span>Di disposisikan</span>
-                        </div>
-                        <svg x-show="statusDropdownCurrentStatus === 'DISPOSISI'" class="w-3.5 h-3.5 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </button>
+                <div class="py-1" role="menu">
+                    <template x-for="option in availableStatusOptions" :key="option.value">
+                        <button type="button" role="menuitem" @click="selectStatusOption(option.value)"
+                            class="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" :class="statusDotClass(option.value)"></span>
+                            <span x-text="option.label"></span>
+                        </button>
+                    </template>
+                    <p x-show="availableStatusOptions.length === 0"
+                        class="px-3.5 py-2.5 text-[11px] text-slate-500 leading-relaxed">
+                        Status <span class="font-bold" x-text="statusDropdownCurrentStatus"></span> adalah status akhir dan tidak dapat diubah lagi.
+                    </p>
                 </div>
             </div>
         </template>
@@ -328,6 +342,8 @@
         <!-- Success Toast Notification -->
         <div x-show="showSuccessToast" 
             x-cloak
+            :role="toastIsError ? 'alert' : 'status'"
+            aria-live="polite"
             class="fixed top-20 right-4 z-[9999] max-w-md"
             style="margin: 0 !important;"
             x-transition:enter="transition ease-out duration-300"
@@ -343,7 +359,7 @@
                     </svg>
                 </div>
                 <div class="flex-1">
-                    <p class="text-sm font-semibold">Berhasil!</p>
+                    <p class="text-sm font-semibold" x-text="toastIsError ? 'Tidak dapat diproses' : 'Berhasil!'"></p>
                     <p class="text-xs text-slate-300 mt-0.5" x-text="successMessage"></p>
                 </div>
                 <button @click="showSuccessToast = false" class="flex-shrink-0 text-slate-400 hover:text-white transition-colors">
@@ -412,31 +428,16 @@
                         x-transition:leave-end="opacity-0 scale-95"
                         class="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                         <div class="py-1">
-                            <button type="button" @click="bulkUpdateStatus('RECEIVE'); open = false"
-                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
-                                <span>Ubah ke Receive</span>
-                                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
-                            </button>
-                            <button type="button" @click="bulkUpdateStatus('PROGRES'); open = false"
-                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
-                                <span>Ubah ke Progres</span>
-                                <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-                            </button>
-                            <button type="button" @click="bulkUpdateStatus('REVISI'); open = false"
-                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
-                                <span>Ubah ke Revisi</span>
-                                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                            </button>
-                            <button type="button" @click="bulkUpdateStatus('RETURN'); open = false"
-                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
-                                <span>Ubah ke Return</span>
-                                <span class="w-2 h-2 rounded-full border border-slate-400 bg-white"></span>
-                            </button>
-                            <button type="button" @click="bulkUpdateStatus('DISPOSISI'); open = false"
-                                class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
-                                <span>Ubah ke Di disposisikan</span>
-                                <span class="w-2 h-2 rounded-full bg-slate-600"></span>
-                            </button>
+                            <p class="px-4 pt-1.5 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                Hanya dokumen yang alurnya sesuai akan diubah
+                            </p>
+                            <template x-for="option in bulkStatusOptions" :key="option.value">
+                                <button type="button" @click="bulkUpdateStatus(option.value); open = false"
+                                    class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                                    <span>Ubah ke <span x-text="option.label"></span> (<span x-text="option.eligible"></span>)</span>
+                                    <span class="w-2 h-2 rounded-full" :class="statusDotClass(option.value)"></span>
+                                </button>
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -522,13 +523,30 @@
                 totalResults: {{ $incomingMails->total() }},
                 selectedIds: [],
                 allIds: @json($incomingMails->pluck('id')->map(fn($id) => (string) $id)->values()),
+                statusById: @js($incomingMails->mapWithKeys(fn ($mail) => [
+                    (string) $mail->id => App\Support\IncomingMailStatus::canonical($mail->status) ?? (string) $mail->status,
+                ])),
+                statusChangeError: '',
                 
                 // Modal state
                 showConfirmModal: false,
                 confirmMessage: '',
                 confirmTargetStatus: '',
+                confirmMailIds: [],
                 isSubmitting: false,
-                singleUpdateId: null,
+                toastIsError: false,
+
+                // Status transition rules (standard operating procedure)
+                statusTransitions: @js(App\Support\IncomingMailStatus::transitionMap()),
+
+                // Revision note state
+                showRevisionModal: false,
+                revisionNote: '',
+                revisionError: '',
+                revisionIsRequired: true,
+                revisionTargetStatus: '',
+                revisionMailIds: [],
+                revisionMailLabel: '',
 
                 // Return signature workflow state
                 showReturnModal: false,
@@ -612,6 +630,108 @@
                             document.body.style.overflow = '';
                         }
                     });
+                },
+
+                get availableStatusOptions() {
+                    const current = this.normalizeStatus(this.statusDropdownCurrentStatus);
+
+                    return this.statusTransitions[current] ?? [];
+                },
+
+                /**
+                 * Statuses reachable by at least one selected document,
+                 * annotated with how many documents qualify.
+                 */
+                get bulkStatusOptions() {
+                    const counts = new Map();
+
+                    this.selectedIds.forEach(id => {
+                        const options = this.statusTransitions[this.normalizeStatus(this.statusById[id])] ?? [];
+
+                        options.forEach(option => {
+                            const existing = counts.get(option.value);
+                            counts.set(option.value, {
+                                value: option.value,
+                                label: option.label,
+                                eligible: (existing?.eligible ?? 0) + 1,
+                            });
+                        });
+                    });
+
+                    return [...counts.values()];
+                },
+
+                get revisionModalTitle() {
+                    return this.revisionIsRequired ? 'Ajukan Revisi Dokumen' : 'Selesaikan Revisi Dokumen';
+                },
+
+                get revisionModalSubtitle() {
+                    const target = this.statusLabel(this.revisionTargetStatus);
+
+                    return `${this.revisionMailLabel} · status akan menjadi ${target}`;
+                },
+
+                normalizeStatus(status) {
+                    return String(status || '').trim().toUpperCase().replace(/\s+/g, '_');
+                },
+
+                statusLabel(status) {
+                    return this.normalizeStatus(status).replace(/_/g, ' ');
+                },
+
+                statusDotClass(status) {
+                    return {
+                        RECEIVE: 'bg-slate-900',
+                        DRAFT: 'bg-indigo-500',
+                        REVISI: 'bg-amber-400',
+                        RETURN: 'border border-slate-400 bg-white',
+                        WAITING_RETURN: 'bg-blue-500',
+                        DISPOSISI: 'bg-slate-600',
+                    }[this.normalizeStatus(status)] ?? 'bg-slate-400';
+                },
+
+                canTransition(currentStatus, targetStatus) {
+                    const allowed = this.statusTransitions[this.normalizeStatus(currentStatus)] ?? [];
+
+                    return allowed.some(option => option.value === this.normalizeStatus(targetStatus));
+                },
+
+                openRevisionModal({ mailIds, label, targetStatus, isRequired }) {
+                    this.showStatusDropdown = false;
+                    this.revisionMailIds = [...mailIds];
+                    this.revisionMailLabel = label;
+                    this.revisionTargetStatus = targetStatus;
+                    this.revisionIsRequired = isRequired;
+                    this.revisionNote = '';
+                    this.revisionError = '';
+                    this.showRevisionModal = true;
+
+                    this.$nextTick(() => document.getElementById('revision-note-input')?.focus());
+                },
+
+                closeRevisionModal() {
+                    if (this.isSubmitting) return;
+                    this.showRevisionModal = false;
+                    this.revisionError = '';
+                },
+
+                async submitRevisionNote() {
+                    if (this.revisionIsRequired && !this.revisionNote.trim()) {
+                        this.revisionError = 'Catatan kebutuhan revisi wajib diisi.';
+                        return;
+                    }
+
+                    const applied = await this.applyStatusChange(
+                        this.revisionMailIds,
+                        this.revisionTargetStatus,
+                        this.revisionNote.trim() || null
+                    );
+
+                    if (applied) {
+                        this.showRevisionModal = false;
+                    } else {
+                        this.revisionError = this.statusChangeError;
+                    }
                 },
 
                 newReturnRecipient(data = {}) {
@@ -754,6 +874,30 @@
                     this.returnDirty = true;
                 },
 
+                get unsignedRecipientCount() {
+                    return this.returnRecipients.filter(
+                        recipient => !recipient.signer_name.trim() || (!recipient.signature && !recipient.has_signature)
+                    ).length;
+                },
+
+                skipRemainingSignatures() {
+                    const pending = this.unsignedRecipientCount;
+
+                    if (pending === 0) {
+                        this.saveReturnWorkflow('complete');
+                        return;
+                    }
+
+                    const confirmed = window.confirm(
+                        `${pending} penerima belum menandatangani. Pengembalian akan ditutup dan status menjadi RETURN, ` +
+                        'sementara penerima tersebut tetap tercatat belum menandatangani. Lanjutkan?'
+                    );
+
+                    if (confirmed) {
+                        this.saveReturnWorkflow('skip_remaining');
+                    }
+                },
+
                 async saveReturnWorkflow(action) {
                     if (this.isSavingReturn) return;
 
@@ -807,9 +951,7 @@
 
                         this.returnDirty = false;
                         this.showReturnModal = false;
-                        this.successMessage = result.message;
-                        this.showSuccessToast = true;
-                        setTimeout(() => { this.showSuccessToast = false; }, 5000);
+                        this.showToast(result.message);
                         this.selectedIds = [];
                         await this.refreshTableData();
                     } catch (error) {
@@ -892,8 +1034,9 @@
                         // PENTING: Backup selectedIds SEBELUM update DOM
                         const preservedSelections = [...this.selectedIds];
                         
-                        // Update allIds untuk current page
+                        // Update allIds dan peta status untuk current page
                         this.allIds = data.allIds;
+                        this.statusById = { ...this.statusById, ...(data.statuses || {}) };
                         
                         // Update table content
                         this.$refs.tableBody.innerHTML = data.html;
@@ -1039,93 +1182,135 @@
                 bulkUpdateStatus(targetStatus) {
                     if (this.selectedIds.length === 0) return;
 
-                    if (targetStatus === 'RETURN') {
-                        const count = this.selectedIds.length;
-                        this.openReturnWorkflow(
-                            this.selectedIds,
-                            count === 1 ? '1 dokumen terpilih' : `${count} dokumen terpilih`
+                    const count = this.selectedIds.length;
+                    const label = count === 1 ? '1 dokumen terpilih' : `${count} dokumen terpilih`;
+
+                    // Documents whose current status does not allow this transition.
+                    const blocked = this.selectedIds.filter(
+                        id => !this.canTransition(this.statusById[id], targetStatus)
+                    );
+
+                    if (blocked.length === count) {
+                        this.showErrorToast(
+                            `Tidak ada dokumen terpilih yang dapat diubah menjadi ${this.statusLabel(targetStatus)} sesuai alur status.`
                         );
                         return;
                     }
 
-                    const count = this.selectedIds.length;
-                    const statusLabel = targetStatus === 'RETURN' ? 'RETURN' : (targetStatus === 'PROGRES' ? 'PROGRES' : (targetStatus === 'REVISI' ? 'REVISI' : 'RECEIVE'));
+                    const eligibleIds = this.selectedIds.filter(id => !blocked.includes(id));
 
-                    let message = `Apakah Anda yakin ingin mengubah status <strong>${count} dokumen terpilih</strong> menjadi <strong>${statusLabel}</strong>?`;
-                    if (targetStatus === 'RETURN') {
-                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (RETURN).</span>`;
-                    } else if (targetStatus === 'PROGRES') {
-                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (PROGRES).</span>`;
-                    } else if (targetStatus === 'REVISI') {
-                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (REVISI).</span>`;
+                    if (this.normalizeStatus(targetStatus) === 'RETURN') {
+                        this.openReturnWorkflow(eligibleIds, label);
+                        return;
                     }
 
-                    // Show confirmation modal
+                    this.requestStatusChange(eligibleIds, label, targetStatus, blocked.length);
+                },
+
+                /**
+                 * Route a status change through the revision note modal when needed,
+                 * otherwise through the plain confirmation modal.
+                 */
+                requestStatusChange(mailIds, label, targetStatus, blockedCount = 0) {
+                    const target = this.normalizeStatus(targetStatus);
+                    const leavingRevisi = mailIds.some(id => this.normalizeStatus(this.statusById[id]) === 'REVISI');
+
+                    if (target === 'REVISI') {
+                        this.openRevisionModal({ mailIds, label, targetStatus: target, isRequired: true });
+                        return;
+                    }
+
+                    if (leavingRevisi) {
+                        this.openRevisionModal({ mailIds, label, targetStatus: target, isRequired: false });
+                        return;
+                    }
+
+                    let message = `Apakah Anda yakin ingin mengubah status <strong>${label}</strong> menjadi <strong>${this.statusLabel(target)}</strong>?`;
+
+                    if (blockedCount > 0) {
+                        message += `<br/><br/><span class="text-xs text-amber-700">${blockedCount} dokumen dilewati karena alur statusnya tidak mengizinkan perubahan ini.</span>`;
+                    }
+
+                    if (target === 'DISPOSISI') {
+                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: DISPOSISI adalah status akhir dan tidak dapat diubah lagi.</span>`;
+                    }
+
                     this.confirmMessage = message;
-                    this.confirmTargetStatus = targetStatus;
-                    this.singleUpdateId = null;
+                    this.confirmTargetStatus = target;
+                    this.confirmMailIds = [...mailIds];
                     this.showConfirmModal = true;
                 },
 
                 async confirmBulkUpdate() {
-                    if (this.isSubmitting) return;
-                    
+                    const applied = await this.applyStatusChange(this.confirmMailIds, this.confirmTargetStatus);
+
+                    if (applied) {
+                        this.showConfirmModal = false;
+                    }
+                },
+
+                /**
+                 * Persist a status change for the given documents.
+                 * Returns true when at least one document was updated.
+                 */
+                async applyStatusChange(mailIds, targetStatus, revisionNote = null) {
+                    if (this.isSubmitting || mailIds.length === 0) return false;
+
                     this.isSubmitting = true;
-                    
+                    this.statusChangeError = '';
+
                     try {
-                        // Check if single update or bulk update
-                        const isSingleUpdate = this.singleUpdateId !== null;
-                        const idsToUpdate = isSingleUpdate ? [this.singleUpdateId] : this.selectedIds;
-                        
                         const formData = new FormData();
-                        formData.append('_token', '{{ csrf_token() }}');
-                        formData.append('status', this.confirmTargetStatus);
-                        idsToUpdate.forEach(id => {
-                            formData.append('ids[]', id);
-                        });
-                        
-                        const response = await fetch('{{ route("incoming-mails.bulk-update-status") }}', {
+                        formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.content ?? '');
+                        formData.append('status', targetStatus);
+                        if (revisionNote) {
+                            formData.append('revision_note', revisionNote);
+                        }
+                        mailIds.forEach(id => formData.append('ids[]', id));
+
+                        const response = await fetch(@js(route('incoming-mails.bulk-update-status')), {
                             method: 'POST',
                             body: formData,
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
-                            }
+                            },
                         });
-                        
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        
+
                         const result = await response.json();
-                        
-                        // Close modal
-                        this.showConfirmModal = false;
-                        
-                        // Show success toast
-                        this.successMessage = result.message || `Status berhasil diperbarui.`;
-                        this.showSuccessToast = true;
-                        setTimeout(() => {
-                            this.showSuccessToast = false;
-                        }, 4000);
-                        
-                        // Update UI: refresh table dengan AJAX (preserve current page & search)
-                        await this.refreshTableData();
-                        
-                        // Clear selections only for bulk update
-                        if (!isSingleUpdate) {
-                            this.selectedIds = [];
+
+                        if (!response.ok || !result.success) {
+                            const validationMessage = Object.values(result.errors || {}).flat()[0];
+                            throw new Error(validationMessage || result.message || 'Status gagal diperbarui.');
                         }
-                        
-                        // Reset single update id
-                        this.singleUpdateId = null;
-                        
+
+                        this.showToast(result.message);
+
+                        await this.refreshTableData();
+                        this.selectedIds = [];
+                        this.confirmMailIds = [];
+
+                        return true;
                     } catch (error) {
-                        console.error('Update error:', error);
-                        alert('Terjadi kesalahan saat memperbarui status. Silakan coba lagi.');
+                        console.error('Status change error:', error);
+                        this.statusChangeError = error.message || 'Status gagal diperbarui.';
+                        this.showErrorToast(this.statusChangeError);
+
+                        return false;
                     } finally {
                         this.isSubmitting = false;
                     }
+                },
+
+                showToast(message, isError = false) {
+                    this.toastIsError = isError;
+                    this.successMessage = message;
+                    this.showSuccessToast = true;
+                    setTimeout(() => { this.showSuccessToast = false; }, isError ? 6000 : 5000);
+                },
+
+                showErrorToast(message) {
+                    this.showToast(message, true);
                 },
 
                 async refreshTableData() {
@@ -1152,8 +1337,9 @@
                         // Update total results
                         this.totalResults = data.total;
                         
-                        // Update allIds
+                        // Update allIds dan peta status untuk validasi alur
                         this.allIds = data.allIds;
+                        this.statusById = { ...this.statusById, ...(data.statuses || {}) };
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
@@ -1169,29 +1355,22 @@
                 },
 
                 handleSingleStatusChange(detail) {
-                    const targetStatus = detail.targetStatus || 'RETURN';
+                    const targetStatus = this.normalizeStatus(detail.targetStatus);
+                    const currentStatus = this.statusById[detail.id] ?? detail.currentStatus;
+
+                    if (!this.canTransition(currentStatus, targetStatus)) {
+                        this.showErrorToast(
+                            `Dokumen ${detail.mailNumber} berstatus ${this.statusLabel(currentStatus)} sehingga tidak dapat diubah menjadi ${this.statusLabel(targetStatus)}.`
+                        );
+                        return;
+                    }
 
                     if (targetStatus === 'RETURN') {
                         this.openReturnWorkflow([detail.id], detail.mailNumber);
                         return;
                     }
 
-                    const statusLabel = targetStatus === 'PROGRES' ? 'PROGRES' : (targetStatus === 'REVISI' ? 'REVISI' : 'RECEIVE');
-
-                    let message = `Apakah Anda yakin ingin mengubah status dokumen <strong>${detail.mailNumber}</strong> dari <strong>${detail.currentStatus}</strong> menjadi <strong>${statusLabel}</strong>?`;
-                    
-                    if (targetStatus === 'RETURN') {
-                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (RETURN).</span>`;
-                    } else if (targetStatus === 'PROGRES') {
-                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (PROGRES).</span>`;
-                    } else if (targetStatus === 'REVISI') {
-                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: Dokumen akan otomatis dicatat/disinkronkan pada Surat Keluar (REVISI).</span>`;
-                    }
-
-                    this.confirmMessage = message;
-                    this.confirmTargetStatus = targetStatus;
-                    this.singleUpdateId = detail.id;
-                    this.showConfirmModal = true;
+                    this.requestStatusChange([detail.id], `dokumen ${detail.mailNumber}`, targetStatus);
                 }
             };
         }

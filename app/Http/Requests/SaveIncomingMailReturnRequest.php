@@ -21,7 +21,7 @@ class SaveIncomingMailReturnRequest extends FormRequest
         return [
             'mail_ids' => ['required', 'array', 'min:1', 'max:50'],
             'mail_ids.*' => ['required', 'uuid', 'distinct', 'exists:incoming_mails,id'],
-            'action' => ['required', 'string', 'in:save_later,complete'],
+            'action' => ['required', 'string', 'in:save_later,complete,skip_remaining'],
             'recipients' => ['required', 'array', 'min:1', 'max:20'],
             'recipients.*.id' => ['nullable', 'uuid', 'distinct'],
             'recipients.*.recipient_name' => ['required', 'string', 'max:255'],

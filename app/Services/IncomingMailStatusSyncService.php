@@ -6,21 +6,27 @@ namespace App\Services;
 
 use App\Models\IncomingMail;
 use App\Models\OutgoingMail;
-use Illuminate\Support\Str;
+use App\Support\IncomingMailStatus;
 use LogicException;
 
 class IncomingMailStatusSyncService
 {
+    /**
+     * Statuses that are mirrored onto an outgoing mail record.
+     *
+     * @var array<int, string>
+     */
+    private const MIRRORED_STATUSES = [
+        IncomingMailStatus::RETURN,
+        IncomingMailStatus::REVISI,
+    ];
+
     public function sync(IncomingMail $incomingMail, ?int $actorId): void
     {
-        $status = Str::upper((string) $incomingMail->status);
+        $status = IncomingMailStatus::canonical($incomingMail->status);
 
-        if (in_array($status, ['RETURN', 'RETURNED'], true)) {
-            $this->syncOutgoingMail($incomingMail, 'RETURN', $actorId);
-        } elseif (in_array($status, ['PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING'], true)) {
-            $this->syncOutgoingMail($incomingMail, 'PROGRES', $actorId);
-        } elseif ($status === 'REVISI') {
-            $this->syncOutgoingMail($incomingMail, 'REVISI', $actorId);
+        if ($status !== null && in_array($status, self::MIRRORED_STATUSES, true)) {
+            $this->syncOutgoingMail($incomingMail, $status, $actorId);
         }
     }
 

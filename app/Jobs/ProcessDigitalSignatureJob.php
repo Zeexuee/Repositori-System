@@ -19,8 +19,6 @@ class ProcessDigitalSignatureJob implements ShouldQueue
 
     /**
      * The number of times the job may be attempted.
-     *
-     * @var int
      */
     public int $tries = 3;
 
@@ -39,6 +37,7 @@ class ProcessDigitalSignatureJob implements ShouldQueue
     {
         if (empty($this->outgoingMail->file_path)) {
             $this->outgoingMail->update(['status' => 'SIGN_FAILED']);
+
             return;
         }
 

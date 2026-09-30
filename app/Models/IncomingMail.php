@@ -75,6 +75,14 @@ class IncomingMail extends Model
     }
 
     /**
+     * Get the revision notes recorded for this document.
+     */
+    public function revisionNotes(): HasMany
+    {
+        return $this->hasMany(IncomingMailRevisionNote::class)->latest();
+    }
+
+    /**
      * Get all incoming mails in the same batch.
      */
     public function batchItems(): HasMany

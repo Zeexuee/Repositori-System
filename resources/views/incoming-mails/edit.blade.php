@@ -169,20 +169,58 @@
                         @enderror
                     </div>
 
-                    <!-- Status Surat -->
-                    <div>
+                    <!-- Status Surat (mengikuti alur standar) -->
+                    @php
+                        $currentStatus = App\Support\IncomingMailStatus::canonical($incomingMail->status);
+                        $currentStatusLabel = App\Support\IncomingMailStatus::label($incomingMail->status);
+                        $allowedStatuses = App\Support\IncomingMailStatus::allowedTransitions($currentStatus);
+                        $selectedStatus = App\Support\IncomingMailStatus::canonical(old('status', $incomingMail->status));
+                    @endphp
+                    <div x-data="{ status: @js($selectedStatus ?? $currentStatus) }">
                         <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Dokumen</label>
-                        <select name="status" id="status" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                            <option value="RECEIVE" {{ old('status', $incomingMail->status) == 'RECEIVE' || old('status', $incomingMail->status) == 'RECEIVED' ? 'selected' : '' }}>RECEIVE</option>
-                            <option value="PROGRES" {{ old('status', $incomingMail->status) == 'PROGRES' || old('status', $incomingMail->status) == 'PENDING' || old('status', $incomingMail->status) == 'PROGRESS' || old('status', $incomingMail->status) == 'IN_PROGRESS' ? 'selected' : '' }}>PROGRES</option>
-                            <option value="REVISI" {{ old('status', $incomingMail->status) == 'REVISI' ? 'selected' : '' }}>REVISI</option>
-                            @if (in_array(old('status', $incomingMail->status), ['RETURN', 'RETURNED'], true))
-                                <option value="RETURN" selected>RETURN (dikelola melalui proses tanda tangan)</option>
-                            @elseif (old('status', $incomingMail->status) === 'WAITING_RETURN')
-                                <option value="WAITING_RETURN" selected>WAITING RETURN (lanjutkan dari halaman daftar)</option>
-                            @endif
-                            <option value="DISPOSISI" {{ old('status', $incomingMail->status) == 'DISPOSISI' ? 'selected' : '' }}>DISPOSISI</option>
+                        <select name="status" id="status" x-model="status"
+                            @disabled($allowedStatuses === [])
+                            class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs disabled:opacity-60">
+                            <option value="{{ $currentStatus }}">
+                                {{ $currentStatusLabel }} (status saat ini)
+                            </option>
+                            @foreach ($allowedStatuses as $allowedStatus)
+                                @continue($allowedStatus === App\Support\IncomingMailStatus::RETURN)
+                                <option value="{{ $allowedStatus }}" {{ $selectedStatus === $allowedStatus ? 'selected' : '' }}>
+                                    {{ App\Support\IncomingMailStatus::label($allowedStatus) }}
+                                </option>
+                            @endforeach
                         </select>
+
+                        @if ($allowedStatuses === [])
+                            <p class="text-xs text-slate-500 mt-1.5">
+                                {{ $currentStatusLabel }} adalah status akhir dan tidak dapat diubah lagi.
+                            </p>
+                        @elseif (in_array(App\Support\IncomingMailStatus::RETURN, $allowedStatuses, true))
+                            <p class="text-xs text-slate-500 mt-1.5">
+                                Status RETURN hanya dapat dipilih melalui proses tanda tangan pengembalian di halaman daftar surat masuk.
+                            </p>
+                        @endif
+
+                        <!-- Catatan revisi: wajib saat mengajukan revisi, opsional saat menyelesaikannya -->
+                        <div x-show="status === 'REVISI' || @js($currentStatus === App\Support\IncomingMailStatus::REVISI)"
+                            x-cloak class="mt-3 space-y-1.5">
+                            <label for="revision_note" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                <span x-text="status === 'REVISI' ? 'Catatan Kebutuhan Revisi' : 'Catatan Penyelesaian Revisi'"></span>
+                                <span x-show="status === 'REVISI'" class="text-rose-600">*</span>
+                                <span x-show="status !== 'REVISI'" class="text-slate-400 font-normal normal-case">(opsional)</span>
+                            </label>
+                            <textarea name="revision_note" id="revision_note" rows="3" maxlength="2000"
+                                :required="status === 'REVISI'"
+                                :placeholder="status === 'REVISI'
+                                    ? 'Jelaskan bagian mana yang perlu diperbaiki.'
+                                    : 'Jelaskan bagaimana revisi diselesaikan (boleh dikosongkan).'"
+                                class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">{{ old('revision_note') }}</textarea>
+                            @error('revision_note')
+                                <p class="text-xs text-rose-600 font-medium">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         @error('status')
                             <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
                         @enderror

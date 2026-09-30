@@ -14,14 +14,17 @@ class BroadcastMail extends Mailable
     use Queueable, SerializesModels;
 
     public string $emailSubject;
+
     public string $emailBody;
+
     public string $senderName;
+
     public array $attachmentFiles;
 
     /**
      * Create a new message instance.
      *
-     * @param array<int, array{path: string, name: string, mime: string}> $attachmentFiles
+     * @param  array<int, array{path: string, name: string, mime: string}>  $attachmentFiles
      */
     public function __construct(string $emailSubject, string $emailBody, string $senderName, array $attachmentFiles = [])
     {
@@ -54,7 +57,7 @@ class BroadcastMail extends Mailable
     /**
      * Get the attachments for the message.
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     * @return array<int, Attachment>
      */
     public function attachments(): array
     {

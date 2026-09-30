@@ -45,9 +45,9 @@ class OutgoingMail extends Model
     {
         static::saving(function (OutgoingMail $mail) {
             if (! empty($mail->status) && ! empty($mail->subject)) {
-                $statusTag = '[' . Str::upper($mail->status) . ']';
+                $statusTag = '['.Str::upper($mail->status).']';
                 if (preg_match('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', $mail->subject)) {
-                    $mail->subject = (string) preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', $statusTag . ' ', $mail->subject);
+                    $mail->subject = (string) preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', $statusTag.' ', $mail->subject);
                 }
             }
         });

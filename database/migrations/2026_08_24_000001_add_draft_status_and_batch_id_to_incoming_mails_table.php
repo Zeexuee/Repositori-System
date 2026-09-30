@@ -24,7 +24,7 @@ return new class extends Migration
             Schema::table('incoming_mails', function (Blueprint $table) {
                 $table->string('status')->default('RECEIVED')->change();
             });
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // fallback if change() requires doctrine/dbal or driver specific handling
         }
     }

@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -21,7 +22,7 @@ class AuditLogController extends Controller
         }
 
         $auditLogs = AuditLog::with('user')->latest()->paginate(25);
-        $periodDate = \Illuminate\Support\Carbon::now()->translatedFormat('d F Y');
+        $periodDate = Carbon::now()->translatedFormat('d F Y');
 
         return view('audit-logs.index', compact('auditLogs', 'periodDate'));
     }
@@ -35,12 +36,12 @@ class AuditLogController extends Controller
             abort(403, 'Akses tidak diizinkan.');
         }
 
-        $filename = 'event_logs_aktif_' . date('Y-m-d_H-i-s') . '.csv';
+        $filename = 'event_logs_aktif_'.date('Y-m-d_H-i-s').'.csv';
         $logs = AuditLog::with('user')->latest()->get();
 
         return response()->streamDownload(function () use ($logs) {
             $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
             fputcsv($handle, ['ID', 'Waktu Dibuat', 'Pengguna', 'Email Pengguna', 'Aksi', 'Model Target', 'Model ID', 'IP Address']);
 
@@ -72,12 +73,12 @@ class AuditLogController extends Controller
             abort(403, 'Akses tidak diizinkan.');
         }
 
-        $filename = 'event_logs_sampah_' . date('Y-m-d_H-i-s') . '.csv';
+        $filename = 'event_logs_sampah_'.date('Y-m-d_H-i-s').'.csv';
         $logs = AuditLog::onlyTrashed()->with('user')->latest('deleted_at')->get();
 
         return response()->streamDownload(function () use ($logs) {
             $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
             fputcsv($handle, ['ID', 'Waktu Dibuat', 'Waktu Masuk Trash', 'Pengguna', 'Email Pengguna', 'Aksi', 'Model Target', 'Model ID', 'IP Address']);
 

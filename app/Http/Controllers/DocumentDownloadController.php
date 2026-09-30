@@ -9,8 +9,8 @@ use App\Models\OutgoingMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentDownloadController extends Controller
 {
@@ -50,6 +50,7 @@ class DocumentDownloadController extends Controller
         // Jika rute dipanggil untuk inline preview (gambar), kembalikan response file inline
         if ($request->boolean('inline')) {
             $mimeType = Storage::disk('local')->mimeType($path) ?? 'application/octet-stream';
+
             return response()->file(Storage::disk('local')->path($path), [
                 'Content-Type' => $mimeType,
             ]);

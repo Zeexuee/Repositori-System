@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\IncomingMail;
+use App\Models\OutgoingMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -35,7 +36,7 @@ class IncomingMailTest extends TestCase
             'received_date' => '2026-09-15',
             'sender' => 'Biro Keuangan',
             'recipient' => 'Kepala Divisi',
-            'status' => 'PROGRES',
+            'status' => 'REVISI',
             'subject' => 'Laporan Anggaran Triwulan',
             'outgoing_date' => '2026-09-16',
             'disposition_note' => 'Arsipkan setelah review',
@@ -55,7 +56,7 @@ class IncomingMailTest extends TestCase
         $response->assertDontSee('TEST/SURAT/001');
 
         // Specific filter: status
-        $response = $this->actingAs($user)->get(route('incoming-mails.index', ['status' => 'PROGRES']));
+        $response = $this->actingAs($user)->get(route('incoming-mails.index', ['status' => 'REVISI']));
         $response->assertStatus(200);
         $response->assertSee('TEST/SURAT/002');
         $response->assertDontSee('TEST/SURAT/001');
@@ -91,6 +92,7 @@ class IncomingMailTest extends TestCase
         $response = $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
             'status' => 'REVISI',
+            'revision_note' => 'Data operasional belum lengkap.',
         ]);
 
         $response->assertStatus(200);
@@ -102,7 +104,7 @@ class IncomingMailTest extends TestCase
         $mail->refresh();
         $this->assertSame('REVISI', $mail->status);
 
-        $outgoingMail = \App\Models\OutgoingMail::where('recipient', 'Kementerian Keuangan')->latest()->first();
+        $outgoingMail = OutgoingMail::where('recipient', 'Kementerian Keuangan')->latest()->first();
         $this->assertNotNull($outgoingMail);
         $this->assertSame('REVISI', $outgoingMail->status);
         $this->assertStringStartsWith('[REVISI]', $outgoingMail->subject);

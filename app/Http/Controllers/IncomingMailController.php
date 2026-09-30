@@ -10,6 +10,8 @@ use App\Jobs\ProcessOcrJob;
 use App\Models\IncomingMail;
 use App\Models\User;
 use App\Services\IncomingMailStatusSyncService;
+use App\Services\IncomingMailStatusTransitionService;
+use App\Support\IncomingMailStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -21,7 +23,8 @@ use Illuminate\View\View;
 class IncomingMailController extends Controller
 {
     public function __construct(
-        private readonly IncomingMailStatusSyncService $statusSyncService
+        private readonly IncomingMailStatusSyncService $statusSyncService,
+        private readonly IncomingMailStatusTransitionService $statusTransitionService
     ) {}
 
     public function index(Request $request)
@@ -70,17 +73,11 @@ class IncomingMailController extends Controller
 
         // 5. Status
         if ($request->filled('status')) {
-            $status = strtoupper(trim((string) $request->input('status')));
-            if ($status === 'RECEIVED') {
-                $status = 'RECEIVE';
-            } elseif ($status === 'RETURNED') {
-                $status = 'RETURN';
-            } elseif (in_array($status, ['PROGRESS', 'IN_PROGRESS', 'PENDING'], true)) {
-                $status = 'PROGRES';
-            }
+            $status = IncomingMailStatus::canonical($request->input('status'))
+                ?? strtoupper(trim((string) $request->input('status')));
             $query->where('status', $status);
         } else {
-            $query->where('status', '!=', 'DRAFT');
+            $query->where('status', '!=', IncomingMailStatus::DRAFT);
         }
 
         // 6. Perihal
@@ -112,6 +109,9 @@ class IncomingMailController extends Controller
                 'pagination' => view('incoming-mails.partials.pagination', compact('incomingMails'))->render(),
                 'total' => $incomingMails->total(),
                 'allIds' => $incomingMails->pluck('id')->map(fn ($id) => (string) $id)->values(),
+                'statuses' => $incomingMails->mapWithKeys(fn (IncomingMail $mail) => [
+                    (string) $mail->id => IncomingMailStatus::canonical($mail->status) ?? (string) $mail->status,
+                ]),
             ]);
         }
 
@@ -126,45 +126,75 @@ class IncomingMailController extends Controller
         $validated = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['required', 'string', 'exists:incoming_mails,id'],
-            'status' => ['required', 'string', 'in:RECEIVE,PROGRES,PROGRESS,IN_PROGRESS,RECEIVED,REVISI,DISPOSISI'],
+            'status' => ['required', 'string', 'in:RECEIVE,RECEIVED,REVISI,DISPOSISI,DRAFT'],
+            'revision_note' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'ids.required' => 'Pilih minimal satu dokumen.',
+            'status.in' => 'Status tujuan tidak tersedia. Status RETURN hanya dapat dicapai melalui proses tanda tangan pengembalian.',
+            'revision_note.max' => 'Catatan revisi maksimal 2000 karakter.',
         ]);
 
-        $status = Str::upper($validated['status']);
-        if ($status === 'RECEIVED') {
-            $status = 'RECEIVE';
-        } elseif (in_array($status, ['PROGRESS', 'IN_PROGRESS'], true)) {
-            $status = 'PROGRES';
-        } elseif ($status === 'REVISI') {
-            $status = 'REVISI';
-        } elseif ($status === 'DISPOSISI') {
-            $status = 'DISPOSISI';
-        }
+        $targetStatus = IncomingMailStatus::canonical($validated['status']);
+        $targetLabel = IncomingMailStatus::label($targetStatus);
+        $revisionNote = $validated['revision_note'] ?? null;
+        $actorId = auth()->id();
 
         $mails = IncomingMail::whereIn('id', $validated['ids'])->get();
         $updatedCount = 0;
+        $rejected = [];
 
         foreach ($mails as $mail) {
-            if (Gate::allows('update', $mail)) {
-                $mail->update(['status' => $status]);
-                $this->statusSyncService->sync($mail, auth()->id());
+            if (! Gate::allows('update', $mail)) {
+                $rejected[] = [
+                    'mail_number' => $mail->mail_number,
+                    'reason' => 'Anda tidak memiliki izin mengubah dokumen ini.',
+                ];
+
+                continue;
+            }
+
+            $reason = $this->statusTransitionService->rejectionReason($mail, $targetStatus);
+
+            if ($reason !== null) {
+                $rejected[] = [
+                    'mail_number' => $mail->mail_number,
+                    'reason' => $reason,
+                ];
+
+                continue;
+            }
+
+            try {
+                $this->statusTransitionService->apply($mail, $targetStatus, $actorId, $revisionNote);
                 $updatedCount++;
+            } catch (ValidationException $exception) {
+                $rejected[] = [
+                    'mail_number' => $mail->mail_number,
+                    'reason' => collect($exception->errors())->flatten()->first(),
+                ];
             }
         }
 
-        $message = "Status berhasil diperbarui menjadi {$status} untuk {$updatedCount} dokumen terpilih.";
+        $message = $updatedCount > 0
+            ? "Status berhasil diperbarui menjadi {$targetLabel} untuk {$updatedCount} dokumen."
+            : 'Tidak ada dokumen yang dapat diubah statusnya.';
 
-        // Return JSON untuk AJAX request
+        if ($rejected !== []) {
+            $message .= ' '.count($rejected).' dokumen dilewati karena alur status tidak sesuai.';
+        }
+
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
-                'success' => true,
+                'success' => $updatedCount > 0,
                 'message' => $message,
                 'updated_count' => $updatedCount,
-            ]);
+                'rejected' => $rejected,
+            ], $updatedCount > 0 ? 200 : 422);
         }
 
         return redirect()
             ->route('incoming-mails.index')
-            ->with('success', $message);
+            ->with($updatedCount > 0 ? 'success' : 'error', $message);
     }
 
     /**
@@ -357,6 +387,7 @@ class IncomingMailController extends Controller
             'dispositions.receiver',
             'batchItems',
             'returnRecipients.creator',
+            'revisionNotes.creator',
         ]);
         $users = User::orderBy('name')->get();
 
@@ -411,18 +442,20 @@ class IncomingMailController extends Controller
 
         $data = $request->validated();
 
-        if (array_key_exists('status', $data)) {
-            $requestedStatus = Str::upper((string) $data['status']);
-            $requestedStatus = $requestedStatus === 'RETURNED' ? 'RETURN' : $requestedStatus;
-            $currentStatus = Str::upper((string) $incomingMail->status);
-            $currentStatus = $currentStatus === 'RETURNED' ? 'RETURN' : $currentStatus;
+        // Status changes follow the standard operating procedure, never a plain field update.
+        $requestedStatus = IncomingMailStatus::canonical($data['status'] ?? null);
+        $currentStatus = IncomingMailStatus::canonical($incomingMail->status);
+        unset($data['status']);
 
-            if ((in_array($requestedStatus, ['RETURN', 'WAITING_RETURN'], true)
-                    && $requestedStatus !== $currentStatus)
-                || ($currentStatus === 'WAITING_RETURN' && $requestedStatus !== 'WAITING_RETURN')) {
-                throw ValidationException::withMessages([
-                    'status' => 'Status pengembalian hanya dapat diubah melalui proses tanda tangan di halaman daftar surat masuk.',
-                ]);
+        $statusChange = $requestedStatus !== null && $requestedStatus !== $currentStatus
+            ? $requestedStatus
+            : null;
+
+        if ($statusChange !== null) {
+            $reason = $this->statusTransitionService->rejectionReason($incomingMail, $statusChange);
+
+            if ($reason !== null) {
+                throw ValidationException::withMessages(['status' => $reason]);
             }
         }
 
@@ -454,8 +487,16 @@ class IncomingMailController extends Controller
 
         $incomingMail->update($data);
 
-        // Sync OutgoingMail if status is RETURN or PROGRES
-        $this->statusSyncService->sync($incomingMail, auth()->id());
+        if ($statusChange !== null) {
+            $this->statusTransitionService->apply(
+                $incomingMail,
+                $statusChange,
+                auth()->id(),
+                $request->input('revision_note')
+            );
+        } else {
+            $this->statusSyncService->sync($incomingMail, auth()->id());
+        }
 
         // If batch_id exists, sync common fields to other batch items if needed
         if ($incomingMail->batch_id) {

@@ -66,20 +66,16 @@
                                         </td>
                                         <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
                                             @php
-                                                $badgeClasses = match ($mail->status) {
-                                                    'RECEIVE', 'RECEIVED' => 'bg-slate-900 text-white border-slate-900 font-bold',
-                                                    'RETURN', 'RETURNED' => 'bg-white text-slate-800 border-slate-300 font-bold',
-                                                    'WAITING_RETURN' => 'bg-blue-50 text-blue-800 border-blue-300 font-bold',
-                                                    'PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'bg-slate-200 text-slate-900 border-slate-400 font-bold',
+                                                $badgeClasses = match (App\Support\IncomingMailStatus::canonical($mail->status)) {
+                                                    App\Support\IncomingMailStatus::RECEIVE => 'bg-slate-900 text-white border-slate-900 font-bold',
+                                                    App\Support\IncomingMailStatus::RETURN => 'bg-white text-slate-800 border-slate-300 font-bold',
+                                                    App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300 font-bold',
+                                                    App\Support\IncomingMailStatus::REVISI => 'bg-amber-50 text-amber-800 border-amber-300 font-bold',
+                                                    App\Support\IncomingMailStatus::DRAFT => 'bg-indigo-50 text-indigo-800 border-indigo-300 font-bold',
+                                                    App\Support\IncomingMailStatus::DISPOSISI => 'bg-slate-200 text-slate-900 border-slate-400 font-bold',
                                                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                                                 };
-                                                $displayStatus = match ($mail->status) {
-                                                    'RECEIVED' => 'RECEIVE',
-                                                    'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'PROGRES',
-                                                    'RETURNED' => 'RETURN',
-                                                    'WAITING_RETURN' => 'WAITING RETURN',
-                                                    default => $mail->status,
-                                                };
+                                                $displayStatus = App\Support\IncomingMailStatus::label($mail->status);
                                             @endphp
                                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border {{ $badgeClasses }}">
                                                 {{ $displayStatus }}

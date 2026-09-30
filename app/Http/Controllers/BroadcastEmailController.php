@@ -122,11 +122,11 @@ class BroadcastEmailController extends Controller
                     $originalName = $file->getClientOriginalName();
                     $mimeType = $file->getClientMimeType();
                     $fileSize = $file->getSize();
-                    $storedPath = $file->store('broadcast_attachments/' . $broadcast->id, 'public');
+                    $storedPath = $file->store('broadcast_attachments/'.$broadcast->id, 'public');
 
-                    $fullStoragePath = storage_path('app/public/' . $storedPath);
+                    $fullStoragePath = storage_path('app/public/'.$storedPath);
                     if (! file_exists($fullStoragePath)) {
-                        $fullStoragePath = storage_path('app/' . $storedPath);
+                        $fullStoragePath = storage_path('app/'.$storedPath);
                     }
 
                     $mailAttachmentFiles[] = [
@@ -161,15 +161,15 @@ class BroadcastEmailController extends Controller
                 );
             }
         } catch (\Throwable $e) {
-            Log::error('Broadcast email error: ' . $e->getMessage());
+            Log::error('Broadcast email error: '.$e->getMessage());
 
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Gagal mengirim email: ' . $e->getMessage());
+                ->with('error', 'Gagal mengirim email: '.$e->getMessage());
         }
 
-        $attachmentCountInfo = count($attachmentMetadata) > 0 ? " dengan " . count($attachmentMetadata) . " lampiran dokumen" : "";
+        $attachmentCountInfo = count($attachmentMetadata) > 0 ? ' dengan '.count($attachmentMetadata).' lampiran dokumen' : '';
 
         return redirect()
             ->route('broadcast-emails.index')
@@ -193,12 +193,12 @@ class BroadcastEmailController extends Controller
         $fileInfo = $attachments[$index];
         $relativePath = $fileInfo['path'] ?? '';
 
-        $fullPath = storage_path('app/public/' . $relativePath);
+        $fullPath = storage_path('app/public/'.$relativePath);
         if (! file_exists($fullPath)) {
-            $fullPath = storage_path('app/' . $relativePath);
+            $fullPath = storage_path('app/'.$relativePath);
         }
         if (! file_exists($fullPath)) {
-            $fullPath = storage_path('app/private/' . $relativePath);
+            $fullPath = storage_path('app/private/'.$relativePath);
         }
 
         if (! file_exists($fullPath)) {

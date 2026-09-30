@@ -56,7 +56,7 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         return redirect()->intended(route('incoming-mails.index'))
-            ->with('success', 'Berhasil masuk sebagai ' . $user->name . ' (' . ($user->getRoleNames()->first() ?? 'User') . ').');
+            ->with('success', 'Berhasil masuk sebagai '.$user->name.' ('.($user->getRoleNames()->first() ?? 'User').').');
     }
 
     /**

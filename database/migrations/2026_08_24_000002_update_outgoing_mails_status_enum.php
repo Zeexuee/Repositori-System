@@ -17,7 +17,7 @@ return new class extends Migration
             Schema::table('outgoing_mails', function (Blueprint $table) {
                 $table->string('status')->default('PENDING')->change();
             });
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // fallback
         }
     }

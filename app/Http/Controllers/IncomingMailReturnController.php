@@ -8,6 +8,7 @@ use App\Http\Requests\SaveIncomingMailReturnRequest;
 use App\Models\IncomingMail;
 use App\Models\IncomingMailReturnRecipient;
 use App\Services\IncomingMailStatusSyncService;
+use App\Support\IncomingMailStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -65,13 +66,15 @@ class IncomingMailReturnController extends Controller
         foreach ($mails as $mail) {
             Gate::authorize('update', $mail);
 
-            if (in_array($mail->status, ['DRAFT', 'COMPLETED', 'RETURN', 'RETURNED'], true)) {
+            if (! IncomingMailStatus::canProcessReturn($mail->status)) {
+                $label = IncomingMailStatus::label($mail->status);
+
                 throw ValidationException::withMessages([
-                    'mail_ids' => "Dokumen {$mail->mail_number} tidak dapat diproses untuk pengembalian.",
+                    'mail_ids' => "Dokumen {$mail->mail_number} berstatus {$label} sehingga tidak dapat diproses untuk pengembalian.",
                 ]);
             }
 
-            if (count($mailIds) > 1 && $mail->status === 'WAITING_RETURN') {
+            if (count($mailIds) > 1 && IncomingMailStatus::canonical($mail->status) === IncomingMailStatus::WAITING_RETURN) {
                 throw ValidationException::withMessages([
                     'mail_ids' => "Dokumen {$mail->mail_number} sedang menunggu pengembalian dan harus dilanjutkan secara terpisah.",
                 ]);
@@ -127,7 +130,7 @@ class IncomingMailReturnController extends Controller
 
                         if ($action === 'complete' && ($signerName === null || $signaturePath === null)) {
                             throw ValidationException::withMessages([
-                                "recipients.{$index}.signer_name" => 'Nama penandatangan dan tanda tangan wajib dilengkapi sebelum menyelesaikan pengembalian.',
+                                "recipients.{$index}.signer_name" => 'Nama penandatangan dan tanda tangan wajib dilengkapi sebelum menyelesaikan pengembalian. Gunakan "Lewati proses tanda tangan yang tersisa" bila sisanya tidak akan ditandatangani.',
                             ]);
                         }
 
@@ -157,11 +160,15 @@ class IncomingMailReturnController extends Controller
                         $recipientToDelete->delete();
                     }
 
+                    $isFinalizing = in_array($action, ['complete', 'skip_remaining'], true);
+
                     $mail->update([
-                        'status' => $action === 'complete' ? 'RETURN' : 'WAITING_RETURN',
+                        'status' => $isFinalizing
+                            ? IncomingMailStatus::RETURN
+                            : IncomingMailStatus::WAITING_RETURN,
                     ]);
 
-                    if ($action === 'complete') {
+                    if ($isFinalizing) {
                         $this->statusSyncService->sync($mail, $actorId);
                     }
                 }
@@ -173,14 +180,16 @@ class IncomingMailReturnController extends Controller
 
         Storage::disk('local')->delete(array_values(array_unique($obsoleteSignaturePaths)));
 
-        $isCompleted = $action === 'complete';
+        $isFinalized = in_array($action, ['complete', 'skip_remaining'], true);
 
         return response()->json([
             'success' => true,
-            'status' => $isCompleted ? 'RETURN' : 'WAITING_RETURN',
-            'message' => $isCompleted
-                ? 'Pengembalian selesai. Semua tanda tangan telah disimpan.'
-                : 'Progres disimpan. Pengembalian dapat dilanjutkan melalui status WAITING RETURN.',
+            'status' => $isFinalized ? IncomingMailStatus::RETURN : IncomingMailStatus::WAITING_RETURN,
+            'message' => match ($action) {
+                'complete' => 'Pengembalian selesai. Semua tanda tangan telah disimpan.',
+                'skip_remaining' => 'Pengembalian ditutup. Tanda tangan yang tersisa dilewati dan tercatat sebagai belum ditandatangani.',
+                default => 'Progres disimpan. Pengembalian dapat dilanjutkan melalui status WAITING RETURN.',
+            },
             'updated_ids' => $mailIds,
         ]);
     }
