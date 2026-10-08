@@ -51,12 +51,12 @@
 
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Masuk</span>
-                    <span class="font-bold text-slate-900 text-sm block font-mono">{{ $incomingMail->received_date?->format('d F Y') ?? '-' }}</span>
+                    <span class="font-bold text-slate-900 text-sm block font-mono">{{ $incomingMail->received_date?->format('d F Y, H:i') ?? '-' }}</span>
                 </div>
 
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Surat</span>
-                    <span class="font-semibold text-slate-800 text-sm block font-mono">{{ $incomingMail->outgoing_date?->format('d F Y') ?? '-' }}</span>
+                    <span class="font-semibold text-slate-800 text-sm block font-mono">{{ $incomingMail->outgoing_date?->format('d F Y, H:i') ?? '-' }}</span>
                 </div>
             </div>
 
@@ -87,6 +87,17 @@
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
                         {{ App\Support\IncomingMailStatus::label($incomingMail->status) }}
                     </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Waktu Dibuat</span>
+                    <span class="font-medium text-slate-800 text-sm block font-mono">{{ $incomingMail->created_at?->format('d F Y, H:i') ?? '-' }}</span>
+                </div>
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Terakhir Diubah (Update Status)</span>
+                    <span class="font-bold text-slate-900 text-sm block font-mono">{{ $incomingMail->updated_at?->format('d F Y, H:i') ?? '-' }}</span>
                 </div>
             </div>
 
@@ -151,10 +162,7 @@
                 </div>
             </div>
 
-            <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nama Penerima Berkas</span>
-                <span class="font-bold text-slate-900 text-sm block">{{ $incomingMail->recipient_name ?? '-' }}</span>
-            </div>
+
         </div>
 
         @if ($incomingMail->revisionNotes->isNotEmpty())

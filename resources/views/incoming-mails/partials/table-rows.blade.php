@@ -15,7 +15,7 @@
             {{ $mail->mail_number }}
         </td>
         <td class="py-4 px-4 sm:px-5 text-slate-700 font-mono whitespace-nowrap">
-            {{ $mail->received_date?->format('d/m/Y') ?? '-' }}
+            {{ $mail->received_date?->format('d/m/Y H:i') ?? '-' }}
         </td>
         <td class="py-4 px-4 sm:px-5 font-medium text-slate-800 whitespace-nowrap">
             {{ $mail->sender }}
@@ -73,13 +73,10 @@
             {{ $mail->subject }}
         </td>
         <td class="py-4 px-4 sm:px-5 text-slate-600 font-mono whitespace-nowrap">
-            {{ $mail->outgoing_date?->format('d/m/Y') ?? '-' }}
+            {{ $mail->outgoing_date?->format('d/m/Y H:i') ?? '-' }}
         </td>
         <td class="py-4 px-4 sm:px-5 text-slate-600 min-w-[200px] max-w-md break-words leading-relaxed" title="{{ $mail->disposition_note }}">
             {{ $mail->disposition_note ?? '-' }}
-        </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-700 font-medium whitespace-nowrap">
-            {{ $mail->recipient_name ?? '-' }}
         </td>
         <td class="py-4 px-4 sm:px-5 text-right space-x-1.5 whitespace-nowrap">
             <a href="{{ route('incoming-mails.show', $mail) }}"

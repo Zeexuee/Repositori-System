@@ -40,7 +40,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('incoming-mails', IncomingMailController::class);
 
     // Tanda Tangan Digital Surat Keluar
+    Route::post('/outgoing-mails/bulk-update-status', [OutgoingMailController::class, 'bulkUpdateStatus'])->name('outgoing-mails.bulk-update-status');
     Route::post('/outgoing-mails/{outgoingMail}/sign', [OutgoingMailController::class, 'sign'])->name('outgoing-mails.sign');
+    Route::get('/outgoing-mails/{outgoingMail}/receive-recipients', [\App\Http\Controllers\OutgoingMailReceiveController::class, 'show'])->name('outgoing-mails.receive-recipients.show');
+    Route::post('/outgoing-mails/receive-workflow', [\App\Http\Controllers\OutgoingMailReceiveController::class, 'store'])->name('outgoing-mails.receive-workflow.store');
     Route::resource('outgoing-mails', OutgoingMailController::class);
 
     // Jejak Audit

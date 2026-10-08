@@ -9,22 +9,143 @@ use App\Http\Requests\UpdateOutgoingMailRequest;
 use App\Jobs\ProcessDigitalSignatureJob;
 use App\Models\OutgoingMail;
 use App\Models\OutgoingMailFileHistory;
+use App\Services\OutgoingMailStatusTransitionService;
+use App\Support\OutgoingMailStatus;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class OutgoingMailController extends Controller
 {
+    public function __construct(
+        private readonly OutgoingMailStatusTransitionService $statusTransitionService
+    ) {}
+
     /**
      * Display a listing of outgoing mails with server-side pagination.
      */
-    public function index(): View
+    public function index(Request $request)
     {
         Gate::authorize('viewAny', OutgoingMail::class);
 
-        $outgoingMails = OutgoingMail::with('creator')->latest()->paginate(15);
+        $query = OutgoingMail::query();
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('mail_number', 'like', "%{$search}%")
+                    ->orWhere('subject', 'like', "%{$search}%")
+                    ->orWhere('recipient', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
+            });
+        }
+
+        $outgoingMails = $query->with('creator')->latest()->paginate(15)->withQueryString();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'html' => view('outgoing-mails.partials.table-rows', compact('outgoingMails'))->render(),
+                'pagination' => view('outgoing-mails.partials.pagination', compact('outgoingMails'))->render(),
+                'total' => $outgoingMails->total(),
+                'allIds' => $outgoingMails->pluck('id')->map(fn ($id) => (string) $id)->values(),
+                'statuses' => $outgoingMails->mapWithKeys(fn (OutgoingMail $mail) => [
+                    (string) $mail->id => match ($mail->status) {
+                        'RECEIVED' => 'RECEIVE',
+                        'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'PROGRES',
+                        'RETURNED' => 'RETURN',
+                        'WAITING_RETURN' => 'WAITING RETURN',
+                        default => $mail->status,
+                    },
+                ]),
+            ]);
+        }
 
         return view('outgoing-mails.index', compact('outgoingMails'));
+    }
+
+    /**
+     * Bulk update status for selected outgoing mails.
+     */
+    public function bulkUpdateStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'string', 'exists:outgoing_mails,id'],
+            'status' => ['required', 'string'],
+            'revision_note' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'ids.required' => 'Pilih minimal satu dokumen.',
+            'revision_note.max' => 'Catatan revisi maksimal 2000 karakter.',
+        ]);
+
+        $targetStatus = match ($validated['status']) {
+            'RECEIVE' => 'RECEIVED',
+            'PROGRES' => 'PROGRESS',
+            'RETURN' => 'RETURNED',
+            'WAITING RETURN' => 'WAITING_RETURN',
+            default => $validated['status'],
+        };
+        
+        $mails = OutgoingMail::whereIn('id', $validated['ids'])->get();
+        $updatedCount = 0;
+        $rejected = [];
+
+        foreach ($mails as $mail) {
+            if (! Gate::allows('update', $mail)) {
+                $rejected[] = [
+                    'mail_number' => $mail->mail_number,
+                    'reason' => 'Anda tidak memiliki izin mengubah dokumen ini.',
+                ];
+                continue;
+            }
+
+            $reason = $this->statusTransitionService->rejectionReason($mail, $targetStatus);
+
+            if ($reason !== null) {
+                $rejected[] = [
+                    'mail_number' => $mail->mail_number,
+                    'reason' => $reason,
+                ];
+                continue;
+            }
+
+            try {
+                $this->statusTransitionService->apply(
+                    $mail, 
+                    $targetStatus, 
+                    auth()->id(),
+                    $validated['revision_note'] ?? null
+                );
+                $updatedCount++;
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                $rejected[] = [
+                    'mail_number' => $mail->mail_number,
+                    'reason' => collect($exception->errors())->flatten()->first(),
+                ];
+            }
+        }
+
+        $message = $updatedCount > 0
+            ? "Status berhasil diperbarui menjadi {$targetStatus} untuk {$updatedCount} dokumen."
+            : 'Tidak ada dokumen yang dapat diubah statusnya.';
+
+        if ($rejected !== []) {
+            $message .= ' '.count($rejected).' dokumen dilewati karena alur status tidak sesuai.';
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => $updatedCount > 0,
+                'message' => $message,
+                'updated_count' => $updatedCount,
+                'rejected' => $rejected,
+            ], $updatedCount > 0 ? 200 : 422);
+        }
+
+        return redirect()
+            ->route('outgoing-mails.index')
+            ->with($updatedCount > 0 ? 'success' : 'error', $message);
     }
 
     /**
@@ -49,7 +170,7 @@ class OutgoingMailController extends Controller
         $createdCount = 0;
 
         foreach ($documents as $index => $doc) {
-            $status = 'PENDING';
+            $status = 'WAITING_RETURN';
 
             $fileKey = "documents.{$index}.file";
             $filePath = $request->hasFile($fileKey)
@@ -75,7 +196,7 @@ class OutgoingMailController extends Controller
 
         return redirect()
             ->route('outgoing-mails.index')
-            ->with('success', "{$createdCount} Surat Keluar berhasil dicatat (Status: PENDING).");
+            ->with('success', "{$createdCount} Surat Keluar berhasil dicatat (Status: WAITING RETURN).");
     }
 
     /**
@@ -97,7 +218,7 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('sign', $outgoingMail);
 
-        $outgoingMail->update(['status' => 'APPROVED']);
+        $this->statusTransitionService->apply($outgoingMail, 'APPROVED', auth()->id());
 
         ProcessDigitalSignatureJob::dispatch($outgoingMail, auth()->user());
 
@@ -127,6 +248,22 @@ class OutgoingMailController extends Controller
 
         $data = $request->validated();
 
+        $requestedStatus = OutgoingMailStatus::canonical($data['status'] ?? null);
+        $currentStatus = OutgoingMailStatus::canonical($outgoingMail->status);
+        unset($data['status']);
+
+        $statusChange = $requestedStatus !== null && $requestedStatus !== $currentStatus
+            ? $requestedStatus
+            : null;
+
+        if ($statusChange !== null) {
+            $reason = $this->statusTransitionService->rejectionReason($outgoingMail, $statusChange);
+
+            if ($reason !== null) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['status' => $reason]);
+            }
+        }
+
         if ($request->hasFile('file')) {
             if (! empty($outgoingMail->file_path)) {
                 OutgoingMailFileHistory::create([
@@ -145,6 +282,15 @@ class OutgoingMailController extends Controller
         }
 
         $outgoingMail->update($data);
+
+        if ($statusChange !== null) {
+            $this->statusTransitionService->apply(
+                $outgoingMail,
+                $statusChange,
+                auth()->id(),
+                $data['revision_note'] ?? null
+            );
+        }
 
         return redirect()
             ->route('outgoing-mails.index')

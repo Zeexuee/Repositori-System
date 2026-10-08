@@ -20,12 +20,14 @@ class IncomingMailStatusTransitionService
      * Apply a status transition, enforcing the standard operating procedure.
      *
      * @param  string|null  $revisionNote  Required when entering REVISI, optional when leaving it.
+     * @param  string|null  $dispositionNote  Required when entering DISPOSISI (falls back to the stored note).
      */
     public function apply(
         IncomingMail $incomingMail,
         string $targetStatus,
         ?int $actorId,
-        ?string $revisionNote = null
+        ?string $revisionNote = null,
+        ?string $dispositionNote = null
     ): void {
         $target = IncomingMailStatus::canonical($targetStatus);
 
@@ -41,7 +43,7 @@ class IncomingMailStatusTransitionService
             ]);
         }
 
-        DB::transaction(function () use ($incomingMail, $target, $actorId, $revisionNote): void {
+        DB::transaction(function () use ($incomingMail, $target, $actorId, $revisionNote, $dispositionNote): void {
             $mail = IncomingMail::whereKey($incomingMail->getKey())->lockForUpdate()->firstOrFail();
             $current = IncomingMailStatus::canonical($mail->status);
 
@@ -53,7 +55,21 @@ class IncomingMailStatusTransitionService
                 ]);
             }
 
-            $mail->update(['status' => $target]);
+            $attributes = ['status' => $target];
+
+            if ($target === IncomingMailStatus::DISPOSISI) {
+                $note = filled($dispositionNote) ? trim($dispositionNote) : $mail->disposition_note;
+
+                if (blank($note)) {
+                    throw ValidationException::withMessages([
+                        'disposition_note' => 'Catatan disposisi wajib diisi.',
+                    ]);
+                }
+
+                $attributes['disposition_note'] = $note;
+            }
+
+            $mail->update($attributes);
 
             if ($target === IncomingMailStatus::REVISI) {
                 $this->recordNote($mail, IncomingMailRevisionNote::TYPE_REQUESTED, $revisionNote, $actorId);
@@ -63,6 +79,10 @@ class IncomingMailStatusTransitionService
 
             $this->statusSyncService->sync($mail, $actorId);
             $incomingMail->setAttribute('status', $target);
+
+            if (isset($attributes['disposition_note'])) {
+                $incomingMail->setAttribute('disposition_note', $attributes['disposition_note']);
+            }
         });
     }
 

@@ -113,6 +113,59 @@
             </div>
         </template>
 
+        <!-- Disposition Note Modal (wajib sebelum status menjadi DISPOSISI) -->
+        <template x-teleport="body">
+            <div x-show="showDispositionModal" x-cloak
+                class="fixed inset-0 z-[100000] flex items-center justify-center p-4"
+                role="dialog" aria-modal="true" aria-labelledby="disposition-note-title"
+                @keydown.escape.window="closeDispositionModal()">
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" @click="closeDispositionModal()"></div>
+
+                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-lg overflow-hidden"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    <div class="px-6 py-5 border-b border-slate-200">
+                        <h2 id="disposition-note-title" class="text-lg font-bold text-slate-900">Disposisikan Dokumen</h2>
+                        <p class="text-xs text-slate-500 mt-1">
+                            <span x-text="dispositionMailLabel"></span> · status akan menjadi DISPOSISI
+                        </p>
+                    </div>
+
+                    <div class="px-6 py-5 space-y-3">
+                        <label for="disposition-note-input" class="block text-xs font-bold text-slate-700">
+                            Catatan Disposisi <span class="text-rose-600">*</span>
+                        </label>
+                        <textarea id="disposition-note-input" x-model="dispositionNote" rows="5" maxlength="2000"
+                            required aria-required="true"
+                            placeholder="Contoh: Mohon ditindaklanjuti oleh Divisi Keuangan paling lambat Jumat."
+                            class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
+                        <p class="text-[11px] text-slate-400 text-right">
+                            <span x-text="dispositionNote.length"></span>/2000
+                        </p>
+                        <p x-show="dispositionBlockedCount > 0" class="text-xs text-amber-700">
+                            <span x-text="dispositionBlockedCount"></span> dokumen dilewati karena alur statusnya tidak mengizinkan perubahan ini.
+                        </p>
+                        <p class="text-xs text-slate-600">Catatan: DISPOSISI adalah status akhir dan tidak dapat diubah lagi.</p>
+                        <p x-show="dispositionError" x-text="dispositionError" role="alert" aria-live="assertive"
+                            class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800"></p>
+                    </div>
+
+                    <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+                        <button type="button" @click="closeDispositionModal()" :disabled="isSubmitting"
+                            class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-xl disabled:opacity-50">
+                            Batal
+                        </button>
+                        <button type="button" @click="submitDispositionNote()" :disabled="isSubmitting || !dispositionNote.trim()"
+                            class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
+                            <svg x-show="isSubmitting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Simpan dan Disposisikan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
         <!-- Return Signature Workflow Modal -->
         <template x-teleport="body">
             <div x-show="showReturnModal" x-cloak
@@ -140,7 +193,7 @@
                     </div>
 
                     <div class="px-5 sm:px-7 py-5 overflow-y-auto bg-slate-50/70 space-y-4">
-                        <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 leading-relaxed">
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed">
                             Tambahkan semua penerima dokumen. Isi nama orang yang menandatangani dan bubuhkan tanda tangan untuk penerima yang sudah mengambil dokumen. Progres yang belum lengkap dapat disimpan melalui <strong>Lanjut Nanti</strong>.
                         </div>
 
@@ -176,7 +229,7 @@
                                     <div>
                                         <div class="flex items-center justify-between gap-3 mb-1.5">
                                             <span class="text-xs font-bold text-slate-700">Tanda Tangan Penerima</span>
-                                            <span x-show="recipient.has_signature" class="text-[11px] font-semibold text-emerald-700">Tanda tangan tersimpan</span>
+                                            <span x-show="recipient.has_signature" class="text-[11px] font-semibold text-slate-700">Tanda tangan tersimpan</span>
                                         </div>
                                         <canvas width="800" height="220"
                                             x-init="$nextTick(() => setupReturnCanvas(recipient, $el))"
@@ -189,7 +242,7 @@
                                         <div class="mt-2 flex items-center justify-between gap-3">
                                             <p class="text-[11px] text-slate-500">Gunakan mouse, pena digital, atau sentuhan.</p>
                                             <button type="button" @click="clearReturnSignature(recipient)"
-                                                class="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100">
+                                                class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100">
                                                 Bersihkan
                                             </button>
                                         </div>
@@ -197,7 +250,7 @@
 
                                     <div class="flex justify-end" x-show="returnRecipients.length > 1">
                                         <button type="button" @click="removeReturnRecipient(index)"
-                                            class="text-xs font-semibold text-rose-700 hover:underline">Hapus penerima ini</button>
+                                            class="text-xs font-semibold text-slate-700 hover:underline">Hapus penerima ini</button>
                                     </div>
                                 </fieldset>
                             </template>
@@ -209,7 +262,7 @@
                         </div>
 
                         <p x-show="returnError" x-text="returnError" role="alert" aria-live="assertive"
-                            class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800"></p>
+                            class="p-3 rounded-xl bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-800"></p>
                     </div>
 
                     <div class="px-5 sm:px-7 py-4 border-t border-slate-200 bg-white flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -226,7 +279,7 @@
                             <button type="button" @click="skipRemainingSignatures()"
                                 :disabled="isSavingReturn || isLoadingReturn"
                                 title="Tutup pengembalian tanpa menunggu tanda tangan penerima yang tersisa"
-                                class="px-5 py-2.5 text-xs font-bold text-amber-900 bg-amber-50 border border-amber-300 rounded-xl hover:bg-amber-100 disabled:opacity-50">
+                                class="px-5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-xl hover:bg-slate-100 disabled:opacity-50">
                                 Lewati Proses Tanda Tangan yang Tersisa
                             </button>
                             <button type="button" @click="saveReturnWorkflow('complete')"
@@ -498,7 +551,6 @@
                             <th class="py-4 px-4 sm:px-5 min-w-[280px]">Perihal</th>
                             <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Tanggal Keluar</th>
                             <th class="py-4 px-4 sm:px-5 min-w-[200px]">Disposisi</th>
-                            <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Nama Penerima</th>
                             <th class="py-4 px-4 sm:px-5 text-right whitespace-nowrap">Aksi</th>
                         </tr>
                     </thead>
@@ -547,6 +599,14 @@
                 revisionTargetStatus: '',
                 revisionMailIds: [],
                 revisionMailLabel: '',
+
+                // Disposition note state
+                showDispositionModal: false,
+                dispositionNote: '',
+                dispositionError: '',
+                dispositionMailIds: [],
+                dispositionMailLabel: '',
+                dispositionBlockedCount: 0,
 
                 // Return signature workflow state
                 showReturnModal: false,
@@ -731,6 +791,46 @@
                         this.showRevisionModal = false;
                     } else {
                         this.revisionError = this.statusChangeError;
+                    }
+                },
+
+                openDispositionModal({ mailIds, label, blockedCount = 0 }) {
+                    this.showStatusDropdown = false;
+                    this.dispositionMailIds = [...mailIds];
+                    this.dispositionMailLabel = label;
+                    this.dispositionBlockedCount = blockedCount;
+                    this.dispositionNote = '';
+                    this.dispositionError = '';
+                    this.showDispositionModal = true;
+
+                    this.$nextTick(() => document.getElementById('disposition-note-input')?.focus());
+                },
+
+                closeDispositionModal() {
+                    if (this.isSubmitting) return;
+                    this.showDispositionModal = false;
+                    this.dispositionError = '';
+                },
+
+                async submitDispositionNote() {
+                    const note = this.dispositionNote.trim();
+
+                    if (!note) {
+                        this.dispositionError = 'Catatan disposisi wajib diisi.';
+                        return;
+                    }
+
+                    const applied = await this.applyStatusChange(
+                        this.dispositionMailIds,
+                        'DISPOSISI',
+                        null,
+                        note
+                    );
+
+                    if (applied) {
+                        this.showDispositionModal = false;
+                    } else {
+                        this.dispositionError = this.statusChangeError;
                     }
                 },
 
@@ -1215,6 +1315,12 @@
                     const target = this.normalizeStatus(targetStatus);
                     const leavingRevisi = mailIds.some(id => this.normalizeStatus(this.statusById[id]) === 'REVISI');
 
+                    // Disposisi selalu wajib disertai catatan disposisi.
+                    if (target === 'DISPOSISI') {
+                        this.openDispositionModal({ mailIds, label, blockedCount });
+                        return;
+                    }
+
                     if (target === 'REVISI') {
                         this.openRevisionModal({ mailIds, label, targetStatus: target, isRequired: true });
                         return;
@@ -1229,10 +1335,6 @@
 
                     if (blockedCount > 0) {
                         message += `<br/><br/><span class="text-xs text-amber-700">${blockedCount} dokumen dilewati karena alur statusnya tidak mengizinkan perubahan ini.</span>`;
-                    }
-
-                    if (target === 'DISPOSISI') {
-                        message += `<br/><br/><span class="text-xs text-slate-600">Catatan: DISPOSISI adalah status akhir dan tidak dapat diubah lagi.</span>`;
                     }
 
                     this.confirmMessage = message;
@@ -1253,7 +1355,7 @@
                  * Persist a status change for the given documents.
                  * Returns true when at least one document was updated.
                  */
-                async applyStatusChange(mailIds, targetStatus, revisionNote = null) {
+                async applyStatusChange(mailIds, targetStatus, revisionNote = null, dispositionNote = null) {
                     if (this.isSubmitting || mailIds.length === 0) return false;
 
                     this.isSubmitting = true;
@@ -1265,6 +1367,9 @@
                         formData.append('status', targetStatus);
                         if (revisionNote) {
                             formData.append('revision_note', revisionNote);
+                        }
+                        if (dispositionNote) {
+                            formData.append('disposition_note', dispositionNote);
                         }
                         mailIds.forEach(id => formData.append('ids[]', id));
 

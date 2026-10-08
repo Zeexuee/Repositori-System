@@ -37,11 +37,11 @@
                     </h2>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Dari (Pengirim) -->
                     <div x-data="searchableSelect({
                         initialValue: {{ json_encode(old('sender', '')) }},
-                        defaultOptions: {{ json_encode($senders ?? []) }}
+                        defaultOptions: []
                     })" class="relative" @click.away="open = false">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             Dari / Biro Pengirim <span class="text-slate-900 font-bold">*</span>
@@ -77,6 +77,7 @@
                             </div>
 
                             <div class="max-h-44 overflow-y-auto space-y-1">
+                                <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar list yang ditambahkan</p>
                                 <template x-for="item in filteredOptions" :key="item">
                                     <button type="button" 
                                             @click="selectOption(item)" 
@@ -101,16 +102,15 @@
                     <!-- Tanggal Masuk -->
                     <div>
                         <label for="received_date" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Masuk <span class="text-slate-900 font-bold">*</span></label>
-                        <input type="date" name="received_date" id="received_date" value="{{ old('received_date', date('Y-m-d')) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                        <div class="relative w-full">
+                            <input type="datetime-local" name="received_date" id="received_date" value="{{ old('received_date', date('Y-m-d\TH:i')) }}" required readonly class="peer w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl focus:outline-none text-sm text-slate-500 shadow-2xs cursor-not-allowed">
+                            <div class="absolute bottom-full left-4 mb-2 hidden peer-hover:block peer-focus:block px-2.5 py-1.5 bg-slate-800 text-white text-[10px] font-bold rounded shadow-xl whitespace-nowrap z-50 pointer-events-none transition-all">
+                                Waktu dan tanggal telah di set otomatis
+                                <div class="absolute -bottom-1 left-4 w-2 h-2 bg-slate-800 rotate-45"></div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Nama Penerima -->
-                    <div>
-                        <label for="recipient_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                            Nama Penerima <span class="text-slate-900 font-bold">*</span>
-                        </label>
-                        <input type="text" name="recipient_name" id="recipient_name" value="{{ old('recipient_name') }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                    </div>
                 </div>
             </div>
 
@@ -156,15 +156,64 @@
                             </div>
 
                             <!-- Kepada (Penerima) Dokumen Ini -->
-                            <div>
+                            <div x-data="searchableSelect({
+                                initialValue: doc.recipient,
+                                defaultOptions: []
+                            })" class="relative" @click.away="open = false" x-init="$watch('value', val => doc.recipient = val); $watch('doc.recipient', val => value = val)">
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                     Kepada / Penerima Dokumen <span class="text-slate-900 font-bold" x-show="!isDraft">*</span>
                                 </label>
-                                <input type="text" 
-                                       list="recipient-presets"
-                                       :name="'documents[' + index + '][recipient]'" 
-                                       x-model="doc.recipient" 
-                                       class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                                <input type="hidden" :name="'documents[' + index + '][recipient]'" :value="value">
+
+                                <!-- Trigger Button -->
+                                <button type="button" 
+                                        @click="open = !open; if(open) $nextTick(() => $refs.searchInput.focus())"
+                                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 flex items-center justify-between shadow-2xs transition-all cursor-pointer">
+                                    <span x-text="value ? value : 'Pilih / Cari Penerima...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-bold': value }"></span>
+                                    <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+
+                                <!-- Dropdown List -->
+                                <div x-show="open" x-cloak 
+                                     x-transition:enter="transition ease-out duration-100"
+                                     x-transition:enter-start="transform opacity-0 scale-95"
+                                     x-transition:enter-end="transform opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-75"
+                                     x-transition:leave-start="transform opacity-100 scale-100"
+                                     x-transition:leave-end="transform opacity-0 scale-95"
+                                     class="absolute z-30 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden p-2 space-y-2">
+                                    
+                                    <div class="relative">
+                                        <input x-ref="searchInput" 
+                                               type="text" 
+                                               x-model="search" 
+                                               class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                        <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">×</span>
+                                    </div>
+
+                                    <div class="max-h-44 overflow-y-auto space-y-1">
+                                        <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar list yang ditambahkan</p>
+                                        <template x-for="item in filteredOptions" :key="item">
+                                            <button type="button" 
+                                                    @click="selectOption(item)" 
+                                                    class="w-full text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
+                                                    :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
+                                                <span x-text="item"></span>
+                                                <span x-show="value === item" class="text-xs">✓</span>
+                                            </button>
+                                        </template>
+
+                                        <div x-show="search.trim() !== '' && !filteredOptions.map(o => o.toLowerCase()).includes(search.trim().toLowerCase())" class="pt-1 border-t border-slate-100">
+                                            <button type="button" 
+                                                    @click="addNewOption(search.trim())" 
+                                                    class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer">
+                                                <span>Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -241,12 +290,6 @@
             </div>
         </form>
 
-        <!-- Datalist Options for Recipients -->
-        <datalist id="recipient-presets">
-            @foreach ($recipients ?? [] as $recipientOption)
-                <option value="{{ $recipientOption }}"></option>
-            @endforeach
-        </datalist>
     </div>
 
     <script>
@@ -288,7 +331,7 @@
                         this.documents.splice(index, 1);
                     }
                 },
-                onSubmit(e) {
+                async onSubmit(e) {
                     this.errorMessageList = [];
                     const errors = [];
 
@@ -305,12 +348,6 @@
                         errors.push('Tanggal Masuk wajib diisi.');
                     }
 
-                    // Validasi input wajib: Nama Penerima
-                    const recipientNameInput = this.$refs.form.querySelector('input[name="recipient_name"]');
-                    const recipientNameVal = recipientNameInput ? recipientNameInput.value.trim() : '';
-                    if (!recipientNameVal) {
-                        errors.push('Nama Penerima wajib diisi.');
-                    }
 
                     // Jika bukan draft: Kepada dan Perihal di setiap dokumen wajib diisi
                     if (!this.isDraft) {
@@ -326,15 +363,54 @@
                     }
 
                     // Jika terdapat data wajib yang belum lengkap:
-                    // Cegah submit agar form TIDAK reload, TIDAK menghapus file/data yang sudah diketik, dan posisi layar TIDAK terkunci
                     if (errors.length > 0) {
                         e.preventDefault();
                         this.errorMessageList = errors;
                         this.loading = false;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                         return false;
                     }
 
+                    e.preventDefault();
                     this.loading = true;
+
+                    try {
+                        const formData = new FormData(this.$refs.form);
+                        // Tambahkan nilai is_draft sesuai pilihan user
+                        formData.set('is_draft', this.isDraft ? '1' : '0');
+
+                        const response = await fetch(this.$refs.form.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.redirect) {
+                                window.location.href = data.redirect;
+                            } else {
+                                window.location.href = '{{ route('incoming-mails.index') }}';
+                            }
+                        } else {
+                            const data = await response.json();
+                            if (response.status === 422) {
+                                // Validation error dari server
+                                this.errorMessageList = Object.values(data.errors).flat();
+                            } else {
+                                this.errorMessageList = [data.message || 'Terjadi kesalahan saat menyimpan data.'];
+                            }
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                    } catch (error) {
+                        this.errorMessageList = ['Terjadi kesalahan koneksi atau server. Silakan coba lagi.'];
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } finally {
+                        this.loading = false;
+                    }
                 }
             };
         }

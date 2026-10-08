@@ -52,8 +52,8 @@ class IncomingMail extends Model
     protected function casts(): array
     {
         return [
-            'received_date' => 'date',
-            'outgoing_date' => 'date',
+            'received_date' => 'datetime',
+            'outgoing_date' => 'datetime',
         ];
     }
 

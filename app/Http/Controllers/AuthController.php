@@ -55,8 +55,7 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('incoming-mails.index'))
-            ->with('success', 'Berhasil masuk sebagai '.$user->name.' ('.($user->getRoleNames()->first() ?? 'User').').');
+        return redirect()->intended(route('incoming-mails.index'));
     }
 
     /**

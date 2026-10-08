@@ -1,0 +1,1 @@
+{{ $outgoingMails->links() }}

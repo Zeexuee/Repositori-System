@@ -35,7 +35,7 @@ class UpdateIncomingMailRequest extends FormRequest
             'outgoing_date' => ['nullable', 'date'],
             'disposition_note' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
-            'recipient_name' => ['nullable', 'string', 'max:255'],
+
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'document_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
             'receipt_signature' => ['nullable', 'string'],

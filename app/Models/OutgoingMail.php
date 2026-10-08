@@ -46,8 +46,8 @@ class OutgoingMail extends Model
         static::saving(function (OutgoingMail $mail) {
             if (! empty($mail->status) && ! empty($mail->subject)) {
                 $statusTag = '['.Str::upper($mail->status).']';
-                if (preg_match('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', $mail->subject)) {
-                    $mail->subject = (string) preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI)\]\s*/i', $statusTag.' ', $mail->subject);
+                if (preg_match('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI|WAITING_RETURN)\]\s*/i', $mail->subject)) {
+                    $mail->subject = (string) preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI|WAITING_RETURN)\]\s*/i', $statusTag.' ', $mail->subject);
                 }
             }
         });
@@ -67,5 +67,21 @@ class OutgoingMail extends Model
     public function fileHistories(): HasMany
     {
         return $this->hasMany(OutgoingMailFileHistory::class, 'outgoing_mail_id')->latest();
+    }
+
+    /**
+     * Get the receive signatures/recipients for the outgoing mail.
+     */
+    public function receiveRecipients(): HasMany
+    {
+        return $this->hasMany(OutgoingMailReceiveRecipient::class, 'outgoing_mail_id');
+    }
+
+    /**
+     * Get the revision notes attached to the outgoing mail.
+     */
+    public function revisionNotes(): HasMany
+    {
+        return $this->hasMany(OutgoingMailRevisionNote::class, 'outgoing_mail_id')->latest();
     }
 }

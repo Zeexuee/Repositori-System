@@ -96,6 +96,29 @@ class IncomingMailStatusSopTest extends TestCase
         $this->assertSame('DISPOSISI', $mail->fresh()->status);
     }
 
+    public function test_entering_disposisi_requires_a_disposition_note_and_stores_it(): void
+    {
+        $user = $this->actor();
+        $mail = $this->mailWithStatus('RECEIVE');
+
+        $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'DISPOSISI',
+        ])->assertStatus(422)->assertJsonValidationErrors('disposition_note');
+
+        $this->assertSame('RECEIVE', $mail->fresh()->status);
+
+        $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'DISPOSISI',
+            'disposition_note' => 'Mohon ditindaklanjuti Divisi Keuangan.',
+        ])->assertStatus(200);
+
+        $mail->refresh();
+        $this->assertSame('DISPOSISI', $mail->status);
+        $this->assertSame('Mohon ditindaklanjuti Divisi Keuangan.', $mail->disposition_note);
+    }
+
     public function test_entering_revisi_requires_a_note_and_records_it(): void
     {
         $user = $this->actor();

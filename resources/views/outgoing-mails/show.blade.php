@@ -53,6 +53,16 @@
             </span>
         </div>
 
+        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+            <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Waktu Dibuat</span>
+            <span class="font-medium text-slate-800 text-sm block font-mono">{{ $outgoingMail->created_at?->format('d F Y, H:i') ?? '-' }}</span>
+        </div>
+
+        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+            <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Terakhir Diubah (Update Status)</span>
+            <span class="font-bold text-slate-900 text-sm block font-mono">{{ $outgoingMail->updated_at?->format('d F Y, H:i') ?? '-' }}</span>
+        </div>
+
         <!-- Field 5: Subjek (Full Width on Grid) -->
         <div class="sm:col-span-2 p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
             <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Subjek / Perihal</span>

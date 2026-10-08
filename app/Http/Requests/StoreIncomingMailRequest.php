@@ -35,7 +35,7 @@ class StoreIncomingMailRequest extends FormRequest
         return [
             'sender' => ['required', 'string', 'max:255'],
             'received_date' => ['required', 'date'],
-            'recipient_name' => ['required', 'string', 'max:255'],
+
             'recipient' => ['nullable', 'string', 'max:255'],
             'is_draft' => ['nullable'],
             'receipt_signature' => ['nullable', 'string'],
@@ -75,7 +75,7 @@ class StoreIncomingMailRequest extends FormRequest
         return [
             'sender' => 'Biro / Pengirim',
             'received_date' => 'Tanggal Masuk',
-            'recipient_name' => 'Nama Penerima',
+
             'documents' => 'Daftar Dokumen',
             'documents.*.recipient' => 'Kepada / Penerima Dokumen',
             'documents.*.subject' => 'Perihal Dokumen',
@@ -96,7 +96,7 @@ class StoreIncomingMailRequest extends FormRequest
             'sender.required' => 'Biro / Pengirim wajib dipilih atau diisi.',
             'received_date.required' => 'Tanggal Masuk wajib diisi.',
             'received_date.date' => 'Format Tanggal Masuk tidak valid.',
-            'recipient_name.required' => 'Nama Penerima wajib diisi.',
+
             'documents.*.recipient.required' => 'Kepada / Penerima pada dokumen wajib diisi.',
             'documents.*.subject.required' => 'Perihal pada dokumen wajib diisi.',
             'documents.*.file.max' => 'Ukuran berkas dokumen tidak boleh lebih dari 10MB.',

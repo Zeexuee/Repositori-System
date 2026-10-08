@@ -128,15 +128,19 @@ class IncomingMailController extends Controller
             'ids.*' => ['required', 'string', 'exists:incoming_mails,id'],
             'status' => ['required', 'string', 'in:RECEIVE,RECEIVED,REVISI,DISPOSISI,DRAFT'],
             'revision_note' => ['nullable', 'string', 'max:2000'],
+            'disposition_note' => ['nullable', 'string', 'max:2000', 'required_if:status,DISPOSISI'],
         ], [
             'ids.required' => 'Pilih minimal satu dokumen.',
             'status.in' => 'Status tujuan tidak tersedia. Status RETURN hanya dapat dicapai melalui proses tanda tangan pengembalian.',
             'revision_note.max' => 'Catatan revisi maksimal 2000 karakter.',
+            'disposition_note.required_if' => 'Catatan disposisi wajib diisi.',
+            'disposition_note.max' => 'Catatan disposisi maksimal 2000 karakter.',
         ]);
 
         $targetStatus = IncomingMailStatus::canonical($validated['status']);
         $targetLabel = IncomingMailStatus::label($targetStatus);
         $revisionNote = $validated['revision_note'] ?? null;
+        $dispositionNote = $validated['disposition_note'] ?? null;
         $actorId = auth()->id();
 
         $mails = IncomingMail::whereIn('id', $validated['ids'])->get();
@@ -165,7 +169,7 @@ class IncomingMailController extends Controller
             }
 
             try {
-                $this->statusTransitionService->apply($mail, $targetStatus, $actorId, $revisionNote);
+                $this->statusTransitionService->apply($mail, $targetStatus, $actorId, $revisionNote, $dispositionNote);
                 $updatedCount++;
             } catch (ValidationException $exception) {
                 $rejected[] = [
@@ -206,40 +210,13 @@ class IncomingMailController extends Controller
 
         $nextSequenceNumber = IncomingMail::count() + 1;
 
-        $defaultCategories = [
-            'Kementerian BUMN',
-            'Direksi / Board of Directors',
-            'Divisi Hukum & Legal',
-            'Divisi Keuangan & Akuntansi',
-            'Divisi SDM & General Affairs',
-            'Divisi IT & Digital Transformation',
-            'Satuan Pengawasan Intern (SPI)',
-            'Sekretariat Perusahaan',
-            'Pihak Ketiga / Vendor',
-        ];
-
-        $dbSenders = IncomingMail::whereNotNull('sender')
-            ->select('sender')
-            ->distinct()
-            ->pluck('sender')
-            ->toArray();
-
-        $dbRecipients = IncomingMail::whereNotNull('recipient')
-            ->select('recipient')
-            ->distinct()
-            ->pluck('recipient')
-            ->toArray();
-
-        $senders = array_values(array_unique(array_merge($defaultCategories, $dbSenders)));
-        $recipients = array_values(array_unique(array_merge($defaultCategories, $dbRecipients)));
-
-        return view('incoming-mails.create', compact('nextSequenceNumber', 'senders', 'recipients'));
+        return view('incoming-mails.create', compact('nextSequenceNumber'));
     }
 
     /**
      * Store newly created incoming mail(s) in storage (Support single or batch multi-document with locked sender and draft mode).
      */
-    public function store(StoreIncomingMailRequest $request): RedirectResponse
+    public function store(StoreIncomingMailRequest $request): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
     {
         Gate::authorize('create', IncomingMail::class);
 
@@ -276,7 +253,7 @@ class IncomingMailController extends Controller
             'sender' => $validated['sender'],
             'received_date' => $validated['received_date'],
             'recipient' => $validated['recipient'] ?? null,
-            'recipient_name' => $validated['recipient_name'] ?? null,
+
             'receipt_signature_path' => $receiptSignaturePath,
             'status' => $globalStatus,
         ];
@@ -370,6 +347,11 @@ class IncomingMailController extends Controller
             $this->statusSyncService->sync($incomingMail, auth()->id());
         }
 
+        if ($request->expectsJson()) {
+            session()->flash('success', 'Tanda Terima kolektif & Surat Masuk berhasil dicatat.');
+            return response()->json(['redirect' => route('incoming-mails.index')]);
+        }
+
         return redirect()
             ->route('incoming-mails.index')
             ->with('success', 'Tanda Terima kolektif & Surat Masuk berhasil dicatat.');
@@ -403,40 +385,13 @@ class IncomingMailController extends Controller
 
         $incomingMail->load('batchItems');
 
-        $defaultCategories = [
-            'Kementerian BUMN',
-            'Direksi / Board of Directors',
-            'Divisi Hukum & Legal',
-            'Divisi Keuangan & Akuntansi',
-            'Divisi SDM & General Affairs',
-            'Divisi IT & Digital Transformation',
-            'Satuan Pengawasan Intern (SPI)',
-            'Sekretariat Perusahaan',
-            'Pihak Ketiga / Vendor',
-        ];
-
-        $dbSenders = IncomingMail::whereNotNull('sender')
-            ->select('sender')
-            ->distinct()
-            ->pluck('sender')
-            ->toArray();
-
-        $dbRecipients = IncomingMail::whereNotNull('recipient')
-            ->select('recipient')
-            ->distinct()
-            ->pluck('recipient')
-            ->toArray();
-
-        $senders = array_values(array_unique(array_merge($defaultCategories, $dbSenders)));
-        $recipients = array_values(array_unique(array_merge($defaultCategories, $dbRecipients)));
-
-        return view('incoming-mails.edit', compact('incomingMail', 'senders', 'recipients'));
+        return view('incoming-mails.edit', compact('incomingMail'));
     }
 
     /**
      * Update the specified incoming mail in storage.
      */
-    public function update(UpdateIncomingMailRequest $request, IncomingMail $incomingMail): RedirectResponse
+    public function update(UpdateIncomingMailRequest $request, IncomingMail $incomingMail): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
     {
         Gate::authorize('update', $incomingMail);
 
@@ -492,7 +447,8 @@ class IncomingMailController extends Controller
                 $incomingMail,
                 $statusChange,
                 auth()->id(),
-                $request->input('revision_note')
+                $request->input('revision_note'),
+                $data['disposition_note'] ?? null
             );
         } else {
             $this->statusSyncService->sync($incomingMail, auth()->id());
@@ -504,7 +460,7 @@ class IncomingMailController extends Controller
                 'sender' => $data['sender'] ?? null,
                 'received_date' => $data['received_date'] ?? null,
                 'recipient' => $data['recipient'] ?? null,
-                'recipient_name' => $data['recipient_name'] ?? null,
+
                 'receipt_signature_path' => $data['receipt_signature_path'] ?? null,
             ]);
 
@@ -518,6 +474,11 @@ class IncomingMailController extends Controller
         // Trigger OCR if new file uploaded
         if ($request->hasFile('file') && $incomingMail->file_path) {
             ProcessOcrJob::dispatch($incomingMail);
+        }
+
+        if ($request->expectsJson()) {
+            session()->flash('success', 'Surat Masuk berhasil diperbarui.');
+            return response()->json(['redirect' => back()->getTargetUrl()]);
         }
 
         return redirect()
