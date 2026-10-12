@@ -74,6 +74,12 @@
                             </svg>
                             <span>IP: {{ request()->ip() }}</span>
                         </span>
+
+                        <!-- Button Beta v2 Info (Iconless, Colorless) -->
+                        <button @click="$dispatch('open-beta-v2-modal')" type="button"
+                            class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-300/80 transition-all cursor-pointer backdrop-blur-sm shadow-2xs flex-shrink-0">
+                            Beta v2
+                        </button>
                     </div>
 
                     <!-- Sisi Kanan: User Dropdown & Hidden Logout -->
@@ -118,6 +124,10 @@
                                         </svg>
                                         <span>Profil Saya</span>
                                     </a>
+                                    <button type="button" @click="open = false; $dispatch('open-beta-v2-modal')"
+                                        class="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 border-b border-slate-100 flex items-center transition-all cursor-pointer">
+                                        <span>Pembaruan Beta v2</span>
+                                    </button>
                                     <form action="{{ route('logout') }}" method="POST">
                                         @csrf
                                         <button type="submit"
@@ -308,6 +318,9 @@
     @endauth
 
     @stack('scripts')
+
+    <!-- Beta v2 Announcement Modal -->
+    <x-beta-v2-announcement-modal />
 
     <!-- Loading Spinner Component -->
     <x-loading-spinner />

@@ -109,4 +109,18 @@ class IncomingMailTest extends TestCase
         $this->assertSame('REVISI', $outgoingMail->status);
         $this->assertStringStartsWith('[REVISI]', $outgoingMail->subject);
     }
+
+    public function test_beta_v2_modal_is_rendered_for_authenticated_users(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $response = $this->actingAs($user)->get(route('incoming-mails.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee('Terima Kasih');
+        $response->assertSee('Beta v2');
+        $response->assertSee('Detail Pembaruan (vs open-testing)');
+    }
 }

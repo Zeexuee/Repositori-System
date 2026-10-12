@@ -32,6 +32,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
+            $request->session()->flash('first_login_beta_v2', true);
 
             return redirect()->intended(route('incoming-mails.index'));
         }
@@ -54,6 +55,7 @@ class AuthController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+        $request->session()->flash('first_login_beta_v2', true);
 
         return redirect()->intended(route('incoming-mails.index'));
     }
