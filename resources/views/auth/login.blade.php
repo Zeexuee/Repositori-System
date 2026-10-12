@@ -76,8 +76,8 @@
                 </label>
                 <div class="relative">
                     <input id="email" name="email" type="email" autocomplete="email" required
-                        value="{{ old('email', 'staf@sekretariat.corp') }}"
-                        placeholder="nama@sekretariat.corp"
+                        value="{{ old('email') }}"
+                        placeholder="nama@sekretariat.com"
                         class="w-full px-4 py-2.5 bg-white/90 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-2xs">
                 </div>
                 @error('email')
@@ -92,7 +92,6 @@
                 </label>
                 <div class="relative">
                     <input id="password" name="password" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" required
-                        value="password"
                         placeholder="••••••••"
                         class="w-full pl-4 pr-10 py-2.5 bg-white/90 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-2xs">
                     

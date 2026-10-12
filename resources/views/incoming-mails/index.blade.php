@@ -138,7 +138,6 @@
                         </label>
                         <textarea id="disposition-note-input" x-model="dispositionNote" rows="5" maxlength="2000"
                             required aria-required="true"
-                            placeholder="Contoh: Mohon ditindaklanjuti oleh Divisi Keuangan paling lambat Jumat."
                             class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
                         <p class="text-[11px] text-slate-400 text-right">
                             <span x-text="dispositionNote.length"></span>/2000
