@@ -25,31 +25,41 @@
         <td class="py-4 px-4 sm:px-5 text-slate-600 font-medium whitespace-nowrap">{{ $mail->creator?->name ?? 'System' }}</td>
         <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
             @php
-                $badgeClasses = match ($mail->status) {
-                    'RECEIVE', 'RECEIVED' => 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800',
-                    'PROGRES', 'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'bg-slate-200 text-slate-900 border-slate-400 hover:bg-slate-300 font-bold',
-                    'REVISI' => 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 font-bold',
-                    'RETURN', 'RETURNED' => 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50 font-bold',
+                $canonicalStatus = App\Support\OutgoingMailStatus::canonical($mail->status) ?? $mail->status;
+                $hasReturnProgress = $mail->returnRecipients && $mail->returnRecipients->isNotEmpty();
+                $badgeClasses = match ($canonicalStatus) {
+                    'RECEIVE' => 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800',
+                    'REVISI' => 'bg-slate-100 text-slate-800 border-slate-400 hover:bg-slate-200 font-bold',
+                    'WAITING_RECEIVE' => $hasReturnProgress
+                        ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100 font-bold'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 font-bold',
                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                 };
-                $displayStatus = match ($mail->status) {
-                    'RECEIVED' => 'RECEIVE',
-                    'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'PROGRES',
-                    'RETURNED' => 'RETURN',
-                    default => $mail->status,
-                };
+                $displayStatus = App\Support\OutgoingMailStatus::label($canonicalStatus);
             @endphp
 
             @if (auth()->user()?->can('update', $mail))
-                <button type="button"
-                    onclick="window.openOutgoingStatusDropdown(event, '{{ route('outgoing-mails.update', $mail) }}', '{{ addslashes($mail->mail_number ?? '-') }}', '{{ $displayStatus }}')"
-                    title="Klik untuk mengubah status surat"
-                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
-                    <span>{{ $displayStatus }}</span>
-                    <svg class="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                </button>
+                @if ($canonicalStatus === 'WAITING_RECEIVE' && $hasReturnProgress)
+                    <button type="button"
+                        onclick="window.resumeReturnWorkflow('{{ $mail->id }}', '{{ addslashes($mail->mail_number ?? '-') }}')"
+                        title="Lanjutkan pengisian tanda tangan penerimaan"
+                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
+                        <span>{{ $displayStatus }}</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                @else
+                    <button type="button"
+                        onclick="window.openStatusDropdown(event, '{{ $mail->id }}', '{{ addslashes($mail->mail_number ?? '-') }}', '{{ $canonicalStatus }}')"
+                        title="Klik untuk mengubah status surat"
+                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
+                        <span>{{ $displayStatus }}</span>
+                        <svg class="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                @endif
             @else
                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border {{ $badgeClasses }}">
                     {{ $displayStatus }}

@@ -47,16 +47,75 @@
                 </div>
             </div>
 
-            <!-- Upload Berkas PDF / Gambar -->
-            <div>
-                <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Ganti Berkas (PDF / Gambar)</label>
-                @if ($outgoingMail->file_path)
-                    <div class="mb-2 text-xs font-medium text-slate-600">
-                        Berkas Terunggah (Utama): 
-                        <a href="{{ route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]) }}" target="_blank" class="text-slate-900 underline font-semibold">Pratinjau Berkas Utama</a>
+            <!-- Upload Berkas PDF / Gambar (Multi-file) -->
+            <div x-data="{ hasFile: false, fileName: '' }">
+                <label for="file" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Tambah / Ganti Berkas Dokumen (PDF / Gambar)
+                </label>
+                @if ($outgoingMail->attachments->isNotEmpty())
+                    <div class="mb-3 space-y-2">
+                        <span class="text-xs font-bold text-slate-700 block">Berkas Terunggah Saat Ini ({{ $outgoingMail->attachments->count() }} berkas):</span>
+                        @foreach ($outgoingMail->attachments as $att)
+                            <div class="p-2.5 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                                <div class="flex items-center space-x-2 min-w-0 pr-2">
+                                    @php
+                                        $isImg = str_starts_with($att->mime_type ?? '', 'image/');
+                                    @endphp
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $isImg ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-rose-50 text-rose-700 border border-rose-200' }}">
+                                        {{ $isImg ? 'FOTO' : 'PDF' }}
+                                    </span>
+                                    <span class="truncate font-medium text-slate-800">{{ $att->file_name ?? basename($att->file_path) }}</span>
+                                    @if ($att->file_size)
+                                        <span class="text-[10px] text-slate-400 font-mono">({{ number_format($att->file_size / 1024, 1) }} KB)</span>
+                                    @endif
+                                </div>
+                                <div class="flex items-center space-x-2 flex-shrink-0">
+                                    <a href="{{ route('document.download', ['path' => $att->file_path, 'inline' => 1]) }}" target="_blank" class="text-xs text-slate-900 hover:underline font-semibold">
+                                        Pratinjau
+                                    </a>
+                                    <a href="{{ route('document.download', ['path' => $att->file_path]) }}" class="text-xs text-slate-900 hover:underline font-semibold">
+                                        Unduh
+                                    </a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @elseif ($outgoingMail->file_path)
+                    <div class="mb-3 p-3 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                        <span class="font-medium text-slate-700 truncate pr-2">Berkas Utama: {{ basename($outgoingMail->file_path) }}</span>
+                        <div class="flex items-center space-x-2 flex-shrink-0">
+                            <a href="{{ route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]) }}" target="_blank" class="text-slate-900 underline font-semibold">
+                                Pratinjau
+                            </a>
+                            <a href="{{ route('document.download', ['path' => $outgoingMail->file_path]) }}" class="text-slate-900 underline font-semibold">
+                                Unduh
+                            </a>
+                        </div>
                     </div>
                 @endif
-                <input type="file" name="file" id="file" accept="application/pdf,image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 transition-all space-y-3">
+                    <input type="file" 
+                           name="files[]" 
+                           id="file" 
+                           multiple
+                           x-ref="fileInput"
+                           accept="application/pdf,image/*" 
+                           @change="hasFile = $event.target.files.length > 0; fileName = hasFile ? ($event.target.files.length + ' file dipilih') : ''"
+                           class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+
+                    <div x-show="hasFile" x-cloak class="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                        <span class="text-xs font-medium text-emerald-800 truncate max-w-[220px]" x-text="'File baru: ' + fileName"></span>
+                        <button type="button" 
+                                @click="$refs.fileInput.value = ''; hasFile = false; fileName = ''"
+                                class="px-2.5 py-1 text-xs font-bold text-rose-700 bg-white border border-rose-200 rounded-md hover:bg-rose-50 shadow-2xs transition-all flex-shrink-0 cursor-pointer">
+                            Batal Upload
+                        </button>
+                    </div>
+                </div>
+                @error('files')
+                    <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                @enderror
                 @error('file')
                     <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
                 @enderror

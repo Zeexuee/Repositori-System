@@ -42,7 +42,7 @@ class StoreIncomingMailRequest extends FormRequest
             'receipt_signature_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
 
             // Single document input fields
-            'mail_number' => ['nullable', 'string', 'max:255'],
+            'mail_number' => ['nullable', 'string', 'max:255', 'unique:incoming_mails,mail_number'],
             'subject' => $topSubjectRule,
             'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,REVISI,DISPOSISI,DRAFT'],
             'outgoing_date' => ['nullable', 'date'],
@@ -55,13 +55,15 @@ class StoreIncomingMailRequest extends FormRequest
             'documents' => ['nullable', 'array'],
             'documents.*.recipient' => $docRecipientRule,
             'documents.*.subject' => $docSubjectRule,
-            'documents.*.mail_number' => ['nullable', 'string', 'max:255'],
+            'documents.*.mail_number' => ['nullable', 'string', 'max:255', 'distinct:ignore_case', 'unique:incoming_mails,mail_number'],
             'documents.*.outgoing_date' => ['nullable', 'date'],
             'documents.*.disposition_note' => ['nullable', 'string'],
             'documents.*.notes' => ['nullable', 'string'],
             'documents.*.status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,REVISI,DISPOSISI,DRAFT'],
             'documents.*.file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'documents.*.document_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+            'documents.*.files' => ['nullable', 'array'],
+            'documents.*.files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
         ];
     }
 
@@ -96,6 +98,7 @@ class StoreIncomingMailRequest extends FormRequest
             'sender.required' => 'Biro / Pengirim wajib dipilih atau diisi.',
             'received_date.required' => 'Tanggal Masuk wajib diisi.',
             'received_date.date' => 'Format Tanggal Masuk tidak valid.',
+            'mail_number.unique' => 'Nomor Surat ini sudah ada di dalam sistem.',
 
             'documents.*.recipient.required' => 'Kepada / Penerima pada dokumen wajib diisi.',
             'documents.*.subject.required' => 'Perihal pada dokumen wajib diisi.',
@@ -112,9 +115,13 @@ class StoreIncomingMailRequest extends FormRequest
                 $messages["documents.{$index}.subject.required"] = "Perihal pada Dokumen #{$docNum} wajib diisi.";
                 $messages["documents.{$index}.file.max"] = "Ukuran file pada Dokumen #{$docNum} tidak boleh lebih dari 10MB.";
                 $messages["documents.{$index}.file.mimes"] = "Format file pada Dokumen #{$docNum} harus berformat PDF, JPG, PNG, atau WEBP.";
+                $messages["documents.{$index}.files.*.max"] = "Ukuran setiap berkas dokumen pada Dokumen #{$docNum} tidak boleh lebih dari 10MB.";
+                $messages["documents.{$index}.files.*.mimes"] = "Format setiap berkas dokumen pada Dokumen #{$docNum} harus berformat PDF, JPG, PNG, atau WEBP.";
             }
         }
 
         return $messages;
     }
 }
+
+

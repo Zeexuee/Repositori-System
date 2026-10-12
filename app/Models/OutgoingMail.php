@@ -46,8 +46,8 @@ class OutgoingMail extends Model
         static::saving(function (OutgoingMail $mail) {
             if (! empty($mail->status) && ! empty($mail->subject)) {
                 $statusTag = '['.Str::upper($mail->status).']';
-                if (preg_match('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI|WAITING_RETURN)\]\s*/i', $mail->subject)) {
-                    $mail->subject = (string) preg_replace('/^\[(PROGRES|PROGRESS|IN_PROGRESS|RETURN|RETURNED|RECEIVE|RECEIVED|APPROVED|PENDING|REVISI|WAITING_RETURN)\]\s*/i', $statusTag.' ', $mail->subject);
+                if (preg_match('/^\[(WAITING_RECEIVE|RECEIVE|RECEIVED|REVISI|WAITING_RETURN|RETURN|RETURNED|PROGRES|PROGRESS|IN_PROGRESS|APPROVED|PENDING|SIGNED)\]\s*/i', $mail->subject)) {
+                    $mail->subject = (string) preg_replace('/^\[(WAITING_RECEIVE|RECEIVE|RECEIVED|REVISI|WAITING_RETURN|RETURN|RETURNED|PROGRES|PROGRESS|IN_PROGRESS|APPROVED|PENDING|SIGNED)\]\s*/i', $statusTag.' ', $mail->subject);
                 }
             }
         });
@@ -70,18 +70,26 @@ class OutgoingMail extends Model
     }
 
     /**
-     * Get the receive signatures/recipients for the outgoing mail.
+     * Get the return recipients (signature workflow) for this outgoing mail.
      */
-    public function receiveRecipients(): HasMany
+    public function returnRecipients(): HasMany
     {
-        return $this->hasMany(OutgoingMailReceiveRecipient::class, 'outgoing_mail_id');
+        return $this->hasMany(OutgoingMailReturnRecipient::class, 'outgoing_mail_id');
     }
 
     /**
-     * Get the revision notes attached to the outgoing mail.
+     * Get the revision notes for this outgoing mail.
      */
     public function revisionNotes(): HasMany
     {
         return $this->hasMany(OutgoingMailRevisionNote::class, 'outgoing_mail_id')->latest();
+    }
+
+    /**
+     * Get the attachments/documents for this outgoing mail.
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(OutgoingMailAttachment::class, 'outgoing_mail_id');
     }
 }

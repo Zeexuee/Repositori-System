@@ -17,23 +17,37 @@ class UserSeeder extends Seeder
     {
         $users = [
             [
-                'email' => 'staf@sekretariat.corp',
-                'name' => 'Staf Sekretariat',
-                'role' => 'Staf',
+                'email' => 'diana@sekretariat.com',
+                'name' => 'Diana (Staff)',
+                'role' => 'staff',
             ],
             [
-                'email' => 'direksi@sekretariat.corp',
-                'name' => 'Bapak Direktur Utama',
-                'role' => 'Direksi',
+                'email' => 'dea@sekretariat.com',
+                'name' => 'Dea (Staff)',
+                'role' => 'staff',
+            ],
+            [
+                'email' => 'akuntest@sekretariat.com',
+                'name' => 'Akun Test (Staff)',
+                'role' => 'staff',
+            ],
+            [
+                'email' => 'master@sekretariat.com',
+                'name' => 'Master User',
+                'role' => 'master',
             ],
         ];
 
         foreach ($users as $userData) {
+            // Password = [nama depan email] + 123?
+            $username = explode('@', $userData['email'])[0];
+            $password = $username . '123?';
+
             $user = User::firstOrCreate(
                 ['email' => $userData['email']],
                 [
                     'name' => $userData['name'],
-                    'password' => Hash::make('password'),
+                    'password' => Hash::make($password),
                 ]
             );
 

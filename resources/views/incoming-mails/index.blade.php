@@ -297,13 +297,13 @@
         <!-- Draft Modal -->
         <div x-show="showDraftModal" 
             x-cloak
-            class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            class="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none"
             style="margin: 0 !important;"
             @keydown.escape.window="showDraftModal = false">
             
-            <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showDraftModal = false"></div>
+            <div class="fixed inset-0 pointer-events-auto" @click="showDraftModal = false"></div>
             
-            <div class="relative bg-white rounded-2xl shadow-2xl max-w-7xl w-full border-2 border-slate-900 overflow-hidden flex flex-col max-h-[85vh]"
+            <div class="relative bg-white rounded-xl shadow-xl max-w-7xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[85vh] pointer-events-auto"
                 x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 scale-95"
                 x-transition:enter-end="opacity-100 scale-100"
@@ -322,7 +322,7 @@
                 </div>
                 
                 <div class="p-6 overflow-y-auto flex-1 bg-slate-50 relative">
-                    <div x-show="isLoadingDrafts" class="absolute inset-0 bg-slate-50/80 flex items-center justify-center z-10 backdrop-blur-[1px]">
+                    <div x-show="isLoadingDrafts" class="absolute inset-0 bg-white/75 flex items-center justify-center z-10">
                         <div class="flex items-center space-x-3 bg-white px-5 py-3 rounded-xl shadow-xl border border-slate-200">
                             <svg class="animate-spin h-5 w-5 text-slate-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -502,12 +502,13 @@
                     <span x-text="isSelectionMode ? 'Batal Select' : 'Select'">Select</span>
                 </button>
 
-                <!-- Tombol Draft -->
+                <!-- FITUR DRAFT DI-HOLD SEMENTARA
                 <button type="button" @click="openDraftModal()"
                     class="inline-flex items-center px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 shadow-2xs border border-indigo-200 text-xs font-bold rounded-xl transition-all cursor-pointer">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                     <span>Draft</span>
                 </button>
+                -->
 
                 @can('create', App\Models\IncomingMail::class)
                     <a href="{{ route('incoming-mails.create') }}"
@@ -670,21 +671,14 @@
                     
                     // Watch modal state untuk prevent body scroll
                     this.$watch('showConfirmModal', (value) => {
-                        if (value || this.showDraftModal || this.showReturnModal) {
-                            document.body.style.overflow = 'hidden';
-                        } else {
-                            document.body.style.overflow = '';
-                        }
-                    });
-                    this.$watch('showDraftModal', (value) => {
-                        if (value || this.showConfirmModal || this.showReturnModal) {
+                        if (value || this.showReturnModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
                         }
                     });
                     this.$watch('showReturnModal', (value) => {
-                        if (value || this.showConfirmModal || this.showDraftModal) {
+                        if (value || this.showConfirmModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';

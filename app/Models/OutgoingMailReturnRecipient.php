@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class OutgoingMailReceiveRecipient extends Model
+class OutgoingMailReturnRecipient extends Model
 {
     use HasUuids;
 
@@ -38,10 +38,5 @@ class OutgoingMailReceiveRecipient extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function getHasSignatureAttribute(): bool
-    {
-        return !empty($this->signature_path);
     }
 }

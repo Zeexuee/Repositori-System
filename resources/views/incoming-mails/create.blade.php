@@ -41,7 +41,7 @@
                     <!-- Dari (Pengirim) -->
                     <div x-data="searchableSelect({
                         initialValue: {{ json_encode(old('sender', '')) }},
-                        defaultOptions: []
+                        listType: 'senders'
                     })" class="relative" @click.away="open = false">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             Dari / Biro Pengirim <span class="text-slate-900 font-bold">*</span>
@@ -50,7 +50,7 @@
 
                         <!-- Trigger Button -->
                         <button type="button" 
-                                @click="open = !open; if(open) $nextTick(() => $refs.searchInput.focus())"
+                                @click="toggle()"
                                 class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 flex items-center justify-between shadow-2xs transition-all cursor-pointer">
                             <span x-text="value ? value : 'Pilih / Cari Biro Pengirim...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-bold': value }"></span>
                             <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,30 +71,45 @@
                             <div class="relative">
                                 <input x-ref="searchInput" 
                                        type="text" 
-                                       x-model="search" 
+                                       x-model="search"
+                                       @keydown.enter.prevent.stop="commitSearch()"
+                                       @keydown.escape.prevent.stop="open = false"
+                                       placeholder="Cari atau tulis nama baru..."
                                        class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
-                                <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">×</span>
+                                <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">&#215;</span>
                             </div>
 
                             <div class="max-h-44 overflow-y-auto space-y-1">
-                                <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar list yang ditambahkan</p>
-                                <template x-for="item in filteredOptions" :key="item">
-                                    <button type="button" 
-                                            @click="selectOption(item)" 
-                                            class="w-full text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
-                                            :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
-                                        <span x-text="item"></span>
-                                        <span x-show="value === item" class="text-xs">✓</span>
-                                    </button>
-                                </template>
-
-                                <div x-show="search.trim() !== '' && !filteredOptions.map(o => o.toLowerCase()).includes(search.trim().toLowerCase())" class="pt-1 border-t border-slate-100">
-                                    <button type="button" 
-                                            @click="addNewOption(search.trim())" 
-                                            class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer">
-                                        <span>Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
+                                <!-- Registrasi on-the-fly: WAJIB berada di urutan paling atas -->
+                                <div class="pb-1 border-b border-slate-100">
+                                    <button type="button"
+                                            @click="search.trim() !== '' ? addNewOption(search.trim()) : $refs.searchInput.focus()"
+                                            :disabled="search.trim() !== '' && hasExactMatch"
+                                            class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                                        <span x-show="search.trim() === ''">+ Tambah Baru</span>
+                                        <span x-show="search.trim() !== '' && !hasExactMatch">+ Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
+                                        <span x-show="search.trim() !== '' && hasExactMatch">Opsi "<span x-text="search.trim()"></span>" sudah terdaftar</span>
                                     </button>
                                 </div>
+
+                                <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar list yang ditambahkan</p>
+                                <template x-for="item in filteredOptions" :key="item">
+                                    <div class="flex items-center space-x-1">
+                                        <button type="button" 
+                                                @click="selectOption(item)" 
+                                                class="flex-1 text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
+                                                :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
+                                            <span x-text="item"></span>
+                                            <span x-show="value === item" class="text-xs">&#10003;</span>
+                                        </button>
+                                        <button type="button" 
+                                                @click.stop="removeOption(item)" 
+                                                class="p-2 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                                title="Hapus dari daftar">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
@@ -158,8 +173,8 @@
                             <!-- Kepada (Penerima) Dokumen Ini -->
                             <div x-data="searchableSelect({
                                 initialValue: doc.recipient,
-                                defaultOptions: []
-                            })" class="relative" @click.away="open = false" x-init="$watch('value', val => doc.recipient = val); $watch('doc.recipient', val => value = val)">
+                                listType: 'recipients'
+                            })" class="relative" @click.away="open = false" x-effect="doc.recipient = value">
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                     Kepada / Penerima Dokumen <span class="text-slate-900 font-bold" x-show="!isDraft">*</span>
                                 </label>
@@ -167,7 +182,7 @@
 
                                 <!-- Trigger Button -->
                                 <button type="button" 
-                                        @click="open = !open; if(open) $nextTick(() => $refs.searchInput.focus())"
+                                        @click="toggle()"
                                         class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 flex items-center justify-between shadow-2xs transition-all cursor-pointer">
                                     <span x-text="value ? value : 'Pilih / Cari Penerima...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-bold': value }"></span>
                                     <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,31 +202,46 @@
                                     
                                     <div class="relative">
                                         <input x-ref="searchInput" 
-                                               type="text" 
-                                               x-model="search" 
-                                               class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
-                                        <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">×</span>
+                                       type="text" 
+                                       x-model="search"
+                                       @keydown.enter.prevent.stop="commitSearch()"
+                                       @keydown.escape.prevent.stop="open = false"
+                                       placeholder="Cari atau tulis nama baru..."
+                                       class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                        <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">&#215;</span>
                                     </div>
 
                                     <div class="max-h-44 overflow-y-auto space-y-1">
-                                        <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar list yang ditambahkan</p>
-                                        <template x-for="item in filteredOptions" :key="item">
-                                            <button type="button" 
-                                                    @click="selectOption(item)" 
-                                                    class="w-full text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
-                                                    :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
-                                                <span x-text="item"></span>
-                                                <span x-show="value === item" class="text-xs">✓</span>
-                                            </button>
-                                        </template>
-
-                                        <div x-show="search.trim() !== '' && !filteredOptions.map(o => o.toLowerCase()).includes(search.trim().toLowerCase())" class="pt-1 border-t border-slate-100">
-                                            <button type="button" 
-                                                    @click="addNewOption(search.trim())" 
-                                                    class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer">
-                                                <span>Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
+                                        <!-- Registrasi on-the-fly: WAJIB berada di urutan paling atas -->
+                                        <div class="pb-1 border-b border-slate-100">
+                                            <button type="button"
+                                                    @click="search.trim() !== '' ? addNewOption(search.trim()) : $refs.searchInput.focus()"
+                                                    :disabled="search.trim() !== '' && hasExactMatch"
+                                                    class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                                                <span x-show="search.trim() === ''">+ Tambah Baru</span>
+                                                <span x-show="search.trim() !== '' && !hasExactMatch">+ Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
+                                                <span x-show="search.trim() !== '' && hasExactMatch">Opsi "<span x-text="search.trim()"></span>" sudah terdaftar</span>
                                             </button>
                                         </div>
+
+                                        <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar list yang ditambahkan</p>
+                                        <template x-for="item in filteredOptions" :key="item">
+                                            <div class="flex items-center space-x-1">
+                                                <button type="button" 
+                                                        @click="selectOption(item)" 
+                                                        class="flex-1 text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
+                                                        :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
+                                                    <span x-text="item"></span>
+                                                    <span x-show="value === item" class="text-xs">&#10003;</span>
+                                                </button>
+                                                <button type="button" 
+                                                        @click.stop="removeOption(item)" 
+                                                        class="p-2 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                                        title="Hapus dari daftar">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                </button>
+                                            </div>
+                                        </template>
                                     </div>
                                 </div>
                             </div>
@@ -242,16 +272,93 @@
                             </div>
                         </div>
 
-                        <!-- Upload Berkas / Foto Dokumen (Satu Tombol untuk PDF atau Foto Kamera) -->
-                        <div class="pt-2">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                Upload Dokumen (PDF / Foto Kamera)
-                            </label>
-                            <input type="file" 
-                                   :name="'documents[' + index + '][file]'" 
-                                   accept="application/pdf,image/*" 
-                                   capture="environment" 
-                                   class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+                        <!-- Upload Dokumen & Berkas Lampiran (Bisa Lebih Dari 1 Dokumen) -->
+                        <div x-data="{
+                            selectedFiles: [],
+                            handleFiles(event) {
+                                const newFiles = Array.from(event.target.files);
+                                const dt = new DataTransfer();
+                                this.selectedFiles.forEach(f => dt.items.add(f));
+                                newFiles.forEach(f => {
+                                    if (!this.selectedFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
+                                        dt.items.add(f);
+                                    }
+                                });
+                                this.$refs.fileInput.files = dt.files;
+                                this.selectedFiles = Array.from(dt.files);
+                            },
+                            removeFile(fileIndex) {
+                                const dt = new DataTransfer();
+                                const files = Array.from(this.$refs.fileInput.files);
+                                files.splice(fileIndex, 1);
+                                files.forEach(f => dt.items.add(f));
+                                this.$refs.fileInput.files = dt.files;
+                                this.selectedFiles = Array.from(dt.files);
+                            },
+                            formatSize(bytes) {
+                                if (bytes < 1024) return bytes + ' B';
+                                if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                                return (bytes / 1048576).toFixed(1) + ' MB';
+                            }
+                        }" class="pt-2 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                    Upload Dokumen & Lampiran (Bisa Lebih Dari 1 File)
+                                </label>
+                                <span class="text-[11px] text-slate-500 font-medium" x-show="selectedFiles.length > 0">
+                                    <span class="font-bold text-slate-900" x-text="selectedFiles.length"></span> berkas terpilih
+                                </span>
+                            </div>
+
+                            <div class="relative border-2 border-dashed border-slate-300 hover:border-slate-800 rounded-2xl p-4 bg-slate-50/70 hover:bg-slate-50 transition-all text-center group cursor-pointer"
+                                 @click="$refs.fileInput.click()">
+                                <input type="file" 
+                                       x-ref="fileInput"
+                                       :name="'documents[' + index + '][files][]'" 
+                                       multiple 
+                                       accept="application/pdf,image/*" 
+                                       capture="environment" 
+                                       @change="handleFiles($event)"
+                                       class="hidden">
+                                
+                                <div class="flex flex-col items-center justify-center space-y-1.5 py-1">
+                                    <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                                        <svg class="w-5 h-5 text-slate-600 group-hover:text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-800">
+                                        <span class="underline decoration-slate-400 group-hover:decoration-slate-900">+ Pilih / Tambah Dokumen</span>
+                                    </p>
+                                    <p class="text-[11px] text-slate-500">
+                                        Pilih 1 atau beberapa dokumen (PDF / Foto Kamera, maks. 10MB per file)
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- List File Terpilih -->
+                            <div x-show="selectedFiles.length > 0" class="space-y-1.5 pt-1">
+                                <template x-for="(file, fIdx) in selectedFiles" :key="fIdx">
+                                    <div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl text-xs shadow-2xs">
+                                        <div class="flex items-center space-x-2.5 min-w-0 pr-2">
+                                            <span class="flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-bold"
+                                                  :class="file.type.includes('pdf') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-blue-50 text-blue-700 border border-blue-200'"
+                                                  x-text="file.type.includes('pdf') ? 'PDF' : 'FOTO'">
+                                            </span>
+                                            <span class="font-medium text-slate-800 truncate" x-text="file.name"></span>
+                                            <span class="text-slate-400 text-[10px] flex-shrink-0 font-mono" x-text="'(' + formatSize(file.size) + ')'"></span>
+                                        </div>
+                                        <button type="button" 
+                                                @click.stop="removeFile(fIdx)" 
+                                                class="flex-shrink-0 p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                                title="Hapus berkas ini">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -264,13 +371,14 @@
                 </a>
 
                 <div class="flex items-center space-x-3">
-                    <!-- Tombol Simpan Draft -->
+                    <!-- FITUR DRAFT DI-HOLD SEMENTARA
                     <button type="submit" 
                             @click="isDraft = true" 
                             :disabled="loading" 
                             class="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 rounded-xl hover:bg-slate-200 transition-all shadow-2xs cursor-pointer">
                         <span>Simpan Sebagai Draft</span>
                     </button>
+                    -->
 
                     <!-- Tombol Finalisasi -->
                     <button type="submit" 
@@ -415,44 +523,137 @@
             };
         }
 
+        // Store global: daftar opsi dibagikan ke seluruh komponen combobox pada halaman ini,
+        // sehingga registrasi / penghapusan on-the-fly langsung tercermin di semua dropdown.
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('mailOptions', {
+                senders: @json(collect($senders ?? [])->filter()->unique()->values()),
+                recipients: @json(collect($recipients ?? [])->filter()->unique()->values()),
+
+                list(type) {
+                    return type === 'senders' ? this.senders : this.recipients;
+                },
+
+                add(type, option) {
+                    const value = String(option ?? '').trim();
+                    if (value === '') {
+                        return '';
+                    }
+
+                    const target = this.list(type);
+                    const existing = target.find(item => String(item).toLowerCase() === value.toLowerCase());
+                    if (existing !== undefined) {
+                        return existing;
+                    }
+
+                    target.unshift(value);
+
+                    return value;
+                },
+
+                remove(type, option) {
+                    if (type === 'senders') {
+                        this.senders = this.senders.filter(item => item !== option);
+                    } else {
+                        this.recipients = this.recipients.filter(item => item !== option);
+                    }
+                },
+            });
+        });
+
         function searchableSelect(config) {
-            const defaultOpts = Array.isArray(config.defaultOptions) ? [...config.defaultOptions] : [];
-            const initVal = config.initialValue || '';
-            if (initVal && !defaultOpts.includes(initVal)) {
-                defaultOpts.unshift(initVal);
-            }
+            const settings = config || {};
 
             return {
                 open: false,
                 search: '',
-                value: initVal,
-                options: defaultOpts,
+                value: settings.initialValue ? String(settings.initialValue) : '',
+                listType: settings.listType === 'recipients' ? 'recipients' : 'senders',
+
+                init() {
+                    // Pastikan nilai awal (misal hasil old() setelah validasi gagal) tetap tersedia di daftar.
+                    if (this.value) {
+                        this.$store.mailOptions.add(this.listType, this.value);
+                    }
+                },
+
+                get options() {
+                    return this.$store.mailOptions.list(this.listType);
+                },
 
                 get filteredOptions() {
-                    if (!this.search.trim()) {
+                    const keyword = this.search.trim().toLowerCase();
+                    if (keyword === '') {
                         return this.options;
                     }
-                    return this.options.filter(opt => 
-                        opt.toLowerCase().includes(this.search.trim().toLowerCase())
-                    );
+
+                    return this.options.filter(option => String(option).toLowerCase().includes(keyword));
                 },
 
-                selectOption(opt) {
-                    this.value = opt;
-                    this.search = '';
-                    this.open = false;
+                get hasExactMatch() {
+                    const keyword = this.search.trim().toLowerCase();
+
+                    return keyword !== '' && this.options.some(option => String(option).toLowerCase() === keyword);
                 },
 
-                addNewOption(newOpt) {
-                    if (!newOpt) return;
-                    if (!this.options.includes(newOpt)) {
-                        this.options.push(newOpt);
+                toggle() {
+                    this.open = !this.open;
+                    if (this.open) {
+                        this.$nextTick(() => this.$refs.searchInput?.focus());
                     }
-                    this.value = newOpt;
+                },
+
+                selectOption(option) {
+                    this.value = option;
                     this.search = '';
                     this.open = false;
-                }
+                },
+
+                addNewOption(newOption) {
+                    const registered = this.$store.mailOptions.add(this.listType, newOption);
+                    if (registered === '') {
+                        return;
+                    }
+
+                    this.selectOption(registered);
+                },
+
+                removeOption(option) {
+                    this.$store.mailOptions.remove(this.listType, option);
+                    if (this.value === option) {
+                        this.value = '';
+                    }
+                },
+
+                // Enter di kolom pencarian: pilih kecocokan persis, atau daftarkan opsi baru.
+                commitSearch() {
+                    const keyword = this.search.trim();
+
+                    if (keyword === '') {
+                        this.open = false;
+                        return;
+                    }
+
+                    const match = this.options.find(option => String(option).toLowerCase() === keyword.toLowerCase());
+
+                    if (match !== undefined) {
+                        this.selectOption(match);
+                        return;
+                    }
+
+                    this.addNewOption(keyword);
+                },
             };
         }
     </script>
 @endsection
+
+
+
+
+
+
+
+
+
+

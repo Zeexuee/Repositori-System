@@ -323,7 +323,24 @@
                             Upload Dokumen (PDF / Foto Kamera)
                         </label>
 
-                        @if ($incomingMail->file_path || $incomingMail->document_photo_path)
+                        @if ($incomingMail->attachments->isNotEmpty())
+                            <div class="mb-3 space-y-2">
+                                <span class="text-xs font-bold text-slate-700 block">Berkas Terunggah ({{ $incomingMail->attachments->count() }} berkas):</span>
+                                @foreach ($incomingMail->attachments as $att)
+                                    <div class="p-2.5 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                                        <span class="truncate font-medium text-slate-800 pr-2">{{ $att->file_name ?? basename($att->file_path) }}</span>
+                                        <div class="flex items-center space-x-2 flex-shrink-0">
+                                            <a href="{{ route('document.download', ['path' => $att->file_path, 'inline' => 1]) }}" target="_blank" class="text-xs text-slate-900 hover:underline font-semibold">
+                                                Pratinjau
+                                            </a>
+                                            <a href="{{ route('document.download', ['path' => $att->file_path]) }}" class="text-xs text-slate-900 hover:underline font-semibold">
+                                                Unduh
+                                            </a>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @elseif ($incomingMail->file_path || $incomingMail->document_photo_path)
                             <div class="mb-3 p-3 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between">
                                 <span class="text-xs font-medium text-slate-700">Berkas Terunggah</span>
                                 <a href="{{ route('document.download', ['path' => $incomingMail->file_path ?? $incomingMail->document_photo_path, 'inline' => 1]) }}" target="_blank" class="text-xs text-slate-900 hover:underline font-semibold">
@@ -334,12 +351,13 @@
 
                         <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 transition-all space-y-3">
                             <input type="file" 
-                                   name="file" 
+                                   name="files[]" 
                                    id="file" 
+                                   multiple
                                    x-ref="photoInput"
                                    accept="application/pdf,image/*" 
                                    capture="environment" 
-                                   @change="hasFile = $event.target.files.length > 0; fileName = hasFile ? $event.target.files[0].name : ''"
+                                   @change="hasFile = $event.target.files.length > 0; fileName = hasFile ? ($event.target.files.length + ' file dipilih') : ''"
                                    class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
 
                             <div x-show="hasFile" x-cloak class="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">

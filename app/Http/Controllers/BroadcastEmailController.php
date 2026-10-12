@@ -18,7 +18,7 @@ class BroadcastEmailController extends Controller
      */
     public function index(): View
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses Broadcast Email terbatas hanya untuk Direksi.');
         }
 
@@ -52,7 +52,7 @@ class BroadcastEmailController extends Controller
      */
     public function history(): View
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses Broadcast Email terbatas hanya untuk Direksi.');
         }
 
@@ -66,7 +66,7 @@ class BroadcastEmailController extends Controller
      */
     public function send(Request $request): RedirectResponse
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses Broadcast Email terbatas hanya untuk Direksi.');
         }
 
@@ -181,7 +181,7 @@ class BroadcastEmailController extends Controller
      */
     public function downloadAttachment(BroadcastEmail $broadcast, int $index)
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses tidak diizinkan.');
         }
 

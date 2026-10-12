@@ -89,4 +89,12 @@ class IncomingMail extends Model
     {
         return $this->hasMany(IncomingMail::class, 'batch_id', 'batch_id');
     }
+
+    /**
+     * Get the attachments/documents for the incoming mail.
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(IncomingMailAttachment::class, 'incoming_mail_id');
+    }
 }

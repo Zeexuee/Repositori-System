@@ -74,18 +74,99 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Upload Berkas PDF / Gambar -->
-                        <div>
-                            <label :for="'file_' + index" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Upload Berkas Dokumen (PDF / Gambar)</label>
-                            <input type="file" :name="'documents[' + index + '][file]'" :id="'file_' + index" accept="application/pdf,image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+                    <!-- Upload Dokumen & Berkas Lampiran (Bisa Lebih Dari 1 Dokumen) -->
+                    <div x-data="{
+                        selectedFiles: [],
+                        handleFiles(event) {
+                            const newFiles = Array.from(event.target.files);
+                            const dt = new DataTransfer();
+                            this.selectedFiles.forEach(f => dt.items.add(f));
+                            newFiles.forEach(f => {
+                                if (!this.selectedFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
+                                    dt.items.add(f);
+                                }
+                            });
+                            this.$refs.fileInput.files = dt.files;
+                            this.selectedFiles = Array.from(dt.files);
+                        },
+                        removeFile(fileIndex) {
+                            const dt = new DataTransfer();
+                            const files = Array.from(this.$refs.fileInput.files);
+                            files.splice(fileIndex, 1);
+                            files.forEach(f => dt.items.add(f));
+                            this.$refs.fileInput.files = dt.files;
+                            this.selectedFiles = Array.from(dt.files);
+                        },
+                        formatSize(bytes) {
+                            if (bytes < 1024) return bytes + ' B';
+                            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                            return (bytes / 1048576).toFixed(1) + ' MB';
+                        }
+                    }" class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                Upload Dokumen & Lampiran (Bisa Lebih Dari 1 File)
+                            </label>
+                            <span class="text-[11px] text-slate-500 font-medium" x-show="selectedFiles.length > 0">
+                                <span class="font-bold text-slate-900" x-text="selectedFiles.length"></span> berkas terpilih
+                            </span>
                         </div>
 
-                        <!-- Catatan Disposisi -->
-                        <div>
-                            <label :for="'disposition_note_' + index" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Disposisi (Opsional)</label>
-                            <textarea :name="'documents[' + index + '][disposition_note]'" :id="'disposition_note_' + index" x-model="doc.disposition_note" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs"></textarea>
+                        <div class="relative border-2 border-dashed border-slate-300 hover:border-slate-800 rounded-2xl p-4 bg-slate-50/70 hover:bg-slate-50 transition-all text-center group cursor-pointer"
+                             @click="$refs.fileInput.click()">
+                            <input type="file" 
+                                   x-ref="fileInput"
+                                   :name="'documents[' + index + '][files][]'" 
+                                   multiple 
+                                   accept="application/pdf,image/*" 
+                                   capture="environment" 
+                                   @change="handleFiles($event)"
+                                   class="hidden">
+                            
+                            <div class="flex flex-col items-center justify-center space-y-1.5 py-1">
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                                    <svg class="w-5 h-5 text-slate-600 group-hover:text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                </div>
+                                <p class="text-xs font-bold text-slate-800">
+                                    <span class="underline decoration-slate-400 group-hover:decoration-slate-900">+ Pilih / Tambah Dokumen</span>
+                                </p>
+                                <p class="text-[11px] text-slate-500">
+                                    Pilih 1 atau beberapa dokumen (PDF / Gambar, maks. 10MB per file)
+                                </p>
+                            </div>
                         </div>
+
+                        <!-- List File Terpilih -->
+                        <div x-show="selectedFiles.length > 0" class="space-y-1.5 pt-1">
+                            <template x-for="(file, fIdx) in selectedFiles" :key="fIdx">
+                                <div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl text-xs shadow-2xs">
+                                    <div class="flex items-center space-x-2.5 min-w-0 pr-2">
+                                        <span class="flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-bold"
+                                              :class="file.type.includes('pdf') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-blue-50 text-blue-700 border border-blue-200'"
+                                              x-text="file.type.includes('pdf') ? 'PDF' : 'FOTO'">
+                                        </span>
+                                        <span class="font-medium text-slate-800 truncate" x-text="file.name"></span>
+                                        <span class="text-slate-400 text-[10px] flex-shrink-0 font-mono" x-text="'(' + formatSize(file.size) + ')'"></span>
+                                    </div>
+                                    <button type="button" 
+                                            @click.stop="removeFile(fIdx)" 
+                                            class="flex-shrink-0 p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                            title="Hapus berkas ini">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Catatan Disposisi -->
+                    <div>
+                        <label :for="'disposition_note_' + index" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Disposisi (Opsional)</label>
+                        <textarea :name="'documents[' + index + '][disposition_note]'" :id="'disposition_note_' + index" x-model="doc.disposition_note" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs"></textarea>
                     </div>
                 </div>
             </template>

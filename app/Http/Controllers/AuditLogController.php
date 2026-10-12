@@ -17,7 +17,7 @@ class AuditLogController extends Controller
      */
     public function index(): View|RedirectResponse
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses tidak diizinkan. Halaman Jejak Audit khusus untuk Direksi.');
         }
 
@@ -32,7 +32,7 @@ class AuditLogController extends Controller
      */
     public function export(): StreamedResponse
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses tidak diizinkan.');
         }
 
@@ -69,7 +69,7 @@ class AuditLogController extends Controller
      */
     public function exportTrash(): StreamedResponse
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses tidak diizinkan.');
         }
 

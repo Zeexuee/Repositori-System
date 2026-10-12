@@ -37,13 +37,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/incoming-mails/bulk-update-status', [IncomingMailController::class, 'bulkUpdateStatus'])->name('incoming-mails.bulk-update-status');
     Route::get('/incoming-mails/{incomingMail}/return-recipients', [IncomingMailReturnController::class, 'show'])->name('incoming-mails.return-recipients.show');
     Route::post('/incoming-mails/return-workflow', [IncomingMailReturnController::class, 'store'])->name('incoming-mails.return-workflow.store');
+    Route::put('/incoming-mails/batch-update/{batch_id}', [IncomingMailController::class, 'updateBatch'])->name('incoming-mails.batch-update');
     Route::resource('incoming-mails', IncomingMailController::class);
 
     // Tanda Tangan Digital Surat Keluar
     Route::post('/outgoing-mails/bulk-update-status', [OutgoingMailController::class, 'bulkUpdateStatus'])->name('outgoing-mails.bulk-update-status');
+    Route::get('/outgoing-mails/{outgoingMail}/return-recipients', [\App\Http\Controllers\OutgoingMailReturnController::class, 'show'])->name('outgoing-mails.return-recipients.show');
+    Route::post('/outgoing-mails/return-workflow', [\App\Http\Controllers\OutgoingMailReturnController::class, 'store'])->name('outgoing-mails.return-workflow.store');
     Route::post('/outgoing-mails/{outgoingMail}/sign', [OutgoingMailController::class, 'sign'])->name('outgoing-mails.sign');
-    Route::get('/outgoing-mails/{outgoingMail}/receive-recipients', [\App\Http\Controllers\OutgoingMailReceiveController::class, 'show'])->name('outgoing-mails.receive-recipients.show');
-    Route::post('/outgoing-mails/receive-workflow', [\App\Http\Controllers\OutgoingMailReceiveController::class, 'store'])->name('outgoing-mails.receive-workflow.store');
     Route::resource('outgoing-mails', OutgoingMailController::class);
 
     // Jejak Audit

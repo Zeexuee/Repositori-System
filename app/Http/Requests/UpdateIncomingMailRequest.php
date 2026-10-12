@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateIncomingMailRequest extends FormRequest
 {
@@ -25,7 +26,7 @@ class UpdateIncomingMailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mail_number' => ['sometimes', 'required', 'string', 'max:255'],
+            'mail_number' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('incoming_mails', 'mail_number')->ignore($this->route('incoming_mail'))],
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
             'sender' => ['sometimes', 'required', 'string', 'max:255'],
             'received_date' => ['sometimes', 'required', 'date'],
@@ -38,8 +39,18 @@ class UpdateIncomingMailRequest extends FormRequest
 
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'document_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+            'files' => ['nullable', 'array'],
+            'files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'receipt_signature' => ['nullable', 'string'],
             'receipt_signature_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'mail_number.unique' => 'Nomor Surat ini sudah ada di dalam sistem.',
+        ];
+    }
 }
+

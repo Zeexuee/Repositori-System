@@ -20,21 +20,53 @@ class OutgoingMailTest extends TestCase
 
         $mail = OutgoingMail::create([
             'mail_number' => 'SK-20260922-0001',
-            'subject' => '[PROGRES] Surat Tanggapan Kerjasama',
+            'subject' => 'Surat Tanggapan Kerjasama',
             'recipient' => 'PT Mitra Sejahtera',
             'created_by' => $user->id,
-            'status' => 'PROGRES',
+            'status' => 'WAITING_RECEIVE',
         ]);
 
-        $response = $this->actingAs($user)->put(route('outgoing-mails.update', $mail), [
+        $response = $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
             'status' => 'REVISI',
+            'revision_note' => 'Halo tes',
         ]);
 
-        $response->assertRedirect(route('outgoing-mails.index'));
-        $response->assertSessionHas('success');
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'updated_count' => 1,
+        ]);
 
         $mail->refresh();
         $this->assertSame('REVISI', $mail->status);
-        $this->assertStringStartsWith('[REVISI]', $mail->subject);
+    }
+
+    public function test_outgoing_mail_show_displays_revision_history(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = OutgoingMail::create([
+            'mail_number' => 'SK-20260922-0002',
+            'subject' => 'Surat Undangan Evaluasi',
+            'recipient' => 'PT Mitra Sejahtera',
+            'created_by' => $user->id,
+            'status' => 'WAITING_RECEIVE',
+        ]);
+
+        $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'REVISI',
+            'revision_note' => 'Halo tes catatan revisi',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('outgoing-mails.show', $mail));
+
+        $response->assertOk();
+        $response->assertSee('Riwayat Revisi Dokumen');
+        $response->assertSee('Halo tes catatan revisi');
+        $response->assertSee('Permintaan Revisi');
     }
 }

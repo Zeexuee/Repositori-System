@@ -3,70 +3,10 @@
 @section('title', 'Daftar Surat Keluar')
 
 @section('content')
-    <div x-data="outgoingMailStatusHandler()" x-init="rebindPagination()" class="space-y-4">
-        <!-- Success Toast Notification -->
-        <div x-show="showSuccessToast" 
-            x-cloak
-            :role="toastIsError ? 'alert' : 'status'"
-            aria-live="polite"
-            class="fixed top-20 right-4 z-[9999] max-w-md"
-            style="margin: 0 !important;"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 translate-x-4"
-            x-transition:enter-end="opacity-100 translate-x-0"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 translate-x-0"
-            x-transition:leave-end="opacity-0 translate-x-4">
-            <div class="bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 p-4 flex items-start gap-3">
-                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <div class="flex-1">
-                    <p class="text-sm font-semibold" x-text="toastIsError ? 'Tidak dapat diproses' : 'Berhasil!'"></p>
-                    <p class="text-xs text-slate-300 mt-0.5" x-text="successMessage"></p>
-                </div>
-                <button @click="showSuccessToast = false" class="flex-shrink-0 text-slate-400 hover:text-white transition-colors">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-<!-- Success Toast Notification -->
-        <div x-show="showSuccessToast" 
-            x-cloak
-            :role="toastIsError ? 'alert' : 'status'"
-            aria-live="polite"
-            class="fixed top-20 right-4 z-[9999] max-w-md"
-            style="margin: 0 !important;"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 translate-x-4"
-            x-transition:enter-end="opacity-100 translate-x-0"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 translate-x-0"
-            x-transition:leave-end="opacity-0 translate-x-4">
-            <div class="bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 p-4 flex items-start gap-3">
-                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <div class="flex-1">
-                    <p class="text-sm font-semibold" x-text="toastIsError ? 'Tidak dapat diproses' : 'Berhasil!'"></p>
-                    <p class="text-xs text-slate-300 mt-0.5" x-text="successMessage"></p>
-                </div>
-                <button @click="showSuccessToast = false" class="flex-shrink-0 text-slate-400 hover:text-white transition-colors">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-<!-- Custom Confirmation Modal -->
+    <div x-data="outgoingMailSelector()" 
+         @single-status-change.window="handleSingleStatusChange($event.detail)"
+         class="space-y-4">
+        <!-- Custom Confirmation Modal -->
         <div x-show="showConfirmModal" 
             x-cloak
             class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
@@ -121,32 +61,7 @@
             </div>
         </div>
 
-<!-- Teleported Single Status Dropdown (Topmost, outside all clipping containers) -->
-        <template x-teleport="body">
-            <div x-show="showStatusDropdown" 
-                x-cloak
-                @click.outside="showStatusDropdown = false"
-                class="fixed z-[99999] w-44 bg-white border border-slate-200 rounded-xl shadow-2xl py-1.5 text-left"
-                :style="`top: ${statusDropdownPosition.top}; left: ${statusDropdownPosition.left};`"
-                x-transition:enter="transition ease-out duration-100"
-                x-transition:enter-start="opacity-0 scale-95"
-                x-transition:enter-end="opacity-100 scale-100"
-                x-transition:leave="transition ease-in duration-75"
-                x-transition:leave-start="opacity-100 scale-100"
-                x-transition:leave-end="opacity-0 scale-95">
-                <div class="px-3.5 py-1 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Status Berikutnya
-                </div>
-                <div class="py-1" role="menu">
-                    <template x-for="option in availableStatusOptions" :key="option.value">
-                        <button type="button" role="menuitem" @click="selectStatusOption(option.value)"
-                            class="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full flex-shrink-0" :class="statusDotClass(option.value)"></span>
-                            <span x-text="option.label"></span>
-                        </button>
-                    </template>
-
-<!-- Revision Note Modal -->
+        <!-- Revision Note Modal -->
         <template x-teleport="body">
             <div x-show="showRevisionModal" x-cloak
                 class="fixed inset-0 z-[100000] flex items-center justify-center p-4"
@@ -198,12 +113,14 @@
             </div>
         </template>
 
-<!-- Receive Signature Workflow Modal -->
+
+
+        <!-- Return Signature Workflow Modal -->
         <template x-teleport="body">
-            <div x-show="showReceiveModal" x-cloak
+            <div x-show="showReturnModal" x-cloak
                 class="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6"
-                role="dialog" aria-modal="true" aria-labelledby="receive-workflow-title"
-                @keydown.escape.window="closeReceiveModal()">
+                role="dialog" aria-modal="true" aria-labelledby="return-workflow-title"
+                @keydown.escape.window="closeReturnModal()">
                 <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
 
                 <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col"
@@ -212,12 +129,12 @@
                     x-transition:enter-end="opacity-100 scale-100">
                     <div class="px-5 sm:px-7 py-5 border-b border-slate-200 flex items-start justify-between gap-4">
                         <div>
-                            <h2 id="receive-workflow-title" class="text-lg font-bold text-slate-900">Tanda Tangan Penerimaan Dokumen</h2>
+                            <h2 id="return-workflow-title" class="text-lg font-bold text-slate-900">Tanda Tangan Penerimaan Dokumen</h2>
                             <p class="text-xs text-slate-500 mt-1">
-                                <span x-text="receiveMailLabel"></span> · <span x-text="receiveMailIds.length"></span> dokumen
+                                <span x-text="returnMailLabel"></span> · <span x-text="returnMailIds.length"></span> dokumen
                             </p>
                         </div>
-                        <button type="button" @click="closeReceiveModal()" :disabled="isSavingReceive"
+                        <button type="button" @click="closeReturnModal()" :disabled="isSavingReturn"
                             aria-label="Tutup proses penerimaan"
                             class="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-50">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -229,13 +146,13 @@
                             Tambahkan semua penerima dokumen. Isi nama orang yang menandatangani dan bubuhkan tanda tangan untuk penerima yang sudah mengambil dokumen. Progres yang belum lengkap dapat disimpan melalui <strong>Lanjut Nanti</strong>.
                         </div>
 
-                        <div x-show="isLoadingReceive" class="py-12 flex items-center justify-center gap-3 text-sm font-semibold text-slate-600">
+                        <div x-show="isLoadingReturn" class="py-12 flex items-center justify-center gap-3 text-sm font-semibold text-slate-600">
                             <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                             Memuat progres penerimaan...
                         </div>
 
-                        <div x-show="!isLoadingReceive" class="space-y-4">
-                            <template x-for="(recipient, index) in receiveRecipients" :key="recipient.client_key">
+                        <div x-show="!isLoadingReturn" class="space-y-4">
+                            <template x-for="(recipient, index) in returnRecipients" :key="recipient.client_key">
                                 <fieldset class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
                                     <legend class="px-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
                                         Penerima <span x-text="index + 1"></span>
@@ -243,16 +160,16 @@
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label :for="`receive-recipient-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penerima / Unit</label>
-                                            <input type="text" :id="`receive-recipient-${recipient.client_key}`"
-                                                x-model="recipient.recipient_name" @input="receiveDirty = true" maxlength="255"
+                                            <label :for="`return-recipient-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penerima / Unit</label>
+                                            <input type="text" :id="`return-recipient-${recipient.client_key}`"
+                                                x-model="recipient.recipient_name" @input="returnDirty = true" maxlength="255"
                                                 placeholder="Contoh: Divisi Keuangan"
                                                 class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900" required>
                                         </div>
                                         <div>
-                                            <label :for="`receive-signer-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penandatangan</label>
-                                            <input type="text" :id="`receive-signer-${recipient.client_key}`"
-                                                x-model="recipient.signer_name" @input="receiveDirty = true" maxlength="255"
+                                            <label :for="`return-signer-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penandatangan</label>
+                                            <input type="text" :id="`return-signer-${recipient.client_key}`"
+                                                x-model="recipient.signer_name" @input="returnDirty = true" maxlength="255"
                                                 placeholder="Boleh dikosongkan jika belum hadir"
                                                 class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
                                         </div>
@@ -264,42 +181,144 @@
                                             <span x-show="recipient.has_signature" class="text-[11px] font-semibold text-slate-700">Tanda tangan tersimpan</span>
                                         </div>
                                         <canvas width="800" height="220"
-                                            x-init="$nextTick(() => setupReceiveCanvas(recipient, $el))"
-                                            @pointerdown.prevent="startReceiveSignature($event, recipient)"
-                                            @pointermove.prevent="drawReceiveSignature($event, recipient)"
-                                            @pointerup.prevent="finishReceiveSignature($event, recipient)"
-                                            @pointercancel.prevent="finishReceiveSignature($event, recipient)"
+                                            x-init="$nextTick(() => setupReturnCanvas(recipient, $el))"
+                                            @pointerdown.prevent="startReturnSignature($event, recipient)"
+                                            @pointermove.prevent="drawReturnSignature($event, recipient)"
+                                            @pointerup.prevent="finishReturnSignature($event, recipient)"
+                                            @pointercancel.prevent="finishReturnSignature($event, recipient)"
                                             aria-label="Area tanda tangan penerima"
                                             class="w-full h-40 bg-white border border-slate-300 rounded-xl touch-none cursor-crosshair"></canvas>
                                         <div class="mt-2 flex items-center justify-between gap-3">
                                             <p class="text-[11px] text-slate-500">Gunakan mouse, pena digital, atau sentuhan.</p>
-                                            <button type="button" @click="clearReceiveSignature(recipient)"
+                                            <button type="button" @click="clearReturnSignature(recipient)"
                                                 class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100">
                                                 Bersihkan
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div class="flex justify-end" x-show="receiveRecipients.length > 1">
-                                        <button type="button" @click="removeReceiveRecipient(index)"
+                                    <div class="flex justify-end" x-show="returnRecipients.length > 1">
+                                        <button type="button" @click="removeReturnRecipient(index)"
                                             class="text-xs font-semibold text-slate-700 hover:underline">Hapus penerima ini</button>
                                     </div>
                                 </fieldset>
                             </template>
 
-<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between pb-4 border-b border-slate-200/80 gap-4">
+                            <button type="button" @click="addReturnRecipient()"
+                                class="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:border-slate-500 transition-colors">
+                                + Tambah Penerima
+                            </button>
+                        </div>
+
+                        <p x-show="returnError" x-text="returnError" role="alert" aria-live="assertive"
+                            class="p-3 rounded-xl bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-800"></p>
+                    </div>
+
+                    <div class="px-5 sm:px-7 py-4 border-t border-slate-200 bg-white flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <button type="button" @click="closeReturnModal()" :disabled="isSavingReturn"
+                            class="px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50">
+                            Batal
+                        </button>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <button type="button" @click="saveReturnWorkflow('save_later')"
+                                :disabled="isSavingReturn || isLoadingReturn"
+                                class="px-5 py-2.5 text-xs font-bold text-slate-800 bg-slate-100 border border-slate-300 rounded-xl hover:bg-slate-200 disabled:opacity-50">
+                                Lanjut Nanti
+                            </button>
+                            <button type="button" @click="skipRemainingSignatures()"
+                                :disabled="isSavingReturn || isLoadingReturn"
+                                title="Tutup penerimaan tanpa menunggu tanda tangan penerima yang tersisa"
+                                class="px-5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-xl hover:bg-slate-100 disabled:opacity-50">
+                                Lewati Proses Tanda Tangan yang Tersisa
+                            </button>
+                            <button type="button" @click="saveReturnWorkflow('complete')"
+                                :disabled="isSavingReturn || isLoadingReturn"
+                                class="px-5 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center justify-center gap-2">
+                                <svg x-show="isSavingReturn" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                Selesaikan Penerimaan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+
+        <!-- Teleported Single Status Dropdown (Topmost, outside all clipping containers) -->
+        <template x-teleport="body">
+            <div x-show="showStatusDropdown" 
+                x-cloak
+                @click.outside="showStatusDropdown = false"
+                class="fixed z-[99999] w-44 bg-white border border-slate-200 rounded-xl shadow-2xl py-1.5 text-left"
+                :style="`top: ${statusDropdownPosition.top}; left: ${statusDropdownPosition.left};`"
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-75"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95">
+                <div class="px-3.5 py-1 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Status Berikutnya
+                </div>
+                <div class="py-1" role="menu">
+                    <template x-for="option in availableStatusOptions" :key="option.value">
+                        <button type="button" role="menuitem" @click="selectStatusOption(option.value)"
+                            class="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" :class="statusDotClass(option.value)"></span>
+                            <span x-text="option.label"></span>
+                        </button>
+                    </template>
+                    <p x-show="availableStatusOptions.length === 0"
+                        class="px-3.5 py-2.5 text-[11px] text-slate-500 leading-relaxed">
+                        Status <span class="font-bold" x-text="statusDropdownCurrentStatus"></span> adalah status akhir dan tidak dapat diubah lagi.
+                    </p>
+                </div>
+            </div>
+        </template>
+
+        <!-- Success Toast Notification -->
+        <div x-show="showSuccessToast" 
+            x-cloak
+            :role="toastIsError ? 'alert' : 'status'"
+            aria-live="polite"
+            class="fixed top-20 right-4 z-[9999] max-w-md"
+            style="margin: 0 !important;"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-x-4"
+            x-transition:enter-end="opacity-100 translate-x-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-x-0"
+            x-transition:leave-end="opacity-0 translate-x-4">
+            <div class="bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 p-4 flex items-start gap-3">
+                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold" x-text="toastIsError ? 'Tidak dapat diproses' : 'Berhasil!'"></p>
+                    <p class="text-xs text-slate-300 mt-0.5" x-text="successMessage"></p>
+                </div>
+                <button @click="showSuccessToast = false" class="flex-shrink-0 text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between pb-4 border-b border-slate-200/80 gap-4">
+            <!-- Title -->
             <div class="flex-shrink-0">
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight whitespace-nowrap">Daftar Surat Keluar</h1>
-                <p class="text-xs text-slate-500 mt-1">Kelola pencatatan, verifikasi, dan persetujuan surat keluar.</p>
             </div>
             
-            <!-- Search Bar -->
-            <div class="flex-1 max-w-2xl mx-auto w-full">
+            <!-- Search Bar (Lebih Besar & Centered) -->
+            <div class="flex-1 max-w-2xl mx-auto">
                 <div class="relative">
                     <input type="text" 
                         x-model="searchQuery"
                         @input.debounce.500ms="performSearch()"
-                        placeholder="Cari nomor surat, perihal, penerima..."
+                        placeholder="Cari nomor surat, perihal, pengirim, penerima..."
                         class="w-full px-5 py-3 bg-white border-2 border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 shadow-sm transition-all">
                     <div x-show="isSearching" class="absolute right-4 top-1/2 -translate-y-1/2">
                         <svg class="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -314,9 +333,9 @@
                 </div>
             </div>
 
-            <!-- Actions -->
-            <div class="flex items-center gap-2.5 flex-shrink-0 mt-4 lg:mt-0">
-                <!-- Bulk Action Dropdown -->
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2.5 flex-shrink-0">
+                <!-- Bulk Action Dropdown (Only show when selection mode is active) -->
                 <div x-show="isSelectionMode" x-cloak class="relative" x-data="{ open: false }">
                     <button type="button" @click="open = !open"
                         :disabled="selectedIds.length === 0"
@@ -328,6 +347,14 @@
                         </svg>
                     </button>
                     
+                    <!-- Info: Selection across pages -->
+                    <div x-show="selectedIds.length > 0 && getSelectedInCurrentPage() < selectedIds.length" 
+                        class="absolute top-full left-0 mt-1 text-[10px] text-slate-600 whitespace-nowrap">
+                        <span x-text="getSelectedInCurrentPage()"></span> di halaman ini, 
+                        <span x-text="selectedIds.length - getSelectedInCurrentPage()"></span> di halaman lain
+                    </div>
+                    
+                    <!-- Dropdown Menu -->
                     <div x-show="open" 
                         @click.away="open = false"
                         x-transition:enter="transition ease-out duration-100"
@@ -352,11 +379,20 @@
                     </div>
                 </div>
 
+                <!-- Tombol Select / Batal Select -->
                 <button type="button" @click="toggleSelectionMode()"
                     :class="isSelectionMode ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs'"
                     class="inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all border cursor-pointer">
                     <span x-text="isSelectionMode ? 'Batal Select' : 'Select'">Select</span>
                 </button>
+
+                <!-- FITUR DRAFT DI-HOLD SEMENTARA
+                <button type="button" @click="openDraftModal()"
+                    class="inline-flex items-center px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 shadow-2xs border border-indigo-200 text-xs font-bold rounded-xl transition-all cursor-pointer">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    <span>Draft</span>
+                </button>
+                -->
 
                 @can('create', App\Models\OutgoingMail::class)
                     <a href="{{ route('outgoing-mails.create') }}"
@@ -367,11 +403,22 @@
             </div>
         </div>
 
+        <!-- Hidden Bulk Form for Submission -->
+        <form x-ref="bulkForm" action="{{ route('outgoing-mails.bulk-update-status') }}" method="POST" class="hidden">
+            @csrf
+            <input type="hidden" name="status" x-ref="bulkStatusInput">
+            <template x-for="id in selectedIds" :key="id">
+                <input type="hidden" name="ids[]" :value="id">
+            </template>
+        </form>
+
         <div class="mt-6 bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse min-w-full">
                     <thead>
-                        <tr class="border-b border-slate-200 bg-slate-100 text-xs sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider">
+                        <tr
+                            class="border-b border-slate-200 bg-slate-100 text-xs sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider">
+                            <!-- Select Box Column Header -->
                             <th x-show="isSelectionMode" x-cloak class="py-4 px-3 text-center whitespace-nowrap w-10">
                                 <input type="checkbox"
                                     @change="toggleSelectAll()"
@@ -402,18 +449,16 @@
         </div>
     </div>
 
-    
-
-<script>
-        function outgoingMailStatusHandler() {
+    <script>
+        function outgoingMailSelector() {
             return {
                 isSelectionMode: false,
                 searchQuery: '{{ request('search') }}',
                 isSearching: false,
-                totalResults: {{ $incomingMails->total() }},
+                totalResults: {{ $outgoingMails->total() }},
                 selectedIds: [],
-                allIds: @json($incomingMails->pluck('id')->map(fn($id) => (string) $id)->values()),
-                statusById: @js($incomingMails->mapWithKeys(fn ($mail) => [
+                allIds: @json($outgoingMails->pluck('id')->map(fn($id) => (string) $id)->values()),
+                statusById: @js($outgoingMails->mapWithKeys(fn ($mail) => [
                     (string) $mail->id => App\Support\OutgoingMailStatus::canonical($mail->status) ?? (string) $mail->status,
                 ])),
                 statusChangeError: '',
@@ -438,30 +483,22 @@
                 revisionMailIds: [],
                 revisionMailLabel: '',
 
-                // Disposition note state
-                showDispositionModal: false,
-                dispositionNote: '',
-                dispositionError: '',
-                dispositionMailIds: [],
-                dispositionMailLabel: '',
-                dispositionBlockedCount: 0,
 
-                // Receive signature workflow state
-                showReceiveModal: false,
-                isLoadingReceive: false,
-                isSavingReceive: false,
-                receiveDirty: false,
-                receiveError: '',
-                receiveMailIds: [],
-                receiveMailLabel: '',
-                receiveRecipients: [],
-                receiveCanvases: {},
-                receiveDrawingKey: null,
-                receivePreviousFocus: null,
+
+                // Return signature workflow state
+                showReturnModal: false,
+                isLoadingReturn: false,
+                isSavingReturn: false,
+                returnDirty: false,
+                returnError: '',
+                returnMailIds: [],
+                returnMailLabel: '',
+                returnRecipients: [],
+                returnCanvases: {},
+                returnDrawingKey: null,
+                returnPreviousFocus: null,
                 
-                // Draft Modal state
-                showDraftModal: false,
-                isLoadingDrafts: false,
+
                 
                 // Toast state
                 showSuccessToast: false,
@@ -489,8 +526,8 @@
                         this.openStatusDropdown(event, id, mailNumber, currentStatus);
                     };
 
-                    window.resumeReceiveWorkflow = (id, mailNumber) => {
-                        this.openReceiveWorkflow([id], mailNumber, true);
+                    window.resumeReturnWorkflow = (id, mailNumber) => {
+                        this.openReturnWorkflow([id], mailNumber, true);
                     };
 
                     window.addEventListener('scroll', () => {
@@ -508,21 +545,14 @@
                     
                     // Watch modal state untuk prevent body scroll
                     this.$watch('showConfirmModal', (value) => {
-                        if (value || this.showDraftModal || this.showReceiveModal) {
+                        if (value || this.showReturnModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
                         }
                     });
-                    this.$watch('showDraftModal', (value) => {
-                        if (value || this.showConfirmModal || this.showReceiveModal) {
-                            document.body.style.overflow = 'hidden';
-                        } else {
-                            document.body.style.overflow = '';
-                        }
-                    });
-                    this.$watch('showReceiveModal', (value) => {
-                        if (value || this.showConfirmModal || this.showDraftModal) {
+                    this.$watch('showReturnModal', (value) => {
+                        if (value || this.showConfirmModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
@@ -580,11 +610,9 @@
                 statusDotClass(status) {
                     return {
                         RECEIVE: 'bg-slate-900',
-                        DRAFT: 'bg-indigo-500',
-                        REVISI: 'bg-amber-400',
-                        RETURN: 'border border-slate-400 bg-white',
-                        WAITING_RETURN: 'bg-blue-500',
-                        DISPOSISI: 'bg-slate-600',
+                        WAITING_RECEIVE: 'bg-white border border-slate-400',
+                        DRAFT: 'bg-slate-500',
+                        REVISI: 'bg-slate-300',
                     }[this.normalizeStatus(status)] ?? 'bg-slate-400';
                 },
 
@@ -632,47 +660,9 @@
                     }
                 },
 
-                openDispositionModal({ mailIds, label, blockedCount = 0 }) {
-                    this.showStatusDropdown = false;
-                    this.dispositionMailIds = [...mailIds];
-                    this.dispositionMailLabel = label;
-                    this.dispositionBlockedCount = blockedCount;
-                    this.dispositionNote = '';
-                    this.dispositionError = '';
-                    this.showDispositionModal = true;
 
-                    this.$nextTick(() => document.getElementById('disposition-note-input')?.focus());
-                },
 
-                closeDispositionModal() {
-                    if (this.isSubmitting) return;
-                    this.showDispositionModal = false;
-                    this.dispositionError = '';
-                },
-
-                async submitDispositionNote() {
-                    const note = this.dispositionNote.trim();
-
-                    if (!note) {
-                        this.dispositionError = 'Catatan disposisi wajib diisi.';
-                        return;
-                    }
-
-                    const applied = await this.applyStatusChange(
-                        this.dispositionMailIds,
-                        'DISPOSISI',
-                        null,
-                        note
-                    );
-
-                    if (applied) {
-                        this.showDispositionModal = false;
-                    } else {
-                        this.dispositionError = this.statusChangeError;
-                    }
-                },
-
-                newReceiveRecipient(data = {}) {
+                newReturnRecipient(data = {}) {
                     return {
                         id: data.id || null,
                         client_key: data.client_key || (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`),
@@ -685,23 +675,23 @@
                     };
                 },
 
-                async openReceiveWorkflow(mailIds, label, resume = false) {
+                async openReturnWorkflow(mailIds, label, resume = true) {
                     this.showStatusDropdown = false;
-                    this.receivePreviousFocus = document.activeElement;
-                    this.receiveMailIds = [...mailIds];
-                    this.receiveMailLabel = label || 'Dokumen terpilih';
-                    this.receiveRecipients = [this.newReceiveRecipient()];
-                    this.receiveCanvases = {};
-                    this.receiveError = '';
-                    this.receiveDirty = false;
-                    this.showReceiveModal = true;
+                    this.returnPreviousFocus = document.activeElement;
+                    this.returnMailIds = [...mailIds];
+                    this.returnMailLabel = label || 'Dokumen terpilih';
+                    this.returnRecipients = [this.newReturnRecipient()];
+                    this.returnCanvases = {};
+                    this.returnError = '';
+                    this.returnDirty = false;
+                    this.showReturnModal = true;
 
-                    if (!resume) return;
+                    if (!resume && mailIds.length !== 1) return;
 
-                    this.isLoadingReceive = true;
+                    this.isLoadingReturn = true;
                     try {
                         const baseUrl = @js(url('/outgoing-mails'));
-                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailIds[0])}/receive-recipients`, {
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailIds[0])}/return-recipients`, {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
@@ -709,50 +699,50 @@
                         });
                         const data = await response.json();
                         if (!response.ok) {
-                            throw new Error(data.message || 'Progres pengembalian gagal dimuat.');
+                            throw new Error(data.message || 'Progres penerimaan gagal dimuat.');
                         }
 
-                        this.receiveMailLabel = data.mail?.mail_number || this.receiveMailLabel;
-                        this.receiveRecipients = data.recipients?.length
-                            ? data.recipients.map(recipient => this.newReceiveRecipient(recipient))
-                            : [this.newReceiveRecipient()];
+                        this.returnMailLabel = data.mail?.mail_number || this.returnMailLabel;
+                        this.returnRecipients = data.recipients?.length
+                            ? data.recipients.map(recipient => this.newReturnRecipient(recipient))
+                            : [this.newReturnRecipient()];
                     } catch (error) {
-                        console.error('Receive workflow load error:', error);
-                        this.receiveError = error.message || 'Progres pengembalian gagal dimuat.';
+                        console.error('Return workflow load error:', error);
+                        this.returnError = error.message || 'Progres penerimaan gagal dimuat.';
                     } finally {
-                        this.isLoadingReceive = false;
+                        this.isLoadingReturn = false;
                     }
                 },
 
-                closeReceiveModal() {
-                    if (this.isSavingReceive) return;
-                    if (this.receiveDirty && !window.confirm('Perubahan yang belum disimpan akan hilang. Tutup proses ini?')) return;
+                closeReturnModal() {
+                    if (this.isSavingReturn) return;
+                    if (this.returnDirty && !window.confirm('Perubahan yang belum disimpan akan hilang. Tutup proses ini?')) return;
 
-                    this.receiveDirty = false;
-                    this.showReceiveModal = false;
-                    this.receiveError = '';
-                    this.$nextTick(() => this.receivePreviousFocus?.focus?.());
+                    this.returnDirty = false;
+                    this.showReturnModal = false;
+                    this.returnError = '';
+                    this.$nextTick(() => this.returnPreviousFocus?.focus?.());
                 },
 
-                addReceiveRecipient() {
-                    this.receiveRecipients.push(this.newReceiveRecipient());
-                    this.receiveDirty = true;
+                addReturnRecipient() {
+                    this.returnRecipients.push(this.newReturnRecipient());
+                    this.returnDirty = true;
                 },
 
-                removeReceiveRecipient(index) {
-                    if (this.receiveRecipients.length === 1) return;
-                    const [removed] = this.receiveRecipients.splice(index, 1);
-                    delete this.receiveCanvases[removed.client_key];
-                    this.receiveDirty = true;
+                removeReturnRecipient(index) {
+                    if (this.returnRecipients.length === 1) return;
+                    const [removed] = this.returnRecipients.splice(index, 1);
+                    delete this.returnCanvases[removed.client_key];
+                    this.returnDirty = true;
                 },
 
-                setupReceiveCanvas(recipient, canvas) {
+                setupReturnCanvas(recipient, canvas) {
                     const context = canvas.getContext('2d');
                     context.lineWidth = 3;
                     context.lineCap = 'round';
                     context.lineJoin = 'round';
                     context.strokeStyle = '#0f172a';
-                    this.receiveCanvases[recipient.client_key] = canvas;
+                    this.returnCanvases[recipient.client_key] = canvas;
 
                     if (recipient.signature_url) {
                         const image = new Image();
@@ -761,7 +751,7 @@
                     }
                 },
 
-                receiveCanvasPosition(event, canvas) {
+                returnCanvasPosition(event, canvas) {
                     const rect = canvas.getBoundingClientRect();
                     return {
                         x: (event.clientX - rect.left) * (canvas.width / rect.width),
@@ -769,51 +759,51 @@
                     };
                 },
 
-                startReceiveSignature(event, recipient) {
-                    const canvas = this.receiveCanvases[recipient.client_key];
+                startReturnSignature(event, recipient) {
+                    const canvas = this.returnCanvases[recipient.client_key];
                     if (!canvas) return;
                     canvas.setPointerCapture?.(event.pointerId);
-                    const point = this.receiveCanvasPosition(event, canvas);
+                    const point = this.returnCanvasPosition(event, canvas);
                     const context = canvas.getContext('2d');
                     context.beginPath();
                     context.moveTo(point.x, point.y);
-                    this.receiveDrawingKey = recipient.client_key;
+                    this.returnDrawingKey = recipient.client_key;
                 },
 
-                drawReceiveSignature(event, recipient) {
-                    if (this.receiveDrawingKey !== recipient.client_key) return;
-                    const canvas = this.receiveCanvases[recipient.client_key];
+                drawReturnSignature(event, recipient) {
+                    if (this.returnDrawingKey !== recipient.client_key) return;
+                    const canvas = this.returnCanvases[recipient.client_key];
                     if (!canvas) return;
-                    const point = this.receiveCanvasPosition(event, canvas);
+                    const point = this.returnCanvasPosition(event, canvas);
                     const context = canvas.getContext('2d');
                     context.lineTo(point.x, point.y);
                     context.stroke();
                 },
 
-                finishReceiveSignature(event, recipient) {
-                    if (this.receiveDrawingKey !== recipient.client_key) return;
-                    const canvas = this.receiveCanvases[recipient.client_key];
-                    this.receiveDrawingKey = null;
+                finishReturnSignature(event, recipient) {
+                    if (this.returnDrawingKey !== recipient.client_key) return;
+                    const canvas = this.returnCanvases[recipient.client_key];
+                    this.returnDrawingKey = null;
                     if (!canvas) return;
                     canvas.releasePointerCapture?.(event.pointerId);
                     recipient.signature = canvas.toDataURL('image/png');
                     recipient.has_signature = true;
                     recipient.remove_signature = false;
-                    this.receiveDirty = true;
+                    this.returnDirty = true;
                 },
 
-                clearReceiveSignature(recipient) {
-                    const canvas = this.receiveCanvases[recipient.client_key];
+                clearReturnSignature(recipient) {
+                    const canvas = this.returnCanvases[recipient.client_key];
                     canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
                     recipient.signature = null;
                     recipient.signature_url = null;
                     recipient.has_signature = false;
                     recipient.remove_signature = true;
-                    this.receiveDirty = true;
+                    this.returnDirty = true;
                 },
 
                 get unsignedRecipientCount() {
-                    return this.receiveRecipients.filter(
+                    return this.returnRecipients.filter(
                         recipient => !recipient.signer_name.trim() || (!recipient.signature && !recipient.has_signature)
                     ).length;
                 },
@@ -822,45 +812,59 @@
                     const pending = this.unsignedRecipientCount;
 
                     if (pending === 0) {
-                        this.saveReceiveWorkflow('complete');
+                        this.saveReturnWorkflow('complete');
                         return;
                     }
 
                     const confirmed = window.confirm(
-                        `${pending} penerima belum menandatangani. Pengembalian akan ditutup dan status menjadi RETURN, ` +
+                        `${pending} penerima belum menandatangani. Penerimaan akan ditutup dan status menjadi RECEIVE, ` +
                         'sementara penerima tersebut tetap tercatat belum menandatangani. Lanjutkan?'
                     );
 
                     if (confirmed) {
-                        this.saveReceiveWorkflow('skip_remaining');
+                        this.saveReturnWorkflow('skip_remaining');
                     }
                 },
 
-                async saveReceiveWorkflow(action) {
-                    if (this.isSavingReceive) return;
+                async saveReturnWorkflow(action) {
+                    if (this.isSavingReturn) return;
 
-                    const missingRecipient = this.receiveRecipients.find(recipient => !recipient.recipient_name.trim());
-                    if (missingRecipient) {
-                        this.receiveError = 'Nama setiap penerima wajib diisi.';
-                        return;
-                    }
-
-                    if (action === 'complete') {
-                        const incomplete = this.receiveRecipients.find(recipient =>
-                            !recipient.signer_name.trim() || (!recipient.signature && !recipient.has_signature)
-                        );
-                        if (incomplete) {
-                            this.receiveError = 'Lengkapi nama penandatangan dan tanda tangan seluruh penerima sebelum menyelesaikan pengembalian.';
+                    if (action === 'save_later') {
+                        const validRecipients = this.returnRecipients.filter(r => (r.recipient_name || '').trim() || r.signature || r.has_signature);
+                        if (validRecipients.length === 0) {
+                            this.returnError = 'Isi nama minimal satu penerima sebelum menyimpan progres.';
+                            return;
+                        }
+                        const missingInValid = validRecipients.find(r => !(r.recipient_name || '').trim());
+                        if (missingInValid) {
+                            this.returnError = 'Nama setiap penerima wajib diisi.';
+                            return;
+                        }
+                        this.returnRecipients = validRecipients;
+                    } else {
+                        const missingRecipient = this.returnRecipients.find(recipient => !(recipient.recipient_name || '').trim());
+                        if (missingRecipient) {
+                            this.returnError = 'Nama setiap penerima wajib diisi.';
                             return;
                         }
                     }
 
-                    this.isSavingReceive = true;
-                    this.receiveError = '';
+                    if (action === 'complete') {
+                        const incomplete = this.returnRecipients.find(recipient =>
+                            !(recipient.signer_name || '').trim() || (!recipient.signature && !recipient.has_signature)
+                        );
+                        if (incomplete) {
+                            this.returnError = 'Lengkapi nama penandatangan dan tanda tangan seluruh penerima sebelum menyelesaikan penerimaan.';
+                            return;
+                        }
+                    }
+
+                    this.isSavingReturn = true;
+                    this.returnError = '';
 
                     try {
                         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-                        const response = await fetch(@js(route('outgoing-mails.receive-workflow.store')), {
+                        const response = await fetch(@js(route('outgoing-mails.return-workflow.store')), {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -869,12 +873,12 @@
                                 'Accept': 'application/json',
                             },
                             body: JSON.stringify({
-                                mail_ids: this.receiveMailIds,
+                                mail_ids: this.returnMailIds,
                                 action,
-                                recipients: this.receiveRecipients.map(recipient => ({
+                                recipients: this.returnRecipients.map(recipient => ({
                                     id: recipient.id,
-                                    recipient_name: recipient.recipient_name.trim(),
-                                    signer_name: recipient.signer_name.trim() || null,
+                                    recipient_name: (recipient.recipient_name || '').trim(),
+                                    signer_name: (recipient.signer_name || '').trim() || null,
                                     signature: recipient.signature,
                                     remove_signature: recipient.remove_signature,
                                 })),
@@ -884,60 +888,23 @@
                         const result = await response.json();
                         if (!response.ok) {
                             const validationMessage = Object.values(result.errors || {}).flat()[0];
-                            throw new Error(validationMessage || result.message || 'Progres pengembalian gagal disimpan.');
+                            throw new Error(validationMessage || result.message || 'Progres penerimaan gagal disimpan.');
                         }
 
-                        this.receiveDirty = false;
-                        this.showReceiveModal = false;
+                        this.returnDirty = false;
+                        this.showReturnModal = false;
                         this.showToast(result.message);
                         this.selectedIds = [];
                         await this.refreshTableData();
                     } catch (error) {
-                        console.error('Receive workflow save error:', error);
-                        this.receiveError = error.message || 'Progres pengembalian gagal disimpan.';
+                        console.error('Return workflow save error:', error);
+                        this.returnError = error.message || 'Progres penerimaan gagal disimpan.';
                     } finally {
-                        this.isSavingReceive = false;
+                        this.isSavingReturn = false;
                     }
                 },
 
-                async openDraftModal(url = null) {
-                    this.showDraftModal = true;
-                    this.isLoadingDrafts = true;
-                    
-                    try {
-                        const targetUrl = url || new URL('{{ route('outgoing-mails.index') }}?status=DRAFT', window.location.origin).toString();
-                        
-                        const response = await fetch(targetUrl, {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                            }
-                        });
-                        
-                        if (!response.ok) throw new Error('Network response was not ok');
-                        
-                        const data = await response.json();
-                        
-                        this.$refs.draftTableBody.innerHTML = data.html;
-                        this.$refs.draftPaginationContainer.innerHTML = data.pagination;
-                        
-                        this.$nextTick(() => {
-                            const links = this.$refs.draftPaginationContainer.querySelectorAll('a');
-                            links.forEach(link => {
-                                link.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    this.openDraftModal(link.href);
-                                });
-                            });
-                        });
-                        
-                    } catch (error) {
-                        console.error('Draft load error:', error);
-                        this.$refs.draftTableBody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-500 italic text-sm">Terjadi kesalahan saat memuat draft.</td></tr>';
-                    } finally {
-                        this.isLoadingDrafts = false;
-                    }
-                },
+
 
                 toggleSelectionMode() {
                     this.isSelectionMode = !this.isSelectionMode;
@@ -1137,8 +1104,8 @@
 
                     const eligibleIds = this.selectedIds.filter(id => !blocked.includes(id));
 
-                    if (this.normalizeStatus(targetStatus) === 'RETURN') {
-                        this.openReceiveWorkflow(eligibleIds, label);
+                    if (this.normalizeStatus(targetStatus) === 'RECEIVE') {
+                        this.openReturnWorkflow(eligibleIds, label);
                         return;
                     }
 
@@ -1191,7 +1158,7 @@
 
                 /**
                  * Persist a status change for the given documents.
-                 * Receives true when at least one document was updated.
+                 * Returns true when at least one document was updated.
                  */
                 async applyStatusChange(mailIds, targetStatus, revisionNote = null, dispositionNote = null) {
                     if (this.isSubmitting || mailIds.length === 0) return false;
@@ -1308,8 +1275,8 @@
                         return;
                     }
 
-                    if (targetStatus === 'RETURN') {
-                        this.openReceiveWorkflow([detail.id], detail.mailNumber);
+                    if (targetStatus === 'RECEIVE') {
+                        this.openReturnWorkflow([detail.id], detail.mailNumber, true);
                         return;
                     }
 

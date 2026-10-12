@@ -12,8 +12,6 @@ use Illuminate\Validation\ValidationException;
 
 class OutgoingMailStatusTransitionService
 {
-    public function __construct() {}
-
     /**
      * Apply a status transition, enforcing the standard operating procedure.
      *
@@ -33,9 +31,10 @@ class OutgoingMailStatusTransitionService
             ]);
         }
 
+        // RECEIVE can only be set through the signature workflow
         if ($target === OutgoingMailStatus::RECEIVE) {
             throw ValidationException::withMessages([
-                'status' => 'Status penerimaan hanya dapat diubah melalui proses tanda tangan penerimaan.',
+                'status' => 'Status RECEIVE hanya dapat dicapai melalui proses tanda tangan penerimaan.',
             ]);
         }
 
@@ -52,7 +51,6 @@ class OutgoingMailStatusTransitionService
             }
 
             $attributes = ['status' => $target];
-
             $mail->update($attributes);
 
             if ($target === OutgoingMailStatus::REVISI) {

@@ -27,6 +27,92 @@ class IncomingMailController extends Controller
         private readonly IncomingMailStatusTransitionService $statusTransitionService
     ) {}
 
+    public function updateBatch(Request $request, string $batchId)
+    {
+        $existingMails = IncomingMail::where('batch_id', $batchId)->get();
+        if ($existingMails->isEmpty()) {
+            abort(404);
+        }
+
+        Gate::authorize('update', $existingMails->first());
+
+        $validated = $request->validate([
+            'sender' => ['required', 'string', 'max:255'],
+            'received_date' => ['required', 'date'],
+            'documents' => ['required', 'array', 'min:1'],
+            'documents.*.id' => ['required', 'string'],
+            'documents.*.mail_number' => ['required', 'string', 'max:255', 'distinct:ignore_case', function ($attribute, $value, $fail) use ($request) {
+                  preg_match('/documents\.(\d+)\.mail_number/', $attribute, $matches);
+                  $index = $matches[1] ?? null;
+                  $id = $index !== null ? $request->input("documents.{$index}.id") : null;
+                  $query = \App\Models\IncomingMail::where('mail_number', $value);
+                  if ($id) { $query->where('id', '!=', $id); }
+                  if ($query->exists()) { $fail('Nomor Surat pada dokumen ini sudah ada di sistem.'); }
+              }],
+            'documents.*.subject' => ['required', 'string', 'max:255'],
+            'documents.*.recipient' => ['nullable', 'string', 'max:255'],
+            'documents.*.disposition_note' => ['nullable', 'string'],
+            'documents.*.notes' => ['nullable', 'string'],
+            'documents.*.file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'documents.*.document_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+        ]);
+
+        $globalStatus = $request->input('is_draft') == '1' ? 'DRAFT' : 'RECEIVE';
+        $documents = $request->input('documents');
+        
+        $submittedIds = array_column($documents, 'id');
+        $existingIds = $existingMails->pluck('id')->toArray();
+        
+        // Delete mails that are removed from batch
+        foreach ($existingMails as $mail) {
+            if (!in_array($mail->id, $submittedIds)) {
+                $mail->delete();
+            }
+        }
+        
+        $receiptSignaturePath = $existingMails->first()->receipt_signature_path;
+        $receiptNumber = $existingMails->first()->receipt_number;
+
+        foreach ($documents as $index => $doc) {
+            $mailData = [
+                'batch_id' => $batchId,
+                'receipt_number' => $receiptNumber,
+                'sender' => $validated['sender'],
+                'received_date' => $validated['received_date'],
+                'recipient' => $doc['recipient'] ?? null,
+                'status' => $globalStatus,
+                'mail_number' => $doc['mail_number'],
+                'subject' => $doc['subject'],
+                'disposition_note' => $doc['disposition_note'] ?? null,
+                'notes' => $doc['notes'] ?? null,
+            ];
+
+            $docFiles = $this->extractFiles($request, "documents.{$index}");
+
+            if (in_array($doc['id'], $existingIds)) {
+                $mailObj = IncomingMail::find($doc['id']);
+                if ($mailObj) {
+                    $mailObj->update($mailData);
+                    $this->saveAttachments($mailObj, $docFiles);
+                }
+            } else {
+                $mailData['receipt_signature_path'] = $receiptSignaturePath;
+                $newMail = IncomingMail::create($mailData);
+                $this->saveAttachments($newMail, $docFiles);
+            }
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'redirect' => route('incoming-mails.index')
+            ]);
+        }
+
+        return redirect()->route('incoming-mails.index')->with('success', 'Batch surat masuk berhasil diperbarui.');
+    }
+
+
     public function index(Request $request)
     {
         Gate::authorize('viewAny', IncomingMail::class);
@@ -76,6 +162,16 @@ class IncomingMailController extends Controller
             $status = IncomingMailStatus::canonical($request->input('status'))
                 ?? strtoupper(trim((string) $request->input('status')));
             $query->where('status', $status);
+            
+            if ($status === IncomingMailStatus::DRAFT) {
+                $query->whereIn('id', function($q) {
+                    $q->selectRaw('MIN(id)')
+                      ->from('incoming_mails')
+                      ->where('status', IncomingMailStatus::DRAFT)
+                      ->groupBy('batch_id');
+                });
+                $query->with('batchItems'); // Load batch items so we can display the count in UI
+            }
         } else {
             $query->where('status', '!=', IncomingMailStatus::DRAFT);
         }
@@ -210,7 +306,10 @@ class IncomingMailController extends Controller
 
         $nextSequenceNumber = IncomingMail::count() + 1;
 
-        return view('incoming-mails.create', compact('nextSequenceNumber'));
+        $senders = IncomingMail::whereNotNull('sender')->where('sender', '!=', '')->select('sender')->distinct()->pluck('sender');
+        $recipients = IncomingMail::whereNotNull('recipient')->where('recipient', '!=', '')->select('recipient')->distinct()->pluck('recipient');
+
+        return view('incoming-mails.create', compact('nextSequenceNumber', 'senders', 'recipients'));
     }
 
     /**
@@ -262,26 +361,6 @@ class IncomingMailController extends Controller
 
         if (is_array($documents) && count($documents) > 0) {
             foreach ($documents as $index => $doc) {
-                $fileKey = "documents.{$index}.file";
-                $photoKey = "documents.{$index}.document_photo";
-
-                $filePath = null;
-                $documentPhotoPath = null;
-
-                if ($request->hasFile($fileKey)) {
-                    $fileObj = $request->file($fileKey);
-                    $mime = (string) $fileObj->getMimeType();
-                    if (str_starts_with($mime, 'image/')) {
-                        $documentPhotoPath = $fileObj->store('incoming-mails/photos', 'local');
-                    } else {
-                        $filePath = $fileObj->store('incoming-mails', 'local');
-                    }
-                }
-
-                if ($request->hasFile($photoKey)) {
-                    $documentPhotoPath = $request->file($photoKey)->store('incoming-mails/photos', 'local');
-                }
-
                 $mailNumber = ! empty($doc['mail_number']) ? $doc['mail_number'] : $receiptNumber;
                 $subject = ! empty($doc['subject']) ? $doc['subject'] : '(Tanpa Perihal)';
                 $docStatus = ! empty($doc['status']) ? $doc['status'] : $globalStatus;
@@ -298,11 +377,12 @@ class IncomingMailController extends Controller
                     'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : $validated['received_date'],
                     'disposition_note' => ! empty($doc['disposition_note']) ? $doc['disposition_note'] : null,
                     'notes' => ! empty($doc['notes']) ? $doc['notes'] : null,
-                    'file_path' => $filePath,
-                    'document_photo_path' => $documentPhotoPath,
                 ]));
 
-                if ($filePath) {
+                $docFiles = $this->extractFiles($request, "documents.{$index}");
+                $this->saveAttachments($incomingMail, $docFiles);
+
+                if ($incomingMail->file_path) {
                     ProcessOcrJob::dispatch($incomingMail);
                 }
 
@@ -310,23 +390,6 @@ class IncomingMailController extends Controller
             }
         } else {
             // Single document mode
-            $filePath = null;
-            $documentPhotoPath = null;
-
-            if ($request->hasFile('file')) {
-                $fileObj = $request->file('file');
-                $mime = (string) $fileObj->getMimeType();
-                if (str_starts_with($mime, 'image/')) {
-                    $documentPhotoPath = $fileObj->store('incoming-mails/photos', 'local');
-                } else {
-                    $filePath = $fileObj->store('incoming-mails', 'local');
-                }
-            }
-
-            if ($request->hasFile('document_photo')) {
-                $documentPhotoPath = $request->file('document_photo')->store('incoming-mails/photos', 'local');
-            }
-
             $mailNumber = ! empty($validated['mail_number']) ? $validated['mail_number'] : $receiptNumber;
             $subject = ! empty($validated['subject']) ? $validated['subject'] : '(Tanpa Perihal)';
 
@@ -336,11 +399,27 @@ class IncomingMailController extends Controller
                 'outgoing_date' => ! empty($validated['outgoing_date']) ? $validated['outgoing_date'] : $validated['received_date'],
                 'disposition_note' => $validated['disposition_note'] ?? null,
                 'notes' => $validated['notes'] ?? null,
-                'file_path' => $filePath,
-                'document_photo_path' => $documentPhotoPath,
             ]));
 
-            if ($filePath) {
+            $singleFiles = [];
+            if ($request->hasFile('files')) {
+                $f = $request->file('files');
+                if (is_array($f)) {
+                    $singleFiles = array_merge($singleFiles, $f);
+                } elseif ($f instanceof \Illuminate\Http\UploadedFile) {
+                    $singleFiles[] = $f;
+                }
+            }
+            if ($request->hasFile('file')) {
+                $singleFiles[] = $request->file('file');
+            }
+            if ($request->hasFile('document_photo')) {
+                $singleFiles[] = $request->file('document_photo');
+            }
+
+            $this->saveAttachments($incomingMail, $singleFiles);
+
+            if ($incomingMail->file_path) {
                 ProcessOcrJob::dispatch($incomingMail);
             }
 
@@ -370,6 +449,7 @@ class IncomingMailController extends Controller
             'batchItems',
             'returnRecipients.creator',
             'revisionNotes.creator',
+            'attachments',
         ]);
         $users = User::orderBy('name')->get();
 
@@ -384,6 +464,12 @@ class IncomingMailController extends Controller
         Gate::authorize('update', $incomingMail);
 
         $incomingMail->load('batchItems');
+        
+        if (IncomingMailStatus::canonical($incomingMail->status) === IncomingMailStatus::DRAFT) {
+            $senders = IncomingMail::whereNotNull('sender')->where('sender', '!=', '')->select('sender')->distinct()->pluck('sender');
+            $recipients = IncomingMail::whereNotNull('recipient')->where('recipient', '!=', '')->select('recipient')->distinct()->pluck('recipient');
+            return view('incoming-mails.edit-batch', compact('incomingMail', 'senders', 'recipients'));
+        }
 
         return view('incoming-mails.edit', compact('incomingMail'));
     }
@@ -414,18 +500,24 @@ class IncomingMailController extends Controller
             }
         }
 
-        if ($request->hasFile('file')) {
-            $fileObj = $request->file('file');
-            $mime = (string) $fileObj->getMimeType();
-            if (str_starts_with($mime, 'image/')) {
-                $data['document_photo_path'] = $fileObj->store('incoming-mails/photos', 'local');
-            } else {
-                $data['file_path'] = $fileObj->store('incoming-mails', 'local');
+        $updateFiles = [];
+        if ($request->hasFile('files')) {
+            $f = $request->file('files');
+            if (is_array($f)) {
+                $updateFiles = array_merge($updateFiles, $f);
+            } elseif ($f instanceof \Illuminate\Http\UploadedFile) {
+                $updateFiles[] = $f;
             }
         }
-
+        if ($request->hasFile('file')) {
+            $updateFiles[] = $request->file('file');
+        }
         if ($request->hasFile('document_photo')) {
-            $data['document_photo_path'] = $request->file('document_photo')->store('incoming-mails/photos', 'local');
+            $updateFiles[] = $request->file('document_photo');
+        }
+
+        if (! empty($updateFiles)) {
+            $this->saveAttachments($incomingMail, $updateFiles);
         }
 
         if ($request->hasFile('receipt_signature_file')) {
@@ -499,4 +591,97 @@ class IncomingMailController extends Controller
             ->route('incoming-mails.index')
             ->with('success', 'Surat Masuk berhasil dihapus.');
     }
+
+    /**
+     * Extract all uploaded files for a given form key prefix (supporting multiple files array, single file, and photo).
+     *
+     * @return array<\Illuminate\Http\UploadedFile>
+     */
+    private function extractFiles(Request $request, string $prefix): array
+    {
+        $files = [];
+
+        // Array of files (documents.0.files)
+        if ($request->hasFile("{$prefix}.files")) {
+            $uploaded = $request->file("{$prefix}.files");
+            if (is_array($uploaded)) {
+                $files = array_merge($files, $uploaded);
+            } elseif ($uploaded instanceof \Illuminate\Http\UploadedFile) {
+                $files[] = $uploaded;
+            }
+        }
+
+        // Single file (documents.0.file)
+        if ($request->hasFile("{$prefix}.file")) {
+            $uploaded = $request->file("{$prefix}.file");
+            if (is_array($uploaded)) {
+                $files = array_merge($files, $uploaded);
+            } elseif ($uploaded instanceof \Illuminate\Http\UploadedFile) {
+                $files[] = $uploaded;
+            }
+        }
+
+        // Single document photo (documents.0.document_photo)
+        if ($request->hasFile("{$prefix}.document_photo")) {
+            $uploaded = $request->file("{$prefix}.document_photo");
+            if (is_array($uploaded)) {
+                $files = array_merge($files, $uploaded);
+            } elseif ($uploaded instanceof \Illuminate\Http\UploadedFile) {
+                $files[] = $uploaded;
+            }
+        }
+
+        return array_values(array_filter($files, fn ($f) => $f instanceof \Illuminate\Http\UploadedFile && $f->isValid()));
+    }
+
+    /**
+     * Store attachments for an incoming mail and set primary paths for backward compatibility.
+     *
+     * @param  array<\Illuminate\Http\UploadedFile>  $uploadedFiles
+     */
+    private function saveAttachments(IncomingMail $mail, array $uploadedFiles): void
+    {
+        if (empty($uploadedFiles)) {
+            return;
+        }
+
+        $primaryFilePath = $mail->file_path;
+        $primaryPhotoPath = $mail->document_photo_path;
+
+        foreach ($uploadedFiles as $fileObj) {
+            $mime = (string) $fileObj->getMimeType();
+            $isImage = str_starts_with($mime, 'image/');
+            $folder = $isImage ? 'incoming-mails/photos' : 'incoming-mails';
+            $storedPath = $fileObj->store($folder, 'local');
+
+            if ($isImage && ! $primaryPhotoPath) {
+                $primaryPhotoPath = $storedPath;
+            }
+            if (! $isImage && ! $primaryFilePath) {
+                $primaryFilePath = $storedPath;
+            }
+
+            $mail->attachments()->create([
+                'file_path' => $storedPath,
+                'file_name' => $fileObj->getClientOriginalName(),
+                'file_size' => $fileObj->getSize(),
+                'mime_type' => $mime,
+            ]);
+        }
+
+        if (! $primaryFilePath && $primaryPhotoPath) {
+            $primaryFilePath = $primaryPhotoPath;
+        }
+
+        if ($primaryFilePath !== $mail->file_path || $primaryPhotoPath !== $mail->document_photo_path) {
+            $mail->update([
+                'file_path' => $primaryFilePath,
+                'document_photo_path' => $primaryPhotoPath,
+            ]);
+        }
+    }
 }
+
+
+
+

@@ -14,6 +14,7 @@ use App\Support\OutgoingMailStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class OutgoingMailController extends Controller
@@ -41,7 +42,7 @@ class OutgoingMailController extends Controller
             });
         }
 
-        $outgoingMails = $query->with('creator')->latest()->paginate(15)->withQueryString();
+        $outgoingMails = $query->with(['creator', 'returnRecipients'])->latest()->paginate(15)->withQueryString();
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -50,13 +51,7 @@ class OutgoingMailController extends Controller
                 'total' => $outgoingMails->total(),
                 'allIds' => $outgoingMails->pluck('id')->map(fn ($id) => (string) $id)->values(),
                 'statuses' => $outgoingMails->mapWithKeys(fn (OutgoingMail $mail) => [
-                    (string) $mail->id => match ($mail->status) {
-                        'RECEIVED' => 'RECEIVE',
-                        'PROGRESS', 'IN_PROGRESS', 'PENDING' => 'PROGRES',
-                        'RETURNED' => 'RETURN',
-                        'WAITING_RETURN' => 'WAITING RETURN',
-                        default => $mail->status,
-                    },
+                    (string) $mail->id => OutgoingMailStatus::canonical($mail->status) ?? (string) $mail->status,
                 ]),
             ]);
         }
@@ -72,21 +67,19 @@ class OutgoingMailController extends Controller
         $validated = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['required', 'string', 'exists:outgoing_mails,id'],
-            'status' => ['required', 'string'],
+            'status' => ['required', 'string', 'in:REVISI,WAITING_RECEIVE'],
             'revision_note' => ['nullable', 'string', 'max:2000'],
         ], [
             'ids.required' => 'Pilih minimal satu dokumen.',
+            'status.in' => 'Status tujuan tidak tersedia. Status RECEIVE hanya dapat dicapai melalui proses tanda tangan penerimaan.',
             'revision_note.max' => 'Catatan revisi maksimal 2000 karakter.',
         ]);
 
-        $targetStatus = match ($validated['status']) {
-            'RECEIVE' => 'RECEIVED',
-            'PROGRES' => 'PROGRESS',
-            'RETURN' => 'RETURNED',
-            'WAITING RETURN' => 'WAITING_RETURN',
-            default => $validated['status'],
-        };
-        
+        $targetStatus = OutgoingMailStatus::canonical($validated['status']);
+        $targetLabel = OutgoingMailStatus::label($targetStatus);
+        $revisionNote = $validated['revision_note'] ?? null;
+        $actorId = auth()->id();
+
         $mails = OutgoingMail::whereIn('id', $validated['ids'])->get();
         $updatedCount = 0;
         $rejected = [];
@@ -97,6 +90,7 @@ class OutgoingMailController extends Controller
                     'mail_number' => $mail->mail_number,
                     'reason' => 'Anda tidak memiliki izin mengubah dokumen ini.',
                 ];
+
                 continue;
             }
 
@@ -107,18 +101,14 @@ class OutgoingMailController extends Controller
                     'mail_number' => $mail->mail_number,
                     'reason' => $reason,
                 ];
+
                 continue;
             }
 
             try {
-                $this->statusTransitionService->apply(
-                    $mail, 
-                    $targetStatus, 
-                    auth()->id(),
-                    $validated['revision_note'] ?? null
-                );
+                $this->statusTransitionService->apply($mail, $targetStatus, $actorId, $revisionNote);
                 $updatedCount++;
-            } catch (\Illuminate\Validation\ValidationException $exception) {
+            } catch (ValidationException $exception) {
                 $rejected[] = [
                     'mail_number' => $mail->mail_number,
                     'reason' => collect($exception->errors())->flatten()->first(),
@@ -127,7 +117,7 @@ class OutgoingMailController extends Controller
         }
 
         $message = $updatedCount > 0
-            ? "Status berhasil diperbarui menjadi {$targetStatus} untuk {$updatedCount} dokumen."
+            ? "Status berhasil diperbarui menjadi {$targetLabel} untuk {$updatedCount} dokumen."
             : 'Tidak ada dokumen yang dapat diubah statusnya.';
 
         if ($rejected !== []) {
@@ -170,33 +160,31 @@ class OutgoingMailController extends Controller
         $createdCount = 0;
 
         foreach ($documents as $index => $doc) {
-            $status = 'WAITING_RETURN';
-
-            $fileKey = "documents.{$index}.file";
-            $filePath = $request->hasFile($fileKey)
-                ? $request->file($fileKey)->store('outgoing-mails', 'local')
-                : null;
+            $status = 'WAITING_RECEIVE';
 
             $mailNumber = ! empty($doc['mail_number'])
                 ? $doc['mail_number']
                 : 'SK-'.now()->format('Ymd').'-'.sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1);
 
-            OutgoingMail::create([
+            $outgoingMail = OutgoingMail::create([
                 'mail_number' => $mailNumber,
                 'subject' => $doc['subject'],
                 'recipient' => $doc['recipient'],
-                'file_path' => $filePath,
+                'file_path' => null,
                 'created_by' => auth()->id(),
                 'status' => $status,
                 'disposition_note' => $doc['disposition_note'] ?? null,
             ]);
+
+            $docFiles = $this->extractFiles($request, "documents.{$index}");
+            $this->saveAttachments($outgoingMail, $docFiles);
 
             $createdCount++;
         }
 
         return redirect()
             ->route('outgoing-mails.index')
-            ->with('success', "{$createdCount} Surat Keluar berhasil dicatat (Status: WAITING RETURN).");
+            ->with('success', "{$createdCount} Surat Keluar berhasil dicatat (Status: WAITING RECEIVE).");
     }
 
     /**
@@ -206,7 +194,13 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('view', $outgoingMail);
 
-        $outgoingMail->load(['creator', 'fileHistories.uploader']);
+        $outgoingMail->load([
+            'creator',
+            'fileHistories.uploader',
+            'attachments',
+            'returnRecipients',
+            'revisionNotes.creator',
+        ]);
 
         return view('outgoing-mails.show', compact('outgoingMail'));
     }
@@ -217,8 +211,6 @@ class OutgoingMailController extends Controller
     public function sign(OutgoingMail $outgoingMail): RedirectResponse
     {
         Gate::authorize('sign', $outgoingMail);
-
-        $this->statusTransitionService->apply($outgoingMail, 'APPROVED', auth()->id());
 
         ProcessDigitalSignatureJob::dispatch($outgoingMail, auth()->user());
 
@@ -234,7 +226,7 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('update', $outgoingMail);
 
-        $outgoingMail->load('fileHistories.uploader');
+        $outgoingMail->load(['fileHistories.uploader', 'attachments']);
 
         return view('outgoing-mails.edit', compact('outgoingMail'));
     }
@@ -248,23 +240,23 @@ class OutgoingMailController extends Controller
 
         $data = $request->validated();
 
-        $requestedStatus = OutgoingMailStatus::canonical($data['status'] ?? null);
-        $currentStatus = OutgoingMailStatus::canonical($outgoingMail->status);
+        // Status changes are handled via bulk-update-status or return workflow
         unset($data['status']);
 
-        $statusChange = $requestedStatus !== null && $requestedStatus !== $currentStatus
-            ? $requestedStatus
-            : null;
-
-        if ($statusChange !== null) {
-            $reason = $this->statusTransitionService->rejectionReason($outgoingMail, $statusChange);
-
-            if ($reason !== null) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['status' => $reason]);
+        $updateFiles = [];
+        if ($request->hasFile('files')) {
+            $f = $request->file('files');
+            if (is_array($f)) {
+                $updateFiles = array_merge($updateFiles, $f);
+            } elseif ($f instanceof \Illuminate\Http\UploadedFile) {
+                $updateFiles[] = $f;
             }
         }
-
         if ($request->hasFile('file')) {
+            $updateFiles[] = $request->file('file');
+        }
+
+        if (! empty($updateFiles)) {
             if (! empty($outgoingMail->file_path)) {
                 OutgoingMailFileHistory::create([
                     'outgoing_mail_id' => $outgoingMail->id,
@@ -274,7 +266,7 @@ class OutgoingMailController extends Controller
                 ]);
             }
 
-            $data['file_path'] = $request->file('file')->store('outgoing-mails', 'local');
+            $this->saveAttachments($outgoingMail, $updateFiles);
         }
 
         if (empty($data['mail_number']) && empty($outgoingMail->mail_number)) {
@@ -282,15 +274,6 @@ class OutgoingMailController extends Controller
         }
 
         $outgoingMail->update($data);
-
-        if ($statusChange !== null) {
-            $this->statusTransitionService->apply(
-                $outgoingMail,
-                $statusChange,
-                auth()->id(),
-                $data['revision_note'] ?? null
-            );
-        }
 
         return redirect()
             ->route('outgoing-mails.index')
@@ -309,5 +292,73 @@ class OutgoingMailController extends Controller
         return redirect()
             ->route('outgoing-mails.index')
             ->with('success', 'Surat Keluar berhasil dihapus.');
+    }
+
+    /**
+     * Extract all uploaded files for a given form key prefix.
+     *
+     * @return array<\Illuminate\Http\UploadedFile>
+     */
+    private function extractFiles(Request $request, string $prefix): array
+    {
+        $files = [];
+
+        // Array of files (e.g. documents.0.files)
+        if ($request->hasFile("{$prefix}.files")) {
+            $uploaded = $request->file("{$prefix}.files");
+            if (is_array($uploaded)) {
+                $files = array_merge($files, $uploaded);
+            } elseif ($uploaded instanceof \Illuminate\Http\UploadedFile) {
+                $files[] = $uploaded;
+            }
+        }
+
+        // Single file (e.g. documents.0.file)
+        if ($request->hasFile("{$prefix}.file")) {
+            $uploaded = $request->file("{$prefix}.file");
+            if (is_array($uploaded)) {
+                $files = array_merge($files, $uploaded);
+            } elseif ($uploaded instanceof \Illuminate\Http\UploadedFile) {
+                $files[] = $uploaded;
+            }
+        }
+
+        return array_values(array_filter($files, fn ($f) => $f instanceof \Illuminate\Http\UploadedFile && $f->isValid()));
+    }
+
+    /**
+     * Store attachments for an outgoing mail and set primary path for backward compatibility.
+     *
+     * @param  array<\Illuminate\Http\UploadedFile>  $uploadedFiles
+     */
+    private function saveAttachments(OutgoingMail $mail, array $uploadedFiles): void
+    {
+        if (empty($uploadedFiles)) {
+            return;
+        }
+
+        $primaryFilePath = $mail->file_path;
+
+        foreach ($uploadedFiles as $fileObj) {
+            $mime = (string) $fileObj->getMimeType();
+            $storedPath = $fileObj->store('outgoing-mails', 'local');
+
+            if (! $primaryFilePath) {
+                $primaryFilePath = $storedPath;
+            }
+
+            $mail->attachments()->create([
+                'file_path' => $storedPath,
+                'file_name' => $fileObj->getClientOriginalName(),
+                'file_size' => $fileObj->getSize(),
+                'mime_type' => $mime,
+            ]);
+        }
+
+        if ($primaryFilePath !== $mail->file_path) {
+            $mail->update([
+                'file_path' => $primaryFilePath,
+            ]);
+        }
     }
 }

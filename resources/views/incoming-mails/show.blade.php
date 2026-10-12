@@ -279,27 +279,71 @@
             </h2>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Foto Dokumen -->
+                <!-- Foto & Berkas Dokumen -->
                 <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Foto Dokumen</span>
-                        @if ($incomingMail->document_photo_path)
-                            <a href="{{ route('document.download', ['path' => $incomingMail->document_photo_path]) }}" class="text-xs font-semibold text-slate-900 hover:underline">
-                                Unduh
-                            </a>
-                        @endif
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Berkas Dokumen & Lampiran
+                            @if ($incomingMail->attachments->count() > 0)
+                                <span class="text-slate-400 font-normal">({{ $incomingMail->attachments->count() }} berkas)</span>
+                            @endif
+                        </span>
                     </div>
 
-                    @if ($incomingMail->document_photo_path)
+                    @if ($incomingMail->attachments->isNotEmpty())
+                        <div class="space-y-2">
+                            @foreach ($incomingMail->attachments as $att)
+                                <div class="bg-white p-3 border border-slate-200 rounded-xl space-y-2 shadow-2xs">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2 min-w-0 pr-2">
+                                            @php
+                                                $isImg = str_starts_with($att->mime_type ?? '', 'image/');
+                                            @endphp
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $isImg ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-rose-50 text-rose-700 border border-rose-200' }}">
+                                                {{ $isImg ? 'FOTO' : 'PDF' }}
+                                            </span>
+                                            <span class="text-xs font-bold text-slate-800 truncate" title="{{ $att->file_name ?? basename($att->file_path) }}">
+                                                {{ $att->file_name ?? basename($att->file_path) }}
+                                            </span>
+                                            @if ($att->file_size)
+                                                <span class="text-[10px] text-slate-400 font-mono">
+                                                    ({{ number_format($att->file_size / 1024, 1) }} KB)
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <div class="flex items-center space-x-1.5 flex-shrink-0">
+                                            <a href="{{ route('document.download', ['path' => $att->file_path, 'inline' => 1]) }}" target="_blank" class="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-[11px] font-semibold transition-all">
+                                                Lihat
+                                            </a>
+                                            <a href="{{ route('document.download', ['path' => $att->file_path]) }}" class="px-2.5 py-1 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-[11px] font-bold transition-all">
+                                                Unduh
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    @if ($isImg)
+                                        <div class="mt-2 bg-slate-50 p-1.5 border border-slate-100 rounded-lg flex items-center justify-center">
+                                            <img src="{{ route('document.download', ['path' => $att->file_path, 'inline' => 1]) }}" alt="{{ $att->file_name }}" class="max-h-40 object-contain rounded">
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @elseif ($incomingMail->document_photo_path)
                         <div class="bg-white p-2 border border-slate-200 rounded-lg overflow-hidden flex items-center justify-center">
                             <img src="{{ route('document.download', ['path' => $incomingMail->document_photo_path, 'inline' => 1]) }}" alt="Foto Dokumen" class="max-h-56 object-contain rounded">
                         </div>
                     @elseif ($incomingMail->file_path)
                         <div class="bg-white p-3 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
                             <span class="font-mono text-slate-600 truncate">{{ $incomingMail->file_path }}</span>
-                            <a href="{{ route('document.download', ['path' => $incomingMail->file_path]) }}" class="px-3 py-1 bg-slate-900 text-white rounded-lg font-semibold text-[11px]">
-                                Unduh PDF
-                            </a>
+                            <div class="flex items-center space-x-1.5">
+                                <a href="{{ route('document.download', ['path' => $incomingMail->file_path, 'inline' => 1]) }}" target="_blank" class="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg font-semibold text-[11px]">
+                                    Lihat
+                                </a>
+                                <a href="{{ route('document.download', ['path' => $incomingMail->file_path]) }}" class="px-3 py-1 bg-slate-900 text-white rounded-lg font-semibold text-[11px]">
+                                    Unduh PDF
+                                </a>
+                            </div>
                         </div>
                     @else
                         <p class="text-xs text-slate-400 italic">Tidak ada foto/berkas terunggah.</p>

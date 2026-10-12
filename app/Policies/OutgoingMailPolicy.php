@@ -54,6 +54,6 @@ class OutgoingMailPolicy
      */
     public function sign(User $user, OutgoingMail $outgoingMail): bool
     {
-        return $user->hasRole('Direksi') && $outgoingMail->status === 'APPROVED';
+        return $user->hasRole('master') && $outgoingMail->status === 'APPROVED';
     }
 }

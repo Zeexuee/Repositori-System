@@ -17,7 +17,7 @@ class UserController extends Controller
      */
     public function index(): View
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
         }
 
@@ -31,7 +31,7 @@ class UserController extends Controller
      */
     public function create(): View
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
         }
 
@@ -43,7 +43,7 @@ class UserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
         }
 
@@ -72,7 +72,7 @@ class UserController extends Controller
      */
     public function edit(User $user): View
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
         }
 
@@ -84,7 +84,7 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user): RedirectResponse
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
         }
 
@@ -117,7 +117,7 @@ class UserController extends Controller
      */
     public function destroy(User $user): RedirectResponse
     {
-        if (! auth()->user()->hasRole('Direksi')) {
+        if (! auth()->user()->hasRole('master')) {
             abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
         }
 

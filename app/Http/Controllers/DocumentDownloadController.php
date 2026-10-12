@@ -30,7 +30,37 @@ class DocumentDownloadController extends Controller
             ->orWhere('document_photo_path', $path)
             ->orWhere('receipt_signature_path', $path)
             ->first();
+
+        if (! $incomingMail) {
+            $attachment = \App\Models\IncomingMailAttachment::where('file_path', $path)->first();
+            if ($attachment) {
+                $incomingMail = $attachment->incomingMail;
+            } else {
+                $incomingReturn = \App\Models\IncomingMailReturnRecipient::where('signature_path', $path)->first();
+                if ($incomingReturn) {
+                    $incomingMail = $incomingReturn->incomingMail;
+                }
+            }
+        }
+
         $outgoingMail = OutgoingMail::where('file_path', $path)->first();
+
+        if (! $outgoingMail) {
+            $outgoingAttachment = \App\Models\OutgoingMailAttachment::where('file_path', $path)->first();
+            if ($outgoingAttachment) {
+                $outgoingMail = $outgoingAttachment->outgoingMail;
+            } else {
+                $outgoingReturn = \App\Models\OutgoingMailReturnRecipient::where('signature_path', $path)->first();
+                if ($outgoingReturn) {
+                    $outgoingMail = $outgoingReturn->outgoingMail;
+                } else {
+                    $history = \App\Models\OutgoingMailFileHistory::where('file_path', $path)->first();
+                    if ($history) {
+                        $outgoingMail = $history->outgoingMail;
+                    }
+                }
+            }
+        }
 
         if ($incomingMail) {
             Gate::authorize('view', $incomingMail);
@@ -38,7 +68,7 @@ class DocumentDownloadController extends Controller
             Gate::authorize('view', $outgoingMail);
         } else {
             // Jika tidak ditemukan di kedua entitas, pastikan pengguna memiliki peran yang valid
-            if (! auth()->user()?->hasAnyRole(['Super Admin', 'Staf Sekretariat', 'Staf', 'Direksi', 'Kepala Divisi'])) {
+            if (! auth()->user()?->hasAnyRole(['staff', 'master'])) {
                 abort(403, 'Anda tidak memiliki hak akses untuk dokumen ini.');
             }
         }

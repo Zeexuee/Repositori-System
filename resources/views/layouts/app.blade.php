@@ -236,7 +236,7 @@
                 </div>
 
                 <!-- 4. Jejak Audit Dock Item (Khusus Direksi) -->
-                @if (auth()->user()?->hasRole('Direksi'))
+                @if (auth()->user()?->hasRole('master'))
                     <div class="relative group dock-item flex-shrink-0">
                         <a href="{{ route('audit-logs.index') }}"
                             class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 {{ request()->routeIs('audit-logs.*') ? 'bg-slate-900/80 hover:bg-slate-900/90 text-white shadow-md border border-slate-700/50 backdrop-blur-md' : 'bg-white/30 hover:bg-white/60 text-slate-700 hover:text-slate-900 border border-white/50 backdrop-blur-md shadow-xs' }}">
