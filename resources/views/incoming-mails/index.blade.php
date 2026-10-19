@@ -113,52 +113,261 @@
             </div>
         </template>
 
-        <!-- Disposition Note Modal (wajib sebelum status menjadi DISPOSISI) -->
+        <!-- Disposition Workflow Modal -->
         <template x-teleport="body">
             <div x-show="showDispositionModal" x-cloak
-                class="fixed inset-0 z-[100000] flex items-center justify-center p-4"
-                role="dialog" aria-modal="true" aria-labelledby="disposition-note-title"
+                class="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6"
+                role="dialog" aria-modal="true" aria-labelledby="disposition-workflow-title"
                 @keydown.escape.window="closeDispositionModal()">
-                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" @click="closeDispositionModal()"></div>
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
 
-                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-lg overflow-hidden"
+                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col"
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100">
-                    <div class="px-6 py-5 border-b border-slate-200">
-                        <h2 id="disposition-note-title" class="text-lg font-bold text-slate-900">Disposisikan Dokumen</h2>
-                        <p class="text-xs text-slate-500 mt-1">
-                            <span x-text="dispositionMailLabel"></span> · status akan menjadi DISPOSISI
-                        </p>
+                    <div class="px-5 sm:px-7 py-5 border-b border-slate-200 flex items-start justify-between gap-4">
+                        <div>
+                            <h2 id="disposition-workflow-title" class="text-lg font-bold text-slate-900">Alur Disposisi Dokumen</h2>
+                            <p class="text-xs text-slate-500 mt-1">
+                                <span x-text="dispositionMailLabel"></span> · <span x-text="dispositionMailIds.length"></span> dokumen
+                            </p>
+                        </div>
+                        <button type="button" @click="closeDispositionModal()" :disabled="isSavingDisposition"
+                            aria-label="Tutup proses disposisi"
+                            class="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
 
-                    <div class="px-6 py-5 space-y-3">
-                        <label for="disposition-note-input" class="block text-xs font-bold text-slate-700">
-                            Catatan Disposisi <span class="text-rose-600">*</span>
-                        </label>
-                        <textarea id="disposition-note-input" x-model="dispositionNote" rows="5" maxlength="2000"
-                            required aria-required="true"
-                            class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
-                        <p class="text-[11px] text-slate-400 text-right">
-                            <span x-text="dispositionNote.length"></span>/2000
-                        </p>
-                        <p x-show="dispositionBlockedCount > 0" class="text-xs text-amber-700">
-                            <span x-text="dispositionBlockedCount"></span> dokumen dilewati karena alur statusnya tidak mengizinkan perubahan ini.
-                        </p>
-                        <p class="text-xs text-slate-600">Catatan: DISPOSISI adalah status akhir dan tidak dapat diubah lagi.</p>
+                    <div class="px-5 sm:px-7 py-5 overflow-y-auto bg-slate-50/70 space-y-4">
+                        <!-- Petunjuk SOP Disposisi -->
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed">
+                            Masukkan <strong>Catatan Disposisi</strong> terlebih dahulu, lalu tambahkan penerima disposisi yang dituju. Anda dapat menyimpan progres sementara melalui <strong>Lanjut Nanti</strong> atau menyelesaikan alur ketika tanda tangan telah lengkap.
+                        </div>
+
+                        <!-- 1. Form Input Catatan Disposisi (Wajib diisi SEBELUM form penerima) -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <label for="disposition-workflow-note" class="block text-xs font-bold text-slate-800">
+                                    Catatan Disposisi <span class="text-rose-600">*</span>
+                                </label>
+                                <span class="text-[11px] font-mono text-slate-400">
+                                    <span x-text="dispositionNote.length"></span>/2000
+                                </span>
+                            </div>
+                            <textarea id="disposition-workflow-note" x-model="dispositionNote" @input="dispositionDirty = true" rows="4" maxlength="2000"
+                                required aria-required="true"
+                                placeholder=""
+                                class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
+                        </div>
+
+                        <!-- Loading Indicator jika membuka kembali progres -->
+                        <div x-show="isLoadingDisposition" class="py-12 flex items-center justify-center gap-3 text-sm font-semibold text-slate-600">
+                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Memuat data disposisi...
+                        </div>
+
+                        <!-- 2. Form Input Penerima dan Lain-lain (Setelah Catatan Disposisi) -->
+                        <div x-show="!isLoadingDisposition" class="space-y-4">
+                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider px-1">
+                                Penerima Disposisi
+                            </h3>
+
+                            <template x-for="(recipient, index) in dispositionRecipients" :key="recipient.client_key">
+                                <fieldset class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
+                                    <legend class="px-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                        Penerima <span x-text="index + 1"></span>
+                                    </legend>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label :for="`disposition-recipient-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penerima / Unit Tujuan <span class="text-rose-600">*</span></label>
+                                            <input type="text" :id="`disposition-recipient-${recipient.client_key}`"
+                                                x-model="recipient.recipient_name" @input="dispositionDirty = true" maxlength="255"
+                                                placeholder="Contoh: Kepala Biro Umum / Bagian Keuangan"
+                                                class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900" required>
+                                        </div>
+                                        <div>
+                                            <label :for="`disposition-signer-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penandatangan</label>
+                                            <input type="text" :id="`disposition-signer-${recipient.client_key}`"
+                                                x-model="recipient.signer_name" @input="dispositionDirty = true" maxlength="255"
+                                                placeholder="Boleh dikosongkan jika belum hadir / lanjut nanti"
+                                                class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="flex items-center justify-between gap-3 mb-1.5">
+                                            <span class="text-xs font-bold text-slate-700">Tanda Tangan Penerima Disposisi</span>
+                                            <span x-show="recipient.has_signature" class="text-[11px] font-semibold text-slate-700">Tanda tangan tersimpan</span>
+                                        </div>
+                                        <canvas width="800" height="220"
+                                            x-init="$nextTick(() => setupDispositionCanvas(recipient, $el))"
+                                            @pointerdown.prevent="startDispositionSignature($event, recipient)"
+                                            @pointermove.prevent="drawDispositionSignature($event, recipient)"
+                                            @pointerup.prevent="finishDispositionSignature($event, recipient)"
+                                            @pointercancel.prevent="finishDispositionSignature($event, recipient)"
+                                            aria-label="Area tanda tangan penerima disposisi"
+                                            class="w-full h-40 bg-white border border-slate-300 rounded-xl touch-none cursor-crosshair"></canvas>
+                                        <div class="mt-2 flex items-center justify-between gap-3">
+                                            <p class="text-[11px] text-slate-500">Gunakan mouse, pena digital, atau layar sentuh.</p>
+                                            <button type="button" @click="clearDispositionSignature(recipient)"
+                                                class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100">
+                                                Bersihkan
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex justify-end" x-show="dispositionRecipients.length > 1">
+                                        <button type="button" @click="removeDispositionRecipient(index)"
+                                            class="text-xs font-semibold text-slate-700 hover:underline">Hapus penerima ini</button>
+                                    </div>
+                                </fieldset>
+                            </template>
+
+                            <button type="button" @click="addDispositionRecipient()"
+                                class="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:border-slate-500 transition-colors">
+                                + Tambah Penerima Disposisi
+                            </button>
+                        </div>
+
                         <p x-show="dispositionError" x-text="dispositionError" role="alert" aria-live="assertive"
-                            class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800"></p>
+                            class="p-3 rounded-xl bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-800"></p>
                     </div>
 
-                    <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
-                        <button type="button" @click="closeDispositionModal()" :disabled="isSubmitting"
-                            class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-xl disabled:opacity-50">
+                    <div class="px-5 sm:px-7 py-4 border-t border-slate-200 bg-white flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <button type="button" @click="closeDispositionModal()" :disabled="isSavingDisposition"
+                            class="px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50">
                             Batal
                         </button>
-                        <button type="button" @click="submitDispositionNote()" :disabled="isSubmitting || !dispositionNote.trim()"
-                            class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
-                            <svg x-show="isSubmitting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                            Simpan dan Disposisikan
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <button type="button" @click="saveDispositionWorkflow('save_later')"
+                                :disabled="isSavingDisposition || isLoadingDisposition"
+                                class="px-5 py-2.5 text-xs font-bold text-slate-800 bg-slate-100 border border-slate-300 rounded-xl hover:bg-slate-200 disabled:opacity-50">
+                                Lanjut Nanti
+                            </button>
+                            <button type="button" @click="skipRemainingDispositionSignatures()"
+                                :disabled="isSavingDisposition || isLoadingDisposition"
+                                title="Tutup disposisi tanpa menunggu tanda tangan penerima yang tersisa"
+                                class="px-5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-xl hover:bg-slate-100 disabled:opacity-50">
+                                Lewati Proses Tanda Tangan yang Tersisa
+                            </button>
+                            <button type="button" @click="saveDispositionWorkflow('complete')"
+                                :disabled="isSavingDisposition || isLoadingDisposition"
+                                class="px-5 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center justify-center gap-2">
+                                <svg x-show="isSavingDisposition" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                Selesaikan Disposisi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Fitur Intip Catatan Status Disposisi Modal -->
+        <template x-teleport="body">
+            <div x-show="showDispositionPreviewModal" x-cloak
+                class="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6"
+                role="dialog" aria-modal="true" aria-labelledby="disposition-preview-title"
+                @keydown.escape.window="showDispositionPreviewModal = false">
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" @click="showDispositionPreviewModal = false"></div>
+
+                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    
+                    <div class="px-6 py-5 border-b border-slate-200 flex items-start justify-between gap-4 bg-white">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white uppercase tracking-wider">
+                                    Disposisi
+                                </span>
+                                <h2 id="disposition-preview-title" class="text-base font-bold text-slate-900">
+                                    Catatan & Penerima Disposisi
+                                </h2>
+                            </div>
+                            <p class="text-xs text-slate-500 font-mono mt-1" x-text="dispositionPreviewMail ? 'No: ' + dispositionPreviewMail.mail_number : ''"></p>
+                        </div>
+                        <button type="button" @click="showDispositionPreviewModal = false"
+                            class="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="p-6 overflow-y-auto space-y-5 bg-slate-50/60">
+                        <div x-show="isLoadingDispositionPreview" class="py-12 flex items-center justify-center gap-3 text-sm font-semibold text-slate-600">
+                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Memuat data disposisi...
+                        </div>
+
+                        <div x-show="!isLoadingDispositionPreview" class="space-y-5">
+                            <!-- Catatan Disposisi Card -->
+                            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-2">
+                                <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    Isi Catatan Disposisi
+                                </span>
+                                <p class="text-sm text-slate-800 whitespace-pre-line leading-relaxed font-medium"
+                                    x-text="dispositionPreviewMail?.disposition_note || 'Tidak ada catatan khusus.'"></p>
+                            </div>
+
+                            <!-- Daftar Penerima Disposisi -->
+                            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-3">
+                                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                        Penerima & Tanda Tangan (<span x-text="dispositionPreviewRecipients.length"></span>)
+                                    </h3>
+                                </div>
+
+                                <template x-if="dispositionPreviewRecipients.length === 0">
+                                    <p class="text-xs text-slate-400 italic py-2">
+                                        Belum ada daftar tanda tangan penerima tercatat untuk disposisi ini.
+                                    </p>
+                                </template>
+
+                                <div class="space-y-3" x-show="dispositionPreviewRecipients.length > 0">
+                                    <template x-for="(recipient, index) in dispositionPreviewRecipients" :key="recipient.id || index">
+                                        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                            <div class="space-y-1">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs font-bold text-slate-900" x-text="recipient.recipient_name"></span>
+                                                    <span x-show="recipient.has_signature" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                                                        Sudah Ditandatangani
+                                                    </span>
+                                                    <span x-show="!recipient.has_signature" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-200 text-slate-700">
+                                                        Belum Ditandatangani
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-slate-600" x-text="'Penandatangan: ' + (recipient.signer_name || '-')"></p>
+                                                <p class="text-[11px] text-slate-400 font-mono" x-show="recipient.signed_at"
+                                                    x-text="'Waktu: ' + (recipient.signed_at ? new Date(recipient.signed_at).toLocaleString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : '')"></p>
+                                            </div>
+
+                                            <div x-show="recipient.signature_url" class="shrink-0">
+                                                <a :href="recipient.signature_url" target="_blank"
+                                                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-800 transition-colors">
+                                                    <span>Lihat Tanda Tangan</span>
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-white border-t border-slate-200 flex items-center justify-between">
+                        <template x-if="dispositionPreviewMail">
+                            <a :href="`{{ url('/incoming-mails') }}/${dispositionPreviewMail.id}`"
+                                class="text-xs font-bold text-slate-700 hover:text-slate-900 hover:underline">
+                                Lihat Halaman Detail Surat →
+                            </a>
+                        </template>
+                        <button type="button" @click="showDispositionPreviewModal = false"
+                            class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all">
+                            Tutup
                         </button>
                     </div>
                 </div>
@@ -358,6 +567,171 @@
                 </div>
             </div>
         </div>
+
+        <!-- Teleported Upload Attachment Modal (Foto / Dokumen) -->
+        <template x-teleport="body">
+            <div x-show="showUploadAttachmentModal" x-cloak
+                class="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6"
+                role="dialog" aria-modal="true" aria-labelledby="upload-attachment-title"
+                @keydown.escape.window="closeUploadAttachmentModal()">
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" @click="closeUploadAttachmentModal()"></div>
+
+                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-xl max-h-[92vh] overflow-hidden flex flex-col"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95">
+
+                    <!-- Header -->
+                    <div class="px-5 sm:px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-4">
+                        <div class="space-y-0.5">
+                            <h2 id="upload-attachment-title" class="text-base font-bold text-slate-900">
+                                Berkas Dokumen
+                            </h2>
+                            <p class="text-xs text-slate-500 font-mono">
+                                <span class="font-bold text-slate-800" x-text="uploadAttachmentMail.mail_number"></span>
+                                <span class="mx-1">·</span>
+                                <span class="truncate max-w-md inline-block align-bottom font-sans text-slate-600" x-text="uploadAttachmentMail.subject"></span>
+                            </p>
+                        </div>
+                        <button type="button" @click="closeUploadAttachmentModal()" :disabled="isUploadingAttachments"
+                            class="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors disabled:opacity-50 cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
+
+                    <!-- Body (Scrollable) -->
+                    <div class="px-5 sm:px-6 py-5 overflow-y-auto space-y-5">
+
+                        <!-- Error Banner (if any) -->
+                        <div x-show="uploadAttachmentError" x-cloak class="p-3 bg-slate-100 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium">
+                            <span x-text="uploadAttachmentError"></span>
+                        </div>
+
+                        <!-- Section A: Existing Attachments -->
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                    Berkas Terunggah <span class="text-slate-400 font-normal font-mono" x-show="!isLoadingAttachments" x-text="'(' + existingAttachments.length + ')'"></span>
+                                </span>
+                            </div>
+
+                            <!-- Skeleton loader while fetching -->
+                            <div x-show="isLoadingAttachments" class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500 font-medium">
+                                Memuat berkas...
+                            </div>
+
+                            <!-- Empty State -->
+                            <div x-show="!isLoadingAttachments && existingAttachments.length === 0" class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-xs text-slate-400 italic">
+                                Belum ada berkas terunggah.
+                            </div>
+
+                            <!-- Attachments List -->
+                            <div x-show="!isLoadingAttachments && existingAttachments.length > 0" class="space-y-2 max-h-52 overflow-y-auto">
+                                <template x-for="att in existingAttachments" :key="att.id">
+                                    <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs gap-3">
+                                        <div class="flex items-center space-x-2.5 min-w-0 pr-1">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200 flex-shrink-0"
+                                                x-text="att.is_image ? 'FOTO' : 'PDF'">
+                                            </span>
+                                            <div class="truncate">
+                                                <span class="font-bold text-slate-900 truncate block" x-text="att.file_name" :title="att.file_name"></span>
+                                                <span class="text-[10px] text-slate-400 font-mono" x-show="att.file_size" x-text="formatBytes(att.file_size)"></span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-1.5 flex-shrink-0">
+                                            <a :href="att.preview_url" target="_blank"
+                                                class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-lg text-xs transition-all border border-slate-200">
+                                                Lihat
+                                            </a>
+                                            <template x-if="!att.is_legacy">
+                                                <button type="button" @click="deleteAttachment(att.id)" :disabled="isDeletingAttachmentId === att.id"
+                                                    class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 font-semibold rounded-lg text-xs transition-all border border-slate-200 cursor-pointer disabled:opacity-50">
+                                                    Hapus
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Section B: Upload Zone -->
+                        <div class="space-y-3 pt-3 border-t border-slate-100">
+                            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                                Tambah Berkas Baru
+                            </span>
+
+                            <!-- Drag & Drop Zone -->
+                            <div class="border border-dashed border-slate-300 hover:border-slate-800 bg-slate-50/70 hover:bg-slate-100/70 rounded-xl p-5 text-center transition-all cursor-pointer"
+                                @click="$refs.attachmentFileInput.click()"
+                                @dragover.prevent="$el.classList.add('border-slate-900', 'bg-slate-100')"
+                                @dragleave.prevent="$el.classList.remove('border-slate-900', 'bg-slate-100')"
+                                @drop.prevent="$el.classList.remove('border-slate-900', 'bg-slate-100'); handleAttachmentDrop($event)">
+                                
+                                <input type="file" x-ref="attachmentFileInput" multiple accept="image/*,application/pdf"
+                                    class="hidden" @change="handleAttachmentFileInput($event)">
+
+                                <div class="space-y-1">
+                                    <p class="text-xs font-bold text-slate-900">
+                                        Pilih Berkas atau Tarik ke Sini
+                                    </p>
+                                    <p class="text-[11px] text-slate-500 font-mono">
+                                        PDF, JPG, PNG, WEBP (Maks. 10MB)
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Staged Files Preview -->
+                            <div x-show="selectedAttachmentFiles.length > 0" x-cloak class="space-y-2 pt-2">
+                                <div class="flex items-center justify-between text-xs font-bold text-slate-700">
+                                    <span>Berkas Terpilih (<span x-text="selectedAttachmentFiles.length"></span>)</span>
+                                    <button type="button" @click="clearSelectedAttachments()" class="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer">
+                                        Bersihkan
+                                    </button>
+                                </div>
+                                <div class="space-y-2 max-h-48 overflow-y-auto">
+                                    <template x-for="(item, index) in selectedAttachmentFiles" :key="index">
+                                        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs gap-3">
+                                            <div class="flex items-center space-x-2.5 min-w-0 pr-1">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-800 border border-slate-300 flex-shrink-0"
+                                                    x-text="item.is_image ? 'FOTO' : 'PDF'">
+                                                </span>
+                                                <div class="truncate">
+                                                    <span class="font-bold text-slate-900 truncate block" x-text="item.name"></span>
+                                                    <span class="text-[10px] text-slate-500 font-mono" x-text="formatBytes(item.size)"></span>
+                                                </div>
+                                            </div>
+                                            <button type="button" @click="removeSelectedAttachmentFile(index)"
+                                                class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 font-semibold rounded-lg text-xs border border-slate-200 cursor-pointer">
+                                                Batal
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="px-5 sm:px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+                        <button type="button" @click="closeUploadAttachmentModal()" :disabled="isUploadingAttachments"
+                            class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-all disabled:opacity-50 cursor-pointer">
+                            Tutup
+                        </button>
+                        <button type="button" @click="submitUploadAttachments()"
+                            :disabled="selectedAttachmentFiles.length === 0 || isUploadingAttachments"
+                            class="px-5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                            <span x-text="isUploadingAttachments ? 'Mengunggah...' : 'Unggah'"></span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </template>
 
         <!-- Teleported Single Status Dropdown (Topmost, outside all clipping containers) -->
         <template x-teleport="body">
@@ -600,13 +974,39 @@
                 revisionMailIds: [],
                 revisionMailLabel: '',
 
-                // Disposition note state
+                // Disposition workflow state
                 showDispositionModal: false,
+                isLoadingDisposition: false,
+                isSavingDisposition: false,
+                dispositionDirty: false,
                 dispositionNote: '',
                 dispositionError: '',
                 dispositionMailIds: [],
                 dispositionMailLabel: '',
-                dispositionBlockedCount: 0,
+                dispositionRecipients: [],
+                dispositionCanvases: {},
+                dispositionDrawingKey: null,
+                dispositionPreviousFocus: null,
+
+                // Disposition preview state (Fitur Intip Catatan Status Disposisi)
+                showDispositionPreviewModal: false,
+                isLoadingDispositionPreview: false,
+                dispositionPreviewMail: null,
+                dispositionPreviewRecipients: [],
+
+                // Upload Attachment Modal state (Foto / Dokumen)
+                showUploadAttachmentModal: false,
+                isLoadingAttachments: false,
+                isUploadingAttachments: false,
+                isDeletingAttachmentId: null,
+                uploadAttachmentMail: {
+                    id: '',
+                    mail_number: '',
+                    subject: '',
+                },
+                existingAttachments: [],
+                selectedAttachmentFiles: [],
+                uploadAttachmentError: '',
 
                 // Return signature workflow state
                 showReturnModal: false,
@@ -655,6 +1055,18 @@
                         this.openReturnWorkflow([id], mailNumber, true);
                     };
 
+                    window.resumeDispositionWorkflow = (id, mailNumber) => {
+                        this.openDispositionWorkflow([id], mailNumber, true);
+                    };
+
+                    window.openDispositionPreviewModal = (id, mailNumber) => {
+                        this.openDispositionPreview(id, mailNumber);
+                    };
+
+                    window.openUploadAttachmentModal = (id, mailNumber, subject) => {
+                        this.openUploadAttachmentModal(id, mailNumber, subject);
+                    };
+
                     window.addEventListener('scroll', () => {
                         if (this.showStatusDropdown) this.showStatusDropdown = false;
                     }, true);
@@ -669,20 +1081,19 @@
                     });
                     
                     // Watch modal state untuk prevent body scroll
-                    this.$watch('showConfirmModal', (value) => {
-                        if (value || this.showReturnModal) {
+                    const checkOverflow = () => {
+                        if (this.showConfirmModal || this.showReturnModal || this.showDispositionModal || this.showDispositionPreviewModal || this.showUploadAttachmentModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
                         }
-                    });
-                    this.$watch('showReturnModal', (value) => {
-                        if (value || this.showConfirmModal) {
-                            document.body.style.overflow = 'hidden';
-                        } else {
-                            document.body.style.overflow = '';
-                        }
-                    });
+                    };
+
+                    this.$watch('showConfirmModal', checkOverflow);
+                    this.$watch('showReturnModal', checkOverflow);
+                    this.$watch('showDispositionModal', checkOverflow);
+                    this.$watch('showDispositionPreviewModal', checkOverflow);
+                    this.$watch('showUploadAttachmentModal', checkOverflow);
                 },
 
                 get availableStatusOptions() {
@@ -739,6 +1150,7 @@
                         REVISI: 'bg-amber-400',
                         RETURN: 'border border-slate-400 bg-white',
                         WAITING_RETURN: 'bg-blue-500',
+                        WAITING_DISPOSISI: 'bg-cyan-500',
                         DISPOSISI: 'bg-slate-600',
                     }[this.normalizeStatus(status)] ?? 'bg-slate-400';
                 },
@@ -787,44 +1199,478 @@
                     }
                 },
 
-                openDispositionModal({ mailIds, label, blockedCount = 0 }) {
+                newDispositionRecipient(data = {}) {
+                    return {
+                        id: data.id || null,
+                        client_key: data.client_key || (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`),
+                        recipient_name: data.recipient_name || '',
+                        signer_name: data.signer_name || '',
+                        signature: null,
+                        signature_url: data.signature_url || null,
+                        has_signature: Boolean(data.has_signature),
+                        remove_signature: false,
+                    };
+                },
+
+                async openDispositionWorkflow(mailIds, label, resume = false) {
                     this.showStatusDropdown = false;
+                    this.dispositionPreviousFocus = document.activeElement;
                     this.dispositionMailIds = [...mailIds];
-                    this.dispositionMailLabel = label;
-                    this.dispositionBlockedCount = blockedCount;
+                    this.dispositionMailLabel = label || 'Dokumen terpilih';
                     this.dispositionNote = '';
+                    this.dispositionRecipients = [this.newDispositionRecipient()];
+                    this.dispositionCanvases = {};
                     this.dispositionError = '';
+                    this.dispositionDirty = false;
                     this.showDispositionModal = true;
 
-                    this.$nextTick(() => document.getElementById('disposition-note-input')?.focus());
+                    if (!resume) return;
+
+                    this.isLoadingDisposition = true;
+                    try {
+                        const baseUrl = @js(url('/incoming-mails'));
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailIds[0])}/disposition-recipients`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Progres disposisi gagal dimuat.');
+                        }
+
+                        this.dispositionMailLabel = data.mail?.mail_number || this.dispositionMailLabel;
+                        this.dispositionNote = data.mail?.disposition_note || '';
+                        this.dispositionRecipients = data.recipients?.length
+                            ? data.recipients.map(recipient => this.newDispositionRecipient(recipient))
+                            : [this.newDispositionRecipient()];
+                    } catch (error) {
+                        console.error('Disposition workflow load error:', error);
+                        this.dispositionError = error.message || 'Progres disposisi gagal dimuat.';
+                    } finally {
+                        this.isLoadingDisposition = false;
+                    }
                 },
 
                 closeDispositionModal() {
-                    if (this.isSubmitting) return;
+                    if (this.isSavingDisposition) return;
+                    if (this.dispositionDirty && !window.confirm('Perubahan yang belum disimpan akan hilang. Tutup proses ini?')) return;
+
+                    this.dispositionDirty = false;
                     this.showDispositionModal = false;
                     this.dispositionError = '';
+                    this.$nextTick(() => this.dispositionPreviousFocus?.focus?.());
                 },
 
-                async submitDispositionNote() {
-                    const note = this.dispositionNote.trim();
+                addDispositionRecipient() {
+                    this.dispositionRecipients.push(this.newDispositionRecipient());
+                    this.dispositionDirty = true;
+                },
 
+                removeDispositionRecipient(index) {
+                    if (this.dispositionRecipients.length === 1) return;
+                    const [removed] = this.dispositionRecipients.splice(index, 1);
+                    delete this.dispositionCanvases[removed.client_key];
+                    this.dispositionDirty = true;
+                },
+
+                setupDispositionCanvas(recipient, canvas) {
+                    const context = canvas.getContext('2d');
+                    context.lineWidth = 3;
+                    context.lineCap = 'round';
+                    context.lineJoin = 'round';
+                    context.strokeStyle = '#0f172a';
+                    this.dispositionCanvases[recipient.client_key] = canvas;
+
+                    if (recipient.signature_url) {
+                        const image = new Image();
+                        image.onload = () => context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                        image.src = recipient.signature_url;
+                    }
+                },
+
+                dispositionCanvasPosition(event, canvas) {
+                    const rect = canvas.getBoundingClientRect();
+                    return {
+                        x: (event.clientX - rect.left) * (canvas.width / rect.width),
+                        y: (event.clientY - rect.top) * (canvas.height / rect.height),
+                    };
+                },
+
+                startDispositionSignature(event, recipient) {
+                    const canvas = this.dispositionCanvases[recipient.client_key];
+                    if (!canvas) return;
+                    canvas.setPointerCapture?.(event.pointerId);
+                    const point = this.dispositionCanvasPosition(event, canvas);
+                    const context = canvas.getContext('2d');
+                    context.beginPath();
+                    context.moveTo(point.x, point.y);
+                    this.dispositionDrawingKey = recipient.client_key;
+                },
+
+                drawDispositionSignature(event, recipient) {
+                    if (this.dispositionDrawingKey !== recipient.client_key) return;
+                    const canvas = this.dispositionCanvases[recipient.client_key];
+                    if (!canvas) return;
+                    const point = this.dispositionCanvasPosition(event, canvas);
+                    const context = canvas.getContext('2d');
+                    context.lineTo(point.x, point.y);
+                    context.stroke();
+                },
+
+                finishDispositionSignature(event, recipient) {
+                    if (this.dispositionDrawingKey !== recipient.client_key) return;
+                    const canvas = this.dispositionCanvases[recipient.client_key];
+                    this.dispositionDrawingKey = null;
+                    if (!canvas) return;
+                    canvas.releasePointerCapture?.(event.pointerId);
+                    recipient.signature = canvas.toDataURL('image/png');
+                    recipient.has_signature = true;
+                    recipient.remove_signature = false;
+                    this.dispositionDirty = true;
+                },
+
+                clearDispositionSignature(recipient) {
+                    const canvas = this.dispositionCanvases[recipient.client_key];
+                    canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+                    recipient.signature = null;
+                    recipient.signature_url = null;
+                    recipient.has_signature = false;
+                    recipient.remove_signature = true;
+                    this.dispositionDirty = true;
+                },
+
+                get unsignedDispositionRecipientCount() {
+                    return this.dispositionRecipients.filter(
+                        recipient => !recipient.signer_name.trim() || (!recipient.signature && !recipient.has_signature)
+                    ).length;
+                },
+
+                skipRemainingDispositionSignatures() {
+                    const pending = this.unsignedDispositionRecipientCount;
+
+                    if (pending === 0) {
+                        this.saveDispositionWorkflow('complete');
+                        return;
+                    }
+
+                    const confirmed = window.confirm(
+                        `${pending} penerima belum menandatangani. Disposisi akan ditutup dan status menjadi DISPOSISI, ` +
+                        'sementara penerima tersebut tetap tercatat belum menandatangani. Lanjutkan?'
+                    );
+
+                    if (confirmed) {
+                        this.saveDispositionWorkflow('skip_remaining');
+                    }
+                },
+
+                async saveDispositionWorkflow(action) {
+                    if (this.isSavingDisposition) return;
+
+                    const note = this.dispositionNote.trim();
                     if (!note) {
                         this.dispositionError = 'Catatan disposisi wajib diisi.';
                         return;
                     }
 
-                    const applied = await this.applyStatusChange(
-                        this.dispositionMailIds,
-                        'DISPOSISI',
-                        null,
-                        note
-                    );
-
-                    if (applied) {
-                        this.showDispositionModal = false;
-                    } else {
-                        this.dispositionError = this.statusChangeError;
+                    const missingRecipient = this.dispositionRecipients.find(recipient => !recipient.recipient_name.trim());
+                    if (missingRecipient) {
+                        this.dispositionError = 'Nama setiap penerima / unit tujuan disposisi wajib diisi.';
+                        return;
                     }
+
+                    if (action === 'complete') {
+                        const incomplete = this.dispositionRecipients.find(recipient =>
+                            !recipient.signer_name.trim() || (!recipient.signature && !recipient.has_signature)
+                        );
+                        if (incomplete) {
+                            this.dispositionError = 'Lengkapi nama penandatangan dan tanda tangan seluruh penerima sebelum menyelesaikan disposisi.';
+                            return;
+                        }
+                    }
+
+                    this.isSavingDisposition = true;
+                    this.dispositionError = '';
+
+                    try {
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                        const response = await fetch(@js(route('incoming-mails.disposition-workflow.store')), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                mail_ids: this.dispositionMailIds,
+                                disposition_note: note,
+                                action,
+                                recipients: this.dispositionRecipients.map(recipient => ({
+                                    id: recipient.id,
+                                    recipient_name: recipient.recipient_name.trim(),
+                                    signer_name: recipient.signer_name.trim() || null,
+                                    signature: recipient.signature,
+                                    remove_signature: recipient.remove_signature,
+                                })),
+                            }),
+                        });
+
+                        const result = await response.json();
+                        if (!response.ok) {
+                            const validationMessage = Object.values(result.errors || {}).flat()[0];
+                            throw new Error(validationMessage || result.message || 'Progres disposisi gagal disimpan.');
+                        }
+
+                        this.dispositionDirty = false;
+                        this.showDispositionModal = false;
+                        this.showToast(result.message);
+                        this.selectedIds = [];
+                        await this.refreshTableData();
+                    } catch (error) {
+                        console.error('Disposition workflow save error:', error);
+                        this.dispositionError = error.message || 'Progres disposisi gagal disimpan.';
+                    } finally {
+                        this.isSavingDisposition = false;
+                    }
+                },
+
+                async openDispositionPreview(mailId, mailNumber) {
+                    this.showDispositionPreviewModal = true;
+                    this.isLoadingDispositionPreview = true;
+                    this.dispositionPreviewMail = {
+                        id: mailId,
+                        mail_number: mailNumber,
+                        disposition_note: '',
+                    };
+                    this.dispositionPreviewRecipients = [];
+
+                    try {
+                        const baseUrl = @js(url('/incoming-mails'));
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailId)}/disposition-recipients`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Catatan disposisi gagal dimuat.');
+                        }
+
+                        this.dispositionPreviewMail = data.mail;
+                        this.dispositionPreviewRecipients = data.recipients || [];
+                    } catch (error) {
+                        console.error('Disposition preview load error:', error);
+                    } finally {
+                        this.isLoadingDispositionPreview = false;
+                    }
+                },
+
+                openUploadAttachmentModal(mailId, mailNumber, subject) {
+                    this.showUploadAttachmentModal = true;
+                    this.uploadAttachmentError = '';
+                    this.selectedAttachmentFiles = [];
+                    this.existingAttachments = [];
+                    this.uploadAttachmentMail = {
+                        id: mailId,
+                        mail_number: mailNumber || '-',
+                        subject: subject || '-',
+                    };
+                    this.fetchAttachments(mailId);
+                },
+
+                closeUploadAttachmentModal() {
+                    if (this.isUploadingAttachments) return;
+                    this.showUploadAttachmentModal = false;
+                    this.clearSelectedAttachments();
+                    this.uploadAttachmentError = '';
+                },
+
+                clearSelectedAttachments() {
+                    this.selectedAttachmentFiles.forEach(item => {
+                        if (item.preview_url) URL.revokeObjectURL(item.preview_url);
+                    });
+                    this.selectedAttachmentFiles = [];
+                },
+
+                async fetchAttachments(mailId) {
+                    this.isLoadingAttachments = true;
+                    try {
+                        const baseUrl = @js(url('/incoming-mails'));
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailId)}/attachments`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                        });
+                        const data = await response.json();
+                        if (response.ok && data.success) {
+                            this.existingAttachments = data.attachments || [];
+                            if (data.mail) {
+                                this.uploadAttachmentMail.mail_number = data.mail.mail_number;
+                                this.uploadAttachmentMail.subject = data.mail.subject;
+                            }
+                        } else {
+                            this.uploadAttachmentError = data.message || 'Gagal memuat berkas surat.';
+                        }
+                    } catch (err) {
+                        console.error('Fetch attachments error:', err);
+                        this.uploadAttachmentError = 'Terjadi kesalahan saat memuat berkas.';
+                    } finally {
+                        this.isLoadingAttachments = false;
+                    }
+                },
+
+                handleAttachmentFileInput(event) {
+                    const files = Array.from(event.target.files || []);
+                    if (!files.length) return;
+
+                    files.forEach(file => {
+                        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                        const isImg = file.type.startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.name);
+                        if (!isPdf && !isImg) return;
+
+                        const exists = this.selectedAttachmentFiles.some(f => f.name === file.name && f.size === file.size);
+                        if (!exists) {
+                            const previewUrl = isImg ? URL.createObjectURL(file) : null;
+                            this.selectedAttachmentFiles.push({
+                                file: file,
+                                name: file.name,
+                                size: file.size,
+                                is_image: isImg,
+                                preview_url: previewUrl,
+                            });
+                        }
+                    });
+                    event.target.value = '';
+                    this.uploadAttachmentError = '';
+                },
+
+                handleAttachmentDrop(event) {
+                    const files = Array.from(event.dataTransfer?.files || []);
+                    if (!files.length) return;
+
+                    files.forEach(file => {
+                        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                        const isImg = file.type.startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.name);
+                        if (!isPdf && !isImg) return;
+
+                        const exists = this.selectedAttachmentFiles.some(f => f.name === file.name && f.size === file.size);
+                        if (!exists) {
+                            const previewUrl = isImg ? URL.createObjectURL(file) : null;
+                            this.selectedAttachmentFiles.push({
+                                file: file,
+                                name: file.name,
+                                size: file.size,
+                                is_image: isImg,
+                                preview_url: previewUrl,
+                            });
+                        }
+                    });
+                    this.uploadAttachmentError = '';
+                },
+
+                removeSelectedAttachmentFile(index) {
+                    const item = this.selectedAttachmentFiles[index];
+                    if (item && item.preview_url) {
+                        URL.revokeObjectURL(item.preview_url);
+                    }
+                    this.selectedAttachmentFiles.splice(index, 1);
+                },
+
+                async submitUploadAttachments() {
+                    if (this.selectedAttachmentFiles.length === 0 || this.isUploadingAttachments) {
+                        return;
+                    }
+
+                    this.isUploadingAttachments = true;
+                    this.uploadAttachmentError = '';
+
+                    const formData = new FormData();
+                    this.selectedAttachmentFiles.forEach(item => {
+                        formData.append('files[]', item.file);
+                    });
+
+                    try {
+                        const baseUrl = @js(url('/incoming-mails'));
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(this.uploadAttachmentMail.id)}/attachments`, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: formData,
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok || !data.success) {
+                            let msg = data.message || 'Gagal mengunggah foto atau dokumen.';
+                            if (data.errors) {
+                                const errorMessages = Object.values(data.errors).flat();
+                                if (errorMessages.length > 0) msg = errorMessages.join(' ');
+                            }
+                            throw new Error(msg);
+                        }
+
+                        this.clearSelectedAttachments();
+                        this.showToast(data.message || 'Foto / dokumen berhasil ditambahkan.');
+                        await this.fetchAttachments(this.uploadAttachmentMail.id);
+                        await this.refreshTableData();
+                    } catch (err) {
+                        console.error('Upload attachments error:', err);
+                        this.uploadAttachmentError = err.message || 'Terjadi kesalahan saat mengunggah berkas.';
+                    } finally {
+                        this.isUploadingAttachments = false;
+                    }
+                },
+
+                async deleteAttachment(attachmentId) {
+                    if (!confirm('Apakah Anda yakin ingin menghapus berkas ini?')) return;
+
+                    this.isDeletingAttachmentId = attachmentId;
+                    this.uploadAttachmentError = '';
+
+                    try {
+                        const baseUrl = @js(url('/incoming-mails'));
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(this.uploadAttachmentMail.id)}/attachments/${encodeURIComponent(attachmentId)}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok || !data.success) {
+                            throw new Error(data.message || 'Gagal menghapus berkas.');
+                        }
+
+                        this.showToast('Berkas berhasil dihapus.');
+                        await this.fetchAttachments(this.uploadAttachmentMail.id);
+                        await this.refreshTableData();
+                    } catch (err) {
+                        console.error('Delete attachment error:', err);
+                        this.uploadAttachmentError = err.message || 'Terjadi kesalahan saat menghapus berkas.';
+                    } finally {
+                        this.isDeletingAttachmentId = null;
+                    }
+                },
+
+                formatBytes(bytes) {
+                    if (!bytes || bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
                 },
 
                 newReturnRecipient(data = {}) {
@@ -1099,6 +1945,9 @@
                     if (!this.isSelectionMode) {
                         this.selectedIds = [];
                     }
+                    this.$nextTick(() => {
+                        this.updateCheckboxStates();
+                    });
                 },
 
                 async performSearch() {
@@ -1131,6 +1980,11 @@
                         this.allIds = data.allIds;
                         this.statusById = { ...this.statusById, ...(data.statuses || {}) };
                         
+                        // Clean up existing Alpine tree before DOM replacement
+                        if (window.Alpine && this.$refs.tableBody) {
+                            window.Alpine.destroyTree(this.$refs.tableBody);
+                        }
+
                         // Update table content
                         this.$refs.tableBody.innerHTML = data.html;
                         
@@ -1145,7 +1999,7 @@
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
-                            if (window.Alpine) {
+                            if (window.Alpine && this.$refs.tableBody) {
                                 window.Alpine.initTree(this.$refs.tableBody);
                             }
                             this.updateCheckboxStates();
@@ -1297,6 +2151,11 @@
                         return;
                     }
 
+                    if (this.normalizeStatus(targetStatus) === 'DISPOSISI') {
+                        this.openDispositionWorkflow(eligibleIds, label);
+                        return;
+                    }
+
                     this.requestStatusChange(eligibleIds, label, targetStatus, blocked.length);
                 },
 
@@ -1308,9 +2167,9 @@
                     const target = this.normalizeStatus(targetStatus);
                     const leavingRevisi = mailIds.some(id => this.normalizeStatus(this.statusById[id]) === 'REVISI');
 
-                    // Disposisi selalu wajib disertai catatan disposisi.
+                    // Disposisi selalu wajib disertai alur catatan disposisi & penerima.
                     if (target === 'DISPOSISI') {
-                        this.openDispositionModal({ mailIds, label, blockedCount });
+                        this.openDispositionWorkflow(mailIds, label);
                         return;
                     }
 
@@ -1426,6 +2285,11 @@
                         
                         const data = await response.json();
                         
+                        // Clean up existing Alpine tree before DOM replacement
+                        if (window.Alpine && this.$refs.tableBody) {
+                            window.Alpine.destroyTree(this.$refs.tableBody);
+                        }
+
                         // Update table content
                         this.$refs.tableBody.innerHTML = data.html;
                         
@@ -1441,7 +2305,7 @@
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
-                            if (window.Alpine) {
+                            if (window.Alpine && this.$refs.tableBody) {
                                 window.Alpine.initTree(this.$refs.tableBody);
                             }
                             this.updateCheckboxStates();
@@ -1468,9 +2332,24 @@
                         return;
                     }
 
+                    if (targetStatus === 'DISPOSISI') {
+                        this.openDispositionWorkflow([detail.id], detail.mailNumber);
+                        return;
+                    }
+
                     this.requestStatusChange([detail.id], `dokumen ${detail.mailNumber}`, targetStatus);
                 }
             };
+        }
+
+        window.incomingMailSelector = incomingMailSelector;
+
+        if (window.Alpine) {
+            window.Alpine.data('incomingMailSelector', incomingMailSelector);
+        } else {
+            document.addEventListener('alpine:init', () => {
+                window.Alpine.data('incomingMailSelector', incomingMailSelector);
+            });
         }
     </script>
 @endsection

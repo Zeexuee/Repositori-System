@@ -55,23 +55,6 @@
                 </div>
 
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Surat</span>
-                    <span class="font-semibold text-slate-800 text-sm block font-mono">{{ $incomingMail->outgoing_date?->format('d F Y, H:i') ?? '-' }}</span>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dari (Biro Pengirim)</span>
-                    <span class="font-bold text-slate-900 text-sm block break-words">{{ $incomingMail->sender }}</span>
-                </div>
-
-                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kepada</span>
-                    <span class="font-semibold text-slate-800 text-sm block break-words">{{ $incomingMail->recipient ?? '-' }}</span>
-                </div>
-
-                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status Surat</span>
                     @php
                         $canonicalStatus = App\Support\IncomingMailStatus::canonical($incomingMail->status);
@@ -80,6 +63,7 @@
                             App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300',
                             App\Support\IncomingMailStatus::RETURN => 'bg-white text-slate-800 border-slate-300',
                             App\Support\IncomingMailStatus::DRAFT => 'bg-indigo-50 text-indigo-800 border-indigo-300',
+                            App\Support\IncomingMailStatus::WAITING_DISPOSISI => 'bg-cyan-50 text-cyan-800 border-cyan-300',
                             App\Support\IncomingMailStatus::DISPOSISI => 'bg-slate-200 text-slate-900 border-slate-400',
                             default => 'bg-slate-900 text-white border-slate-900',
                         };
@@ -92,12 +76,13 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Waktu Dibuat</span>
-                    <span class="font-medium text-slate-800 text-sm block font-mono">{{ $incomingMail->created_at?->format('d F Y, H:i') ?? '-' }}</span>
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dari (Biro Pengirim)</span>
+                    <span class="font-bold text-slate-900 text-sm block break-words">{{ $incomingMail->sender }}</span>
                 </div>
+
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Terakhir Diubah (Update Status)</span>
-                    <span class="font-bold text-slate-900 text-sm block font-mono">{{ $incomingMail->updated_at?->format('d F Y, H:i') ?? '-' }}</span>
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kepada</span>
+                    <span class="font-semibold text-slate-800 text-sm block break-words">{{ $incomingMail->recipient ?? '-' }}</span>
                 </div>
             </div>
 
@@ -143,27 +128,114 @@
             </div>
         @endif
 
-        <!-- Section 2: Disposisi & Penerima -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">
-            <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
-                <span>Disposisi & Penerima Berkas</span>
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Disposisi</span>
-                    <p class="text-xs text-slate-800 whitespace-pre-line leading-relaxed">{{ $incomingMail->disposition_note ?? '-' }}</p>
-                </div>
+        <!-- Section 2: Keterangan Tambahan -->
+        @if ($incomingMail->notes)
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-slate-900"></span>
+                    <span>Keterangan Dokumen</span>
+                </h2>
 
                 <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Keterangan</span>
-                    <p class="text-xs text-slate-800 whitespace-pre-line leading-relaxed">{{ $incomingMail->notes ?? '-' }}</p>
+                    <p class="text-xs text-slate-800 whitespace-pre-line leading-relaxed">{{ $incomingMail->notes }}</p>
                 </div>
             </div>
+        @endif
 
+        <!-- Section Disposisi & Penerima Berkas -->
+        @if ($incomingMail->disposition_note || $incomingMail->dispositionRecipients->isNotEmpty() || in_array($canonicalStatus, [App\Support\IncomingMailStatus::DISPOSISI, App\Support\IncomingMailStatus::WAITING_DISPOSISI]))
+            @php
+                $signedDispositionRecipients = $incomingMail->dispositionRecipients->filter(fn ($recipient) => $recipient->signed_at !== null)->count();
+                $totalDispositionRecipients = $incomingMail->dispositionRecipients->count();
+            @endphp
+            <section class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-5" aria-labelledby="disposition-heading">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div>
+                        <h2 id="disposition-heading" class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+                            <span>Informasi Catatan Disposisi</span>
+                        </h2>
+                        @if ($totalDispositionRecipients > 0)
+                            <p class="text-xs text-slate-500 mt-1">
+                                {{ $signedDispositionRecipients }} dari {{ $totalDispositionRecipients }} penerima disposisi telah menandatangani.
+                            </p>
+                        @endif
+                    </div>
+                    <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
+                        {{ App\Support\IncomingMailStatus::label($incomingMail->status) }}
+                    </span>
+                </div>
 
-        </div>
+                <!-- Isi Catatan Disposisi -->
+                <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200 space-y-1.5">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Catatan Disposisi
+                    </span>
+                    <p class="text-sm text-slate-900 font-medium whitespace-pre-line leading-relaxed">
+                        {{ $incomingMail->disposition_note ?: 'Tidak ada catatan khusus.' }}
+                    </p>
+                </div>
+
+                <!-- Tabel / Daftar Penerima Disposisi -->
+                @if ($incomingMail->dispositionRecipients->isNotEmpty())
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Daftar Penerima & Bukti Tanda Tangan
+                        </h3>
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                            <table class="w-full min-w-[720px] text-left text-sm">
+                                <caption class="sr-only">Daftar penerima disposisi</caption>
+                                <thead class="bg-slate-100 text-[11px] uppercase tracking-wider text-slate-600">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3">No.</th>
+                                        <th scope="col" class="px-4 py-3">Penerima / Unit Disposisi</th>
+                                        <th scope="col" class="px-4 py-3">Penandatangan</th>
+                                        <th scope="col" class="px-4 py-3">Waktu Tanda Tangan</th>
+                                        <th scope="col" class="px-4 py-3">Status</th>
+                                        <th scope="col" class="px-4 py-3 text-right">Tanda Tangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 bg-white">
+                                    @foreach ($incomingMail->dispositionRecipients as $index => $dispositionRecipient)
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-slate-500">{{ $index + 1 }}</td>
+                                            <td class="px-4 py-3 font-semibold text-slate-900">{{ $dispositionRecipient->recipient_name }}</td>
+                                            <td class="px-4 py-3 text-slate-700">{{ $dispositionRecipient->signer_name ?? 'Belum diisi' }}</td>
+                                            <td class="px-4 py-3 text-slate-600 font-mono text-xs">
+                                                {{ $dispositionRecipient->signed_at?->format('d/m/Y H:i') ?? '-' }}
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                @if ($dispositionRecipient->signed_at && $dispositionRecipient->signature_path)
+                                                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                                                        Sudah Ditandatangani
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+                                                        Belum Ditandatangani
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-right">
+                                                @if ($dispositionRecipient->signature_path)
+                                                    <a href="{{ route('document.download', ['path' => $dispositionRecipient->signature_path, 'inline' => 1]) }}" target="_blank"
+                                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 border border-slate-200 transition-colors">
+                                                        <span>Lihat Tanda Tangan</span>
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                                    </a>
+                                                @else
+                                                    <span class="text-xs text-slate-400 italic">Belum ada</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+            </section>
+        @endif
 
         @if ($incomingMail->revisionNotes->isNotEmpty())
             <section class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4" aria-labelledby="revision-notes-heading">

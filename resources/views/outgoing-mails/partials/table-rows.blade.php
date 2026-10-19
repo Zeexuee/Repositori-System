@@ -1,7 +1,7 @@
 @forelse ($outgoingMails as $index => $mail)
     <tr class="hover:bg-slate-50/80 transition-colors">
         <!-- Select Box -->
-        <td x-show="isSelectionMode" x-cloak class="py-4 px-3 text-center whitespace-nowrap">
+        <td x-show="isSelectionMode" class="py-4 px-3 text-center whitespace-nowrap">
             <input type="checkbox"
                 value="{{ $mail->id }}"
                 x-model="selectedIds"

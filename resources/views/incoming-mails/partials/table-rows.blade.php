@@ -1,11 +1,11 @@
 @forelse ($incomingMails as $index => $mail)
     <tr class="row-item hover:bg-slate-50/80 transition-colors" data-selected="false">
         <!-- Select Box Column Cell -->
-        <td x-show="isSelectionMode" x-cloak class="py-4 px-3 text-center whitespace-nowrap">
+        <td x-show="isSelectionMode" class="py-4 px-3 text-center whitespace-nowrap">
             <input type="checkbox"
                 value="{{ $mail->id }}"
                 aria-label="Pilih dokumen {{ $mail->mail_number }}"
-                onclick="window.toggleMailSelection('{{ $mail->id }}')"
+                onclick="window.toggleMailSelection && window.toggleMailSelection('{{ $mail->id }}')"
                 class="row-checkbox w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer">
         </td>
         <td class="py-4 px-4 sm:px-5 text-center font-bold text-slate-500 whitespace-nowrap">
@@ -41,16 +41,38 @@
                     App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100 font-bold',
                     App\Support\IncomingMailStatus::RETURN => 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50 font-bold',
                     App\Support\IncomingMailStatus::DRAFT => 'bg-indigo-50 text-indigo-800 border-indigo-300 hover:bg-indigo-100 font-bold',
+                    App\Support\IncomingMailStatus::WAITING_DISPOSISI => 'bg-cyan-50 text-cyan-800 border-cyan-300 hover:bg-cyan-100 font-bold',
                     App\Support\IncomingMailStatus::DISPOSISI => 'bg-slate-200 text-slate-900 border-slate-400 hover:bg-slate-300 font-bold',
                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                 };
             @endphp
 
-            @if (auth()->user()?->can('update', $mail) && ! $isFinalStatus)
+            @if ($canonicalStatus === App\Support\IncomingMailStatus::DISPOSISI)
+                <button type="button"
+                    @click="window.openDispositionPreviewModal(@js((string) $mail->id), @js((string) $mail->mail_number))"
+                    title="Klik untuk intip catatan status disposisi"
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
+                    <span>{{ $displayStatus }}</span>
+                    <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </button>
+            @elseif (auth()->user()?->can('update', $mail) && ! $isFinalStatus)
                 @if ($canonicalStatus === App\Support\IncomingMailStatus::WAITING_RETURN)
                     <button type="button"
                         @click="window.resumeReturnWorkflow(@js((string) $mail->id), @js((string) $mail->mail_number))"
                         title="Lanjutkan pengisian tanda tangan pengembalian"
+                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
+                        <span>{{ $displayStatus }}</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                @elseif ($canonicalStatus === App\Support\IncomingMailStatus::WAITING_DISPOSISI)
+                    <button type="button"
+                        @click="window.resumeDispositionWorkflow(@js((string) $mail->id), @js((string) $mail->mail_number))"
+                        title="Lanjutkan pengisian tanda tangan disposisi"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
                         <span>{{ $displayStatus }}</span>
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,6 +113,11 @@
                 Detail
             </a>
             @can('update', $mail)
+                <button type="button"
+                    @click="window.openUploadAttachmentModal(@js((string) $mail->id), @js((string) $mail->mail_number), @js((string) $mail->subject))"
+                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold rounded-lg text-xs transition-all border border-slate-200 cursor-pointer">
+                    Add Doc
+                </button>
                 @if($mail->status === 'DRAFT')
                     <a href="{{ route('incoming-mails.edit', $mail) }}"
                         class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs transition-all shadow-xs border border-indigo-600">

@@ -66,6 +66,15 @@ class IncomingMail extends Model
     }
 
     /**
+     * Get the recipients recorded for the disposition workflow.
+     */
+    public function dispositionRecipients(): HasMany
+    {
+        return $this->hasMany(IncomingMailDispositionRecipient::class)
+            ->orderBy('sort_order');
+    }
+
+    /**
      * Get the recipients recorded for the return workflow.
      */
     public function returnRecipients(): HasMany

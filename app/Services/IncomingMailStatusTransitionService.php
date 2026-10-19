@@ -43,6 +43,12 @@ class IncomingMailStatusTransitionService
             ]);
         }
 
+        if ($target === IncomingMailStatus::WAITING_DISPOSISI) {
+            throw ValidationException::withMessages([
+                'status' => 'Status disposisi hanya dapat diubah melalui proses alur disposisi.',
+            ]);
+        }
+
         DB::transaction(function () use ($incomingMail, $target, $actorId, $revisionNote, $dispositionNote): void {
             $mail = IncomingMail::whereKey($incomingMail->getKey())->lockForUpdate()->firstOrFail();
             $current = IncomingMailStatus::canonical($mail->status);

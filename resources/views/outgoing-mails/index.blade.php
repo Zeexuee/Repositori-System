@@ -911,6 +911,9 @@
                     if (!this.isSelectionMode) {
                         this.selectedIds = [];
                     }
+                    this.$nextTick(() => {
+                        this.updateCheckboxStates();
+                    });
                 },
 
                 async performSearch() {
@@ -943,6 +946,11 @@
                         this.allIds = data.allIds;
                         this.statusById = { ...this.statusById, ...(data.statuses || {}) };
                         
+                        // Clean up existing Alpine tree before DOM replacement
+                        if (window.Alpine && this.$refs.tableBody) {
+                            window.Alpine.destroyTree(this.$refs.tableBody);
+                        }
+
                         // Update table content
                         this.$refs.tableBody.innerHTML = data.html;
                         
@@ -957,7 +965,7 @@
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
-                            if (window.Alpine) {
+                            if (window.Alpine && this.$refs.tableBody) {
                                 window.Alpine.initTree(this.$refs.tableBody);
                             }
                             this.updateCheckboxStates();
@@ -1238,6 +1246,11 @@
                         
                         const data = await response.json();
                         
+                        // Clean up existing Alpine tree before DOM replacement
+                        if (window.Alpine && this.$refs.tableBody) {
+                            window.Alpine.destroyTree(this.$refs.tableBody);
+                        }
+
                         // Update table content
                         this.$refs.tableBody.innerHTML = data.html;
                         
@@ -1253,7 +1266,7 @@
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
-                            if (window.Alpine) {
+                            if (window.Alpine && this.$refs.tableBody) {
                                 window.Alpine.initTree(this.$refs.tableBody);
                             }
                             this.updateCheckboxStates();
@@ -1283,6 +1296,16 @@
                     this.requestStatusChange([detail.id], `dokumen ${detail.mailNumber}`, targetStatus);
                 }
             };
+        }
+
+        window.outgoingMailSelector = outgoingMailSelector;
+
+        if (window.Alpine) {
+            window.Alpine.data('outgoingMailSelector', outgoingMailSelector);
+        } else {
+            document.addEventListener('alpine:init', () => {
+                window.Alpine.data('outgoingMailSelector', outgoingMailSelector);
+            });
         }
     </script>
 @endsection

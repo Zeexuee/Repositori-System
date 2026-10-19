@@ -69,4 +69,26 @@ class OutgoingMailTest extends TestCase
         $response->assertSee('Halo tes catatan revisi');
         $response->assertSee('Permintaan Revisi');
     }
+
+    public function test_outgoing_mail_show_displays_only_initial_creation_date(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = OutgoingMail::create([
+            'mail_number' => 'SK-20261019-0003',
+            'subject' => 'Surat Undangan Rapat Koordinasi',
+            'recipient' => 'Dinas Pendidikan',
+            'created_by' => $user->id,
+            'status' => 'WAITING_RECEIVE',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('outgoing-mails.show', $mail));
+
+        $response->assertOk();
+        $response->assertSee('Tanggal Dibuat');
+        $response->assertDontSee('Terakhir Diubah');
+    }
 }
+

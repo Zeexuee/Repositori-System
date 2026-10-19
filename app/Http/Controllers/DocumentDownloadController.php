@@ -39,6 +39,11 @@ class DocumentDownloadController extends Controller
                 $incomingReturn = \App\Models\IncomingMailReturnRecipient::where('signature_path', $path)->first();
                 if ($incomingReturn) {
                     $incomingMail = $incomingReturn->incomingMail;
+                } else {
+                    $incomingDisposition = \App\Models\IncomingMailDispositionRecipient::where('signature_path', $path)->first();
+                    if ($incomingDisposition) {
+                        $incomingMail = $incomingDisposition->incomingMail;
+                    }
                 }
             }
         }

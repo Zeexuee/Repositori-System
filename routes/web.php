@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BroadcastEmailController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\IncomingMailController;
+use App\Http\Controllers\IncomingMailDispositionController;
 use App\Http\Controllers\IncomingMailReturnController;
 use App\Http\Controllers\MailDispositionController;
 use App\Http\Controllers\OutgoingMailController;
@@ -33,11 +34,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/repository', [RepositoryController::class, 'index'])->name('repository.index');
 
     // Disposisi Surat Masuk
+    Route::get('/incoming-mails/{incomingMail}/disposition-recipients', [IncomingMailDispositionController::class, 'show'])->name('incoming-mails.disposition-recipients.show');
+    Route::post('/incoming-mails/disposition-workflow', [IncomingMailDispositionController::class, 'store'])->name('incoming-mails.disposition-workflow.store');
     Route::post('/incoming-mails/{incomingMail}/dispositions', [MailDispositionController::class, 'store'])->name('incoming-mails.dispositions.store');
     Route::post('/incoming-mails/bulk-update-status', [IncomingMailController::class, 'bulkUpdateStatus'])->name('incoming-mails.bulk-update-status');
     Route::get('/incoming-mails/{incomingMail}/return-recipients', [IncomingMailReturnController::class, 'show'])->name('incoming-mails.return-recipients.show');
     Route::post('/incoming-mails/return-workflow', [IncomingMailReturnController::class, 'store'])->name('incoming-mails.return-workflow.store');
     Route::put('/incoming-mails/batch-update/{batch_id}', [IncomingMailController::class, 'updateBatch'])->name('incoming-mails.batch-update');
+    Route::get('/incoming-mails/{incomingMail}/attachments', [IncomingMailController::class, 'getAttachments'])->name('incoming-mails.attachments.index');
+    Route::post('/incoming-mails/{incomingMail}/attachments', [IncomingMailController::class, 'storeAttachments'])->name('incoming-mails.attachments.store');
+    Route::delete('/incoming-mails/{incomingMail}/attachments/{attachment}', [IncomingMailController::class, 'destroyAttachment'])->name('incoming-mails.attachments.destroy');
     Route::resource('incoming-mails', IncomingMailController::class);
 
     // Tanda Tangan Digital Surat Keluar

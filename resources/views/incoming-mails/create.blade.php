@@ -117,13 +117,13 @@
                     <!-- Tanggal Masuk -->
                     <div>
                         <label for="received_date" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Masuk <span class="text-slate-900 font-bold">*</span></label>
-                        <div class="relative w-full">
-                            <input type="datetime-local" name="received_date" id="received_date" value="{{ old('received_date', date('Y-m-d\TH:i')) }}" required readonly class="peer w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl focus:outline-none text-sm text-slate-500 shadow-2xs cursor-not-allowed">
-                            <div class="absolute bottom-full left-4 mb-2 hidden peer-hover:block peer-focus:block px-2.5 py-1.5 bg-slate-800 text-white text-[10px] font-bold rounded shadow-xl whitespace-nowrap z-50 pointer-events-none transition-all">
-                                Waktu dan tanggal telah di set otomatis
-                                <div class="absolute -bottom-1 left-4 w-2 h-2 bg-slate-800 rotate-45"></div>
-                            </div>
-                        </div>
+                        <input type="datetime-local" name="received_date" id="received_date" 
+                            value="{{ old('received_date', now()->format('Y-m-d\TH:i')) }}" 
+                            required 
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                        @error('received_date')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
                     </div>
 
                 </div>

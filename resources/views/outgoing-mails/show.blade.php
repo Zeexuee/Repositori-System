@@ -27,49 +27,49 @@
     <!-- Structured Info Grid with Defined Card Boundaries -->
     <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
         
-        <!-- Field 1: Nomor Surat -->
-        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-            <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nomor Surat</span>
-            <span class="font-bold text-slate-900 text-sm sm:text-base block break-words">{{ $outgoingMail->mail_number ?? '(Draf Belum Diberi Nomor)' }}</span>
+        <!-- Row 1: Nomor Surat, Waktu Dibuat, Status Dokumen (3 Columns) -->
+        <div class="sm:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+            <!-- Field 1: Nomor Surat -->
+            <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nomor Surat</span>
+                <span class="font-bold text-slate-900 text-sm sm:text-base block break-words">{{ $outgoingMail->mail_number ?? '(Draf Belum Diberi Nomor)' }}</span>
+            </div>
+
+            <!-- Field 2: Tanggal Dibuat -->
+            <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Dibuat</span>
+                <span class="font-bold text-slate-900 text-sm sm:text-base block font-mono">{{ $outgoingMail->created_at?->format('d F Y, H:i') ?? '-' }}</span>
+            </div>
+
+            <!-- Field 3: Status -->
+            <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status Dokumen</span>
+                @php
+                    $canonicalStatus = App\Support\OutgoingMailStatus::canonical($outgoingMail->status);
+                    $statusBadge = match ($canonicalStatus) {
+                        App\Support\OutgoingMailStatus::REVISI => 'bg-amber-50 text-amber-800 border-amber-300',
+                        App\Support\OutgoingMailStatus::WAITING_RECEIVE => 'bg-blue-50 text-blue-800 border-blue-300',
+                        App\Support\OutgoingMailStatus::RECEIVE => 'bg-slate-900 text-white border-slate-900',
+                        default => 'bg-slate-100 text-slate-800 border-slate-300',
+                    };
+                @endphp
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
+                    {{ App\Support\OutgoingMailStatus::label($outgoingMail->status) }}
+                </span>
+            </div>
         </div>
 
-        <!-- Field 2: Pembuat Dokumen -->
+        <!-- Row 2: Pembuat Dokumen & Penerima Surat (2 Columns) -->
+        <!-- Field 4: Pembuat Dokumen -->
         <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
             <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pembuat Dokumen</span>
             <span class="font-bold text-slate-900 text-sm sm:text-base block break-words">{{ $outgoingMail->creator?->name ?? 'System' }}</span>
         </div>
 
-        <!-- Field 3: Penerima -->
+        <!-- Field 5: Penerima -->
         <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
             <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Penerima Surat</span>
             <span class="font-semibold text-slate-800 text-sm block break-words">{{ $outgoingMail->recipient }}</span>
-        </div>
-
-        <!-- Field 4: Status -->
-        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-            <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status Dokumen</span>
-            @php
-                $canonicalStatus = App\Support\OutgoingMailStatus::canonical($outgoingMail->status);
-                $statusBadge = match ($canonicalStatus) {
-                    App\Support\OutgoingMailStatus::REVISI => 'bg-amber-50 text-amber-800 border-amber-300',
-                    App\Support\OutgoingMailStatus::WAITING_RECEIVE => 'bg-blue-50 text-blue-800 border-blue-300',
-                    App\Support\OutgoingMailStatus::RECEIVE => 'bg-slate-900 text-white border-slate-900',
-                    default => 'bg-slate-100 text-slate-800 border-slate-300',
-                };
-            @endphp
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
-                {{ App\Support\OutgoingMailStatus::label($outgoingMail->status) }}
-            </span>
-        </div>
-
-        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-            <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Waktu Dibuat</span>
-            <span class="font-medium text-slate-800 text-sm block font-mono">{{ $outgoingMail->created_at?->format('d F Y, H:i') ?? '-' }}</span>
-        </div>
-
-        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-            <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Terakhir Diubah (Update Status)</span>
-            <span class="font-bold text-slate-900 text-sm block font-mono">{{ $outgoingMail->updated_at?->format('d F Y, H:i') ?? '-' }}</span>
         </div>
 
         <!-- Field 5: Subjek (Full Width on Grid) -->

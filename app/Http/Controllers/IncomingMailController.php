@@ -8,10 +8,12 @@ use App\Http\Requests\StoreIncomingMailRequest;
 use App\Http\Requests\UpdateIncomingMailRequest;
 use App\Jobs\ProcessOcrJob;
 use App\Models\IncomingMail;
+use App\Models\IncomingMailAttachment;
 use App\Models\User;
 use App\Services\IncomingMailStatusSyncService;
 use App\Services\IncomingMailStatusTransitionService;
 use App\Support\IncomingMailStatus;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -448,6 +450,7 @@ class IncomingMailController extends Controller
             'dispositions.receiver',
             'batchItems',
             'returnRecipients.creator',
+            'dispositionRecipients.creator',
             'revisionNotes.creator',
             'attachments',
         ]);
@@ -679,6 +682,139 @@ class IncomingMailController extends Controller
                 'document_photo_path' => $primaryPhotoPath,
             ]);
         }
+    }
+
+    /**
+     * Get attachments for an incoming mail.
+     */
+    public function getAttachments(IncomingMail $incomingMail): JsonResponse
+    {
+        Gate::authorize('view', $incomingMail);
+
+        $incomingMail->load('attachments');
+
+        $existingFilePaths = $incomingMail->attachments->pluck('file_path')->all();
+        $legacyAttachments = collect();
+
+        if ($incomingMail->document_photo_path && ! in_array($incomingMail->document_photo_path, $existingFilePaths, true)) {
+            $legacyAttachments->push([
+                'id' => 'legacy-photo',
+                'file_name' => basename($incomingMail->document_photo_path),
+                'file_size' => Storage::disk('local')->exists($incomingMail->document_photo_path) ? Storage::disk('local')->size($incomingMail->document_photo_path) : null,
+                'mime_type' => 'image/jpeg',
+                'is_image' => true,
+                'is_legacy' => true,
+                'preview_url' => route('document.download', ['path' => $incomingMail->document_photo_path, 'inline' => 1]),
+                'download_url' => route('document.download', ['path' => $incomingMail->document_photo_path]),
+                'created_at' => $incomingMail->created_at?->format('d/m/Y H:i'),
+            ]);
+        }
+
+        if ($incomingMail->file_path && ! in_array($incomingMail->file_path, $existingFilePaths, true) && $incomingMail->file_path !== $incomingMail->document_photo_path) {
+            $legacyAttachments->push([
+                'id' => 'legacy-file',
+                'file_name' => basename($incomingMail->file_path),
+                'file_size' => Storage::disk('local')->exists($incomingMail->file_path) ? Storage::disk('local')->size($incomingMail->file_path) : null,
+                'mime_type' => 'application/pdf',
+                'is_image' => false,
+                'is_legacy' => true,
+                'preview_url' => route('document.download', ['path' => $incomingMail->file_path, 'inline' => 1]),
+                'download_url' => route('document.download', ['path' => $incomingMail->file_path]),
+                'created_at' => $incomingMail->created_at?->format('d/m/Y H:i'),
+            ]);
+        }
+
+        $attachments = $incomingMail->attachments->map(function (IncomingMailAttachment $att) {
+            $isImg = str_starts_with((string) $att->mime_type, 'image/');
+
+            return [
+                'id' => (string) $att->id,
+                'file_name' => $att->file_name ?? basename($att->file_path),
+                'file_size' => $att->file_size,
+                'mime_type' => $att->mime_type,
+                'is_image' => $isImg,
+                'is_legacy' => false,
+                'preview_url' => route('document.download', ['path' => $att->file_path, 'inline' => 1]),
+                'download_url' => route('document.download', ['path' => $att->file_path]),
+                'created_at' => $att->created_at?->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'mail' => [
+                'id' => (string) $incomingMail->id,
+                'mail_number' => $incomingMail->mail_number,
+                'subject' => $incomingMail->subject,
+                'sender' => $incomingMail->sender,
+            ],
+            'attachments' => $legacyAttachments->merge($attachments)->values(),
+        ]);
+    }
+
+    /**
+     * Store new attachments (photos or documents) for an incoming mail.
+     */
+    public function storeAttachments(Request $request, IncomingMail $incomingMail): JsonResponse
+    {
+        Gate::authorize('update', $incomingMail);
+
+        $validated = $request->validate([
+            'files' => ['required', 'array', 'min:1'],
+            'files.*' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+        ], [
+            'files.required' => 'Pilih minimal satu foto atau dokumen.',
+            'files.array' => 'Format berkas tidak valid.',
+            'files.*.file' => 'Berkas harus berupa file yang valid.',
+            'files.*.mimes' => 'Format file harus berupa PDF, JPG, JPEG, PNG, atau WEBP.',
+            'files.*.max' => 'Ukuran file tidak boleh melebihi 10MB.',
+        ]);
+
+        $this->saveAttachments($incomingMail, $validated['files']);
+
+        return response()->json([
+            'success' => true,
+            'message' => count($validated['files']) . ' foto/dokumen berhasil ditambahkan.',
+            'total_attachments' => $incomingMail->attachments()->count(),
+        ]);
+    }
+
+    /**
+     * Delete an attachment from an incoming mail.
+     */
+    public function destroyAttachment(IncomingMail $incomingMail, IncomingMailAttachment $attachment): JsonResponse
+    {
+        Gate::authorize('update', $incomingMail);
+
+        if ($attachment->incoming_mail_id !== $incomingMail->id) {
+            abort(404, 'Lampiran tidak ditemukan untuk surat masuk ini.');
+        }
+
+        if (Storage::disk('local')->exists($attachment->file_path)) {
+            Storage::disk('local')->delete($attachment->file_path);
+        }
+
+        $deletedFilePath = $attachment->file_path;
+        $attachment->delete();
+
+        $updates = [];
+        if ($incomingMail->file_path === $deletedFilePath) {
+            $next = $incomingMail->attachments()->where('file_path', '!=', $deletedFilePath)->first();
+            $updates['file_path'] = $next?->file_path;
+        }
+        if ($incomingMail->document_photo_path === $deletedFilePath) {
+            $nextPhoto = $incomingMail->attachments()->where('file_path', '!=', $deletedFilePath)->where('mime_type', 'like', 'image/%')->first();
+            $updates['document_photo_path'] = $nextPhoto?->file_path;
+        }
+        if (! empty($updates)) {
+            $incomingMail->update($updates);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Berkas berhasil dihapus.',
+            'total_attachments' => $incomingMail->attachments()->count(),
+        ]);
     }
 }
 

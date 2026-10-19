@@ -8,6 +8,10 @@
     --font-sans: 'Inter', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
+[x-cloak] {
+    display: none !important;
+}
+
 /* Universal 90% System Zoom for All Browsers */
 html {
     zoom: 90%;

@@ -29,6 +29,8 @@ final class IncomingMailStatus
 
     public const RETURN = 'RETURN';
 
+    public const WAITING_DISPOSISI = 'WAITING_DISPOSISI';
+
     public const DISPOSISI = 'DISPOSISI';
 
     /**
@@ -41,11 +43,14 @@ final class IncomingMailStatus
         'REGISTERED' => self::RECEIVE,
         'RETURNED' => self::RETURN,
         'WAITING RETURN' => self::WAITING_RETURN,
+        'WAITING DISPOSISI' => self::WAITING_DISPOSISI,
+        'WAITING_DISPOSITION' => self::WAITING_DISPOSISI,
+        'WAITING DISPOSITION' => self::WAITING_DISPOSISI,
+        'PENDING_DISPOSITION' => self::WAITING_DISPOSISI,
         'PROGRES' => self::DRAFT,
         'PROGRESS' => self::DRAFT,
         'IN_PROGRESS' => self::DRAFT,
         'PENDING' => self::DRAFT,
-        'PENDING_DISPOSITION' => self::DISPOSISI,
     ];
 
     /**
@@ -59,6 +64,7 @@ final class IncomingMailStatus
         self::REVISI => [self::RECEIVE, self::DISPOSISI],
         self::WAITING_RETURN => [self::RETURN],
         self::RETURN => [self::REVISI, self::DISPOSISI],
+        self::WAITING_DISPOSISI => [self::DISPOSISI],
         self::DISPOSISI => [],
     ];
 
@@ -73,6 +79,7 @@ final class IncomingMailStatus
         self::REVISI => 'REVISI',
         self::WAITING_RETURN => 'WAITING RETURN',
         self::RETURN => 'RETURN',
+        self::WAITING_DISPOSISI => 'WAITING DISPOSISI',
         self::DISPOSISI => 'DISPOSISI',
     ];
 
@@ -129,6 +136,16 @@ final class IncomingMailStatus
         $canonical = self::canonical($from);
 
         return $canonical === self::WAITING_RETURN || self::canTransition($canonical, self::RETURN);
+    }
+
+    /**
+     * Whether the disposition workflow may be started or continued.
+     */
+    public static function canProcessDisposition(?string $from): bool
+    {
+        $canonical = self::canonical($from);
+
+        return $canonical === self::WAITING_DISPOSISI || self::canTransition($canonical, self::DISPOSISI);
     }
 
     public static function label(?string $status): string
