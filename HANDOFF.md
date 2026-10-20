@@ -1,9 +1,9 @@
-# Handoff — Perbaikan Audit (Poin 1–3)
+# Handoff — Perbaikan Audit (Poin 1–4)
 
 **Tanggal:** 21 Oktober 2026
 **Branch:** `open-beta-oct`
-**Status:** Poin 1 di-commit (`239e207`); poin 2 & 3 selesai, perubahan **belum di-commit**
-**Test:** `php artisan test` → **48 passed, 209 assertions**
+**Status:** Poin 1–3 di-commit; poin 4 selesai, perubahan **belum di-commit**
+**Test:** `php artisan test` → **48 passed, 208 assertions**
 
 ---
 
@@ -118,11 +118,35 @@ Konsekuensi:
 
 ---
 
-## 7. Verifikasi
+## 7. Poin 4 — Sinkronisasi Surat Masuk → Surat Keluar (Selesai)
+
+**Keputusan:** sinkronisasi otomatis dihapus total.
+
+Temuan yang mendasari:
+- `IncomingMailStatusSyncService` mencari surat keluar dengan `subject LIKE '%<subject>'` (wildcard tidak di-escape), lalu menimpa `status`/`subject` atau membuat surat keluar baru.
+- Tidak ada aturan bisnisnya di `agent.md`, `workflow.md`, maupun UI.
+- Status `REVISI`/`RETURN` adalah konsep SOP surat **masuk**; menuliskannya ke surat keluar mencampur dua register.
+- Subject sama dalam satu batch → saling menimpa. Nomor surat `count()+1` rawan bentrok dengan kolom `mail_number` yang unique.
+- Efek samping berada di dalam transaksi finalisasi disposisi/pengembalian; kegagalan sync bisa membatalkan tanda tangan.
+
+Perubahan:
+- Hapus `app/Services/IncomingMailStatusSyncService.php`.
+- Hapus dependency + pemanggilan di `IncomingMailController`, `IncomingMailDispositionController`, `IncomingMailReturnController`, dan `IncomingMailStatusTransitionService`.
+- Test regresi: transisi `REVISI` dan finalisasi `RETURN` tidak membuat/mengubah surat keluar (`OutgoingMail::count() === 0`).
+
+**Belum ditangani (menunggu keputusan):** 2 record ghost di DB lokal hasil sync lama:
+- `SK-20261021-0005` — `[REVISI] Makan siang bersama Keren`
+- `SK-20261021-0006` — `[REVISI] Undangan makan Malam`
+
+Catatan teknis: `OutgoingMailController::store()`/`update()` memakai `OutgoingMail::whereNotNull('mail_number')->count() + 1` untuk nomor otomatis. Query default mengecualikan soft-deleted, sehingga soft delete ghost **tidak** mengosongkan nomor dan berpotensi memicu unique violation saat nomor yang sama dibuat lagi.
+
+---
+
+## 8. Verifikasi
 
 ```bash
 php artisan test --compact
-# 48 passed, 209 assertions
+# 48 passed, 208 assertions
 ```
 
 Catatan environment: **MySQL lokal sedang mati** saat sesi ini (`127.0.0.1:3306` refused), jadi migrasi belum dijalankan ke DB lokal. Jalankan saat DB aktif:
@@ -135,12 +159,12 @@ Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lam
 
 ---
 
-## 8. Sisa Poin Audit (Belum Dikerjakan)
+## 9. Sisa Poin Audit (Belum Dikerjakan)
 
 1. ~~Policy hampir kosong / RBAC tidak ditegakkan~~ ✅ **SELESAI**
 2. ~~Alur tanda tangan surat keluar praktis tidak tercapai~~ ✅ **SELESAI** — fitur PSrE orphan dihapus; alur resmi = penerimaan per penerima.
 3. ~~`ProcessDigitalSignatureJob` menulis status di luar state machine~~ ✅ **SELESAI** — job dihapus.
-4. **Sinkronisasi surat keluar berbasis `LIKE` subject** di `IncomingMailStatusSyncService` — rapuh, bisa cocok ke surat salah.
+4. ~~Sinkronisasi surat keluar berbasis `LIKE` subject~~ ✅ **SELESAI** — sinkronisasi otomatis dihapus.
 5. **Quick-login tanpa password** (`POST /quick-login/{email}`) — matikan untuk produksi.
 6. **`DocumentDownloadController`** validasi berbasis string path, bukan kepemilikan; fallback mengizinkan siapa pun ber-role mengunduh path yang ada.
 7. **"Thin controller" belum tercapai** — `IncomingMailController` ~700 baris, validasi inline di beberapa method.
@@ -150,17 +174,17 @@ Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lam
 
 ---
 
-## 9. Cara Melanjutkan
+## 10. Cara Melanjutkan
 
 1. Buka sesi baru di direktori `D:\laragon\www\Repository`.
 2. Baca file ini + `git status` + `git diff`.
 3. Nyalakan MySQL (Laragon), lalu `php artisan migrate`.
 4. Jalankan `php artisan test --compact` untuk baseline.
-5. Lanjut ke poin 4 (sinkronisasi via `LIKE` subject) — perlu keputusan: relasi eksplisit (mis. `outgoing_mail_id`/nomor surat) vs hentikan sinkronisasi otomatis.
+5. Lanjut ke poin 5 (quick-login tanpa password) — perlu keputusan: hapus total atau batasi ke environment `local`/`demo`.
 
 ---
 
-## 10. Perintah Berguna
+## 11. Perintah Berguna
 
 ```bash
 php artisan test --compact

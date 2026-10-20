@@ -12,10 +12,6 @@ use Illuminate\Validation\ValidationException;
 
 class IncomingMailStatusTransitionService
 {
-    public function __construct(
-        private readonly IncomingMailStatusSyncService $statusSyncService
-    ) {}
-
     /**
      * Apply a status transition, enforcing the standard operating procedure.
      *
@@ -83,7 +79,6 @@ class IncomingMailStatusTransitionService
                 $this->recordNote($mail, IncomingMailRevisionNote::TYPE_RESOLVED, $revisionNote, $actorId);
             }
 
-            $this->statusSyncService->sync($mail, $actorId);
             $incomingMail->setAttribute('status', $target);
 
             if (isset($attributes['disposition_note'])) {

@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SaveIncomingMailDispositionRequest;
 use App\Models\IncomingMail;
 use App\Models\IncomingMailDispositionRecipient;
-use App\Services\IncomingMailStatusSyncService;
 use App\Support\IncomingMailStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -19,10 +18,6 @@ use Throwable;
 
 class IncomingMailDispositionController extends Controller
 {
-    public function __construct(
-        private readonly IncomingMailStatusSyncService $statusSyncService
-    ) {}
-
     public function show(IncomingMail $incomingMail): JsonResponse
     {
         Gate::authorize('view', $incomingMail);
@@ -171,10 +166,6 @@ class IncomingMailDispositionController extends Controller
                             ? IncomingMailStatus::DISPOSISI
                             : IncomingMailStatus::WAITING_DISPOSISI,
                     ]);
-
-                    if ($isFinalizing) {
-                        $this->statusSyncService->sync($mail, $actorId);
-                    }
                 }
             });
         } catch (Throwable $exception) {

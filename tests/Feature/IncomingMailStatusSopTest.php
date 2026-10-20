@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\IncomingMail;
 use App\Models\IncomingMailRevisionNote;
+use App\Models\OutgoingMail;
 use App\Models\User;
 use App\Support\IncomingMailStatus;
 use App\Support\Roles;
@@ -223,6 +224,7 @@ class IncomingMailStatusSopTest extends TestCase
         $this->assertSame('RETURN', $mail->status);
         $this->assertSame(2, $mail->returnRecipients()->count());
         $this->assertSame(2, $mail->returnRecipients()->whereNull('signed_at')->count());
+        $this->assertSame(0, OutgoingMail::count());
     }
 
     public function test_waiting_return_is_reached_by_saving_progress_for_later(): void

@@ -77,7 +77,7 @@ class IncomingMailTest extends TestCase
         $response->assertDontSee('TEST/SURAT/001');
     }
 
-    public function test_user_can_update_status_to_revisi_and_sync_to_outgoing_mail(): void
+    public function test_user_can_update_status_to_revisi_without_touching_outgoing_mails(): void
     {
         $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
@@ -107,10 +107,8 @@ class IncomingMailTest extends TestCase
         $mail->refresh();
         $this->assertSame('REVISI', $mail->status);
 
-        $outgoingMail = OutgoingMail::where('recipient', 'Kementerian Keuangan')->latest()->first();
-        $this->assertNotNull($outgoingMail);
-        $this->assertSame('REVISI', $outgoingMail->status);
-        $this->assertStringStartsWith('[REVISI]', $outgoingMail->subject);
+        // Surat masuk dan surat keluar adalah dua register terpisah.
+        $this->assertSame(0, OutgoingMail::count());
     }
 
     public function test_beta_v2_modal_is_rendered_for_authenticated_users(): void

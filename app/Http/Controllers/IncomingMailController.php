@@ -10,7 +10,6 @@ use App\Jobs\ProcessOcrJob;
 use App\Models\IncomingMail;
 use App\Models\IncomingMailAttachment;
 use App\Models\User;
-use App\Services\IncomingMailStatusSyncService;
 use App\Services\IncomingMailStatusTransitionService;
 use App\Support\IncomingMailStatus;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +24,6 @@ use Illuminate\View\View;
 class IncomingMailController extends Controller
 {
     public function __construct(
-        private readonly IncomingMailStatusSyncService $statusSyncService,
         private readonly IncomingMailStatusTransitionService $statusTransitionService
     ) {}
 
@@ -408,8 +406,6 @@ class IncomingMailController extends Controller
                 if ($incomingMail->file_path) {
                     ProcessOcrJob::dispatch($incomingMail);
                 }
-
-                $this->statusSyncService->sync($incomingMail, auth()->id());
             }
         } else {
             // Single document mode
@@ -445,8 +441,6 @@ class IncomingMailController extends Controller
             if ($incomingMail->file_path) {
                 ProcessOcrJob::dispatch($incomingMail);
             }
-
-            $this->statusSyncService->sync($incomingMail, auth()->id());
         }
 
         if ($request->expectsJson()) {
@@ -572,8 +566,6 @@ class IncomingMailController extends Controller
                 $request->input('revision_note'),
                 $data['disposition_note'] ?? null
             );
-        } else {
-            $this->statusSyncService->sync($incomingMail, auth()->id());
         }
 
         // If batch_id exists, sync common fields to other batch items if needed
