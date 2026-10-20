@@ -2,8 +2,8 @@
 
 **Tanggal:** 21 Oktober 2026
 **Branch:** `open-beta-oct`
-**Status:** Poin 1–4 selesai; poin 1–4 di-commit, cleanup data & generator nomor **belum di-commit**
-**Test:** `php artisan test` → **51 passed, 213 assertions**
+**Status:** Poin 1–4 di-commit; tindak lanjut (sequence nomor + tooling ghost) **belum di-commit**
+**Test:** `php artisan test` → **56 passed, 229 assertions**
 
 ---
 
@@ -141,11 +141,18 @@ Perubahan:
 Backup JSON (lokal, tidak di-commit karena `storage/app/private` di-gitignore):
 `storage/app/private/backups/ghost-outgoing-mails-2026-10-21.json`
 
-**Generator nomor surat diperbaiki:** `app/Support/OutgoingMailNumber.php` menghitung urutan tertinggi dari `SK-<tanggal>-NNNN` **termasuk soft-deleted**, lalu +1. Dipakai di `OutgoingMailController::store()` dan `update()`. Sebelumnya `count()+1` (mengecualikan trashed) yang rawan unique violation.
+**Generator nomor surat (selesai):** `app/Support/OutgoingMailNumber.php`
+- Counter disimpan di tabel `outgoing_mail_sequences` (`sequence_date` PK, `last_number`), migrasi `2026_10_21_000001_create_outgoing_mail_sequences_table.php`.
+- `next()` berjalan dalam transaksi: `insertOrIgnore` lalu `lockForUpdate`, sehingga dua request bersamaan tidak mendapat nomor sama.
+- Nomor tetap mempertimbangkan nomor manual dan soft-deleted: `max(counter, nomor tertinggi yang ada) + 1`.
+- Gap nomor bisa terjadi bila pemanggilan gagal setelah counter naik; ini normal untuk sequence dan tidak berbahaya.
+- Dipakai di `OutgoingMailController::store()` dan `update()`.
 
-Catatan residual: generator belum concurrency-safe. Dua request create bersamaan masih bisa menghasilkan nomor sama; penanganan penuh butuh lock/sequence table.
-
-Catatan deployment: lingkungan lain yang pernah menjalankan sync dapat memiliki ghost record serupa. Identifikasi lewat subject berprefix `[REVISI]`/`[RETURN]` pada surat keluar, lalu review manual — jangan hapus otomatis berdasarkan prefix saja.
+**Tooling review ghost record (selesai):** `php artisan outgoing-mails:detect-sync-artifacts`
+- Default **read-only**: hanya menampilkan kandidat, tidak menghapus.
+- Kandidat = surat keluar berprefix `[REVISI]`/`[RETURN]` yang subject bersihnya cocok dengan surat masuk berstatus `REVISI`/`RETURN` **dan** `sender` surat masuk = `recipient` surat keluar.
+- `--delete` meminta konfirmasi; `--force` melewati konfirmasi; backup JSON selalu dibuat ke `storage/app/private/backups/` (bisa diatur dengan `--backup=`).
+- Test: `tests/Feature/DetectOutgoingMailSyncArtifactsTest.php` (3 test).
 
 ---
 
@@ -153,14 +160,16 @@ Catatan deployment: lingkungan lain yang pernah menjalankan sync dapat memiliki 
 
 ```bash
 php artisan test --compact
-# 51 passed, 213 assertions
+# 56 passed, 229 assertions
 ```
 
-Catatan environment: **MySQL lokal sedang mati** saat sesi ini (`127.0.0.1:3306` refused), jadi migrasi belum dijalankan ke DB lokal. Jalankan saat DB aktif:
+Catatan environment: MySQL Laragon aktif di sesi ini. Migrasi berikut sudah dijalankan ke DB lokal:
 
 ```bash
 php artisan migrate
 ```
+
+Termasuk `2026_10_20_000001_normalize_legacy_role_names` dan `2026_10_21_000001_create_outgoing_mail_sequences_table`.
 
 Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lama yang sengaja tidak disentuh agar diff tidak melebar).
 
@@ -178,7 +187,8 @@ Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lam
 8. **Redis belum dipakai** (queue/cache/session = `database`); `OcrProcessingService` masih placeholder (`return ''`). PSrE belum diimplementasikan.
 9. **Artefak debug**: `test_repo_ajax.php`, `app/Console/Commands/TestRevisi.php`, `welcome.blade.php` (2030 baris, tidak dipakai).
 10. **Dokumen vs implementasi**: `agent.md` menyebut 4 role hierarki + S3, implementasi 2 role + local disk.
-11. **Generator nomor surat belum concurrency-safe** — dua create bersamaan masih bisa bentrok; butuh lock atau tabel sequence.
+11. ~~Generator nomor surat belum concurrency-safe~~ ✅ **SELESAI** — tabel `outgoing_mail_sequences` + `lockForUpdate`.
+12. ~~Ghost record di lingkungan lain belum ada alat review~~ ✅ **SELESAI** — `php artisan outgoing-mails:detect-sync-artifacts` (read-only secara default).
 
 ---
 
@@ -199,6 +209,7 @@ php artisan test --compact
 php artisan migrate
 php artisan migrate:status
 php artisan route:list --except-vendor
+php artisan outgoing-mails:detect-sync-artifacts
 vendor/bin/pint --test
 git status --short
 git diff --stat

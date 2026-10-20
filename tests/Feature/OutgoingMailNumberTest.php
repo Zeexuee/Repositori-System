@@ -71,4 +71,25 @@ class OutgoingMailNumberTest extends TestCase
 
         $this->assertSame($prefix.'0004', $created->mail_number);
     }
+
+    public function test_sequence_increments_across_calls(): void
+    {
+        $prefix = 'SK-'.now()->format('Ymd').'-';
+
+        $this->assertSame($prefix.'0001', OutgoingMailNumber::next());
+        $this->assertSame($prefix.'0002', OutgoingMailNumber::next());
+        $this->assertSame($prefix.'0003', OutgoingMailNumber::next());
+    }
+
+    public function test_sequence_respects_manually_entered_higher_number(): void
+    {
+        $creator = $this->staff();
+        $prefix = 'SK-'.now()->format('Ymd').'-';
+
+        $this->assertSame($prefix.'0001', OutgoingMailNumber::next());
+
+        $this->mailWithNumber($creator, $prefix.'0005');
+
+        $this->assertSame($prefix.'0006', OutgoingMailNumber::next());
+    }
 }
