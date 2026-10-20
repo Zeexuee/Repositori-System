@@ -67,11 +67,11 @@
                     Peran Sistem (Role) <span class="text-rose-500">*</span>
                 </label>
                 @php
-                    $currentRole = $user->getRoleNames()->first() ?? 'Staf';
+                    $currentRole = $user->getRoleNames()->first() ?? \App\Support\Roles::STAFF;
                 @endphp
                 <select name="role" id="role" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                    <option value="Staf" {{ old('role', $currentRole) === 'Staf' ? 'selected' : '' }}>Staf</option>
-                    <option value="Direksi" {{ old('role', $currentRole) === 'Direksi' ? 'selected' : '' }}>Direksi</option>
+                    <option value="{{ \App\Support\Roles::STAFF }}" {{ old('role', $currentRole) === \App\Support\Roles::STAFF ? 'selected' : '' }}>Staf</option>
+                    <option value="{{ \App\Support\Roles::MASTER }}" {{ old('role', $currentRole) === \App\Support\Roles::MASTER ? 'selected' : '' }}>Direksi</option>
                 </select>
                 @error('role')
                     <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>

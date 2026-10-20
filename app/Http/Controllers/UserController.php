@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\Roles;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class UserController extends Controller
@@ -17,9 +20,7 @@ class UserController extends Controller
      */
     public function index(): View
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
-        }
+        Gate::authorize('viewAny', User::class);
 
         $users = User::with('roles')->latest()->paginate(15);
 
@@ -31,9 +32,7 @@ class UserController extends Controller
      */
     public function create(): View
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
-        }
+        Gate::authorize('create', User::class);
 
         return view('users.create');
     }
@@ -43,15 +42,13 @@ class UserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
-        }
+        Gate::authorize('create', User::class);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', 'string', 'in:Staf,Direksi'],
+            'role' => ['required', 'string', Rule::in(Roles::all())],
         ]);
 
         $user = User::create([
@@ -64,7 +61,7 @@ class UserController extends Controller
 
         return redirect()
             ->route('users.index')
-            ->with('success', "Pengguna {$user->name} berhasil ditambahkan dengan role {$validated['role']}.");
+            ->with('success', "Pengguna {$user->name} berhasil ditambahkan dengan role ".Roles::label($validated['role']).'.');
     }
 
     /**
@@ -72,9 +69,7 @@ class UserController extends Controller
      */
     public function edit(User $user): View
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
-        }
+        Gate::authorize('update', $user);
 
         return view('users.edit', compact('user'));
     }
@@ -84,15 +79,13 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user): RedirectResponse
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
-        }
+        Gate::authorize('update', $user);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'password' => ['nullable', 'string', 'min:8'],
-            'role' => ['required', 'string', 'in:Staf,Direksi'],
+            'role' => ['required', 'string', Rule::in(Roles::all())],
         ]);
 
         $updateData = [
@@ -117,13 +110,11 @@ class UserController extends Controller
      */
     public function destroy(User $user): RedirectResponse
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses Manajemen User terbatas hanya untuk Direksi.');
-        }
-
         if (auth()->id() === $user->id) {
             return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
         }
+
+        Gate::authorize('delete', $user);
 
         $userName = $user->name;
         $user->delete();

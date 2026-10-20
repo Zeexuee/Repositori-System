@@ -6,6 +6,7 @@ namespace App\Policies;
 
 use App\Models\MailDisposition;
 use App\Models\User;
+use App\Support\Roles;
 
 class MailDispositionPolicy
 {
@@ -14,7 +15,7 @@ class MailDispositionPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $this->hasDocumentAccess($user);
     }
 
     /**
@@ -22,7 +23,7 @@ class MailDispositionPolicy
      */
     public function view(User $user, MailDisposition $disposition): bool
     {
-        return true;
+        return $this->hasDocumentAccess($user);
     }
 
     /**
@@ -30,7 +31,7 @@ class MailDispositionPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['staff', 'master']);
+        return $this->hasDocumentAccess($user);
     }
 
     /**
@@ -38,6 +39,11 @@ class MailDispositionPolicy
      */
     public function delete(User $user, MailDisposition $disposition): bool
     {
-        return $user->hasRole('staff');
+        return $user->hasRole(Roles::MASTER);
+    }
+
+    private function hasDocumentAccess(User $user): bool
+    {
+        return $user->hasAnyRole([Roles::STAFF, Roles::MASTER]);
     }
 }

@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Mail\BroadcastMail;
 use App\Models\BroadcastEmail;
 use App\Models\User;
+use App\Support\Roles;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
@@ -18,23 +20,21 @@ class BroadcastEmailController extends Controller
      */
     public function index(): View
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses Broadcast Email terbatas hanya untuk Direksi.');
-        }
+        Gate::authorize('viewAny', BroadcastEmail::class);
 
         $broadcasts = BroadcastEmail::with('sender')->latest()->paginate(10);
         $totalUsers = User::count();
         $stafCount = User::whereHas('roles', function ($q) {
-            $q->whereRaw('LOWER(name) = ?', ['staf']);
+            $q->where('name', Roles::STAFF);
         })->count();
 
         $direksiCount = User::whereHas('roles', function ($q) {
-            $q->whereRaw('LOWER(name) = ?', ['direksi']);
+            $q->where('name', Roles::MASTER);
         })->count();
 
         $allUserEmails = implode(', ', User::pluck('email')->filter()->toArray());
-        $stafUserEmails = implode(', ', User::whereHas('roles', fn ($q) => $q->whereRaw('LOWER(name) = ?', ['staf']))->pluck('email')->filter()->toArray());
-        $direksiUserEmails = implode(', ', User::whereHas('roles', fn ($q) => $q->whereRaw('LOWER(name) = ?', ['direksi']))->pluck('email')->filter()->toArray());
+        $stafUserEmails = implode(', ', User::whereHas('roles', fn ($q) => $q->where('name', Roles::STAFF))->pluck('email')->filter()->toArray());
+        $direksiUserEmails = implode(', ', User::whereHas('roles', fn ($q) => $q->where('name', Roles::MASTER))->pluck('email')->filter()->toArray());
 
         return view('broadcast-emails.index', compact(
             'broadcasts',
@@ -52,9 +52,7 @@ class BroadcastEmailController extends Controller
      */
     public function history(): View
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses Broadcast Email terbatas hanya untuk Direksi.');
-        }
+        Gate::authorize('viewAny', BroadcastEmail::class);
 
         $broadcasts = BroadcastEmail::with('sender')->latest()->paginate(15);
 
@@ -66,9 +64,7 @@ class BroadcastEmailController extends Controller
      */
     public function send(Request $request): RedirectResponse
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses Broadcast Email terbatas hanya untuk Direksi.');
-        }
+        Gate::authorize('create', BroadcastEmail::class);
 
         $validated = $request->validate([
             'recipients' => ['required', 'string'],
@@ -181,9 +177,7 @@ class BroadcastEmailController extends Controller
      */
     public function downloadAttachment(BroadcastEmail $broadcast, int $index)
     {
-        if (! auth()->user()->hasRole('master')) {
-            abort(403, 'Akses tidak diizinkan.');
-        }
+        Gate::authorize('view', $broadcast);
 
         $attachments = $broadcast->attachments ?? [];
         if (! isset($attachments[$index])) {

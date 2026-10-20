@@ -8,6 +8,7 @@ use App\Models\IncomingMail;
 use App\Models\IncomingMailRevisionNote;
 use App\Models\User;
 use App\Support\IncomingMailStatus;
+use App\Support\Roles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -19,7 +20,15 @@ class IncomingMailStatusSopTest extends TestCase
     private function actor(): User
     {
         $user = User::factory()->create();
-        $user->assignRole(Role::firstOrCreate(['name' => 'Staf']));
+        $user->assignRole(Role::firstOrCreate(['name' => Roles::STAFF]));
+
+        return $user;
+    }
+
+    private function master(): User
+    {
+        $user = User::factory()->create();
+        $user->assignRole(Role::firstOrCreate(['name' => Roles::MASTER]));
 
         return $user;
     }
@@ -98,7 +107,7 @@ class IncomingMailStatusSopTest extends TestCase
 
     public function test_entering_disposisi_requires_a_disposition_note_and_stores_it(): void
     {
-        $user = $this->actor();
+        $user = $this->master();
         $mail = $this->mailWithStatus('RECEIVE');
 
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [

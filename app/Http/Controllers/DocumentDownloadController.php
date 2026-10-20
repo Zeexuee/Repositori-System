@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\IncomingMail;
 use App\Models\OutgoingMail;
+use App\Support\Roles;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -73,7 +74,7 @@ class DocumentDownloadController extends Controller
             Gate::authorize('view', $outgoingMail);
         } else {
             // Jika tidak ditemukan di kedua entitas, pastikan pengguna memiliki peran yang valid
-            if (! auth()->user()?->hasAnyRole(['staff', 'master'])) {
+            if (! auth()->user()?->hasAnyRole(Roles::all())) {
                 abort(403, 'Anda tidak memiliki hak akses untuk dokumen ini.');
             }
         }

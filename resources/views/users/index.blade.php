@@ -47,15 +47,15 @@
                             <td class="py-3 px-4 text-slate-600 font-medium">{{ $user->email }}</td>
                             <td class="py-3 px-4">
                                 @php
-                                    $roleName = $user->getRoleNames()->first() ?? 'Staf';
+                                    $roleName = $user->getRoleNames()->first() ?? \App\Support\Roles::STAFF;
                                 @endphp
-                                @if ($roleName === 'Direksi')
+                                @if ($roleName === \App\Support\Roles::MASTER)
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 text-white border border-slate-900">
-                                        Direksi
+                                        {{ \App\Support\Roles::label($roleName) }}
                                     </span>
                                 @else
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                                        Staf
+                                        {{ \App\Support\Roles::label($roleName) }}
                                     </span>
                                 @endif
                             </td>

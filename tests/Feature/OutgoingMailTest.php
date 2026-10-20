@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\OutgoingMail;
 use App\Models\User;
+use App\Support\Roles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -14,7 +15,7 @@ class OutgoingMailTest extends TestCase
 
     public function test_user_can_update_outgoing_mail_status_to_revisi(): void
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -44,7 +45,7 @@ class OutgoingMailTest extends TestCase
 
     public function test_outgoing_mail_show_displays_revision_history(): void
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -72,7 +73,7 @@ class OutgoingMailTest extends TestCase
 
     public function test_outgoing_mail_show_displays_only_initial_creation_date(): void
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 

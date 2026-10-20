@@ -255,6 +255,15 @@ class IncomingMailController extends Controller
                 continue;
             }
 
+            if ($targetStatus === IncomingMailStatus::DISPOSISI && ! Gate::allows('finalize', $mail)) {
+                $rejected[] = [
+                    'mail_number' => $mail->mail_number,
+                    'reason' => 'Hanya Direksi yang dapat menetapkan status DISPOSISI secara manual. Gunakan alur disposisi untuk proses standar.',
+                ];
+
+                continue;
+            }
+
             $reason = $this->statusTransitionService->rejectionReason($mail, $targetStatus);
 
             if ($reason !== null) {
@@ -360,6 +369,18 @@ class IncomingMailController extends Controller
         ];
 
         $documents = $request->input('documents');
+
+        if ($request->input('is_draft') != '1') {
+            $requestedStatuses = [$globalStatus];
+
+            if (is_array($documents)) {
+                foreach ($documents as $doc) {
+                    $requestedStatuses[] = $doc['status'] ?? $globalStatus;
+                }
+            }
+
+            $this->guardManualFinalization($requestedStatuses);
+        }
 
         if (is_array($documents) && count($documents) > 0) {
             foreach ($documents as $index => $doc) {
@@ -501,6 +522,12 @@ class IncomingMailController extends Controller
             if ($reason !== null) {
                 throw ValidationException::withMessages(['status' => $reason]);
             }
+
+            if ($statusChange === IncomingMailStatus::DISPOSISI && ! Gate::allows('finalize', $incomingMail)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Hanya Direksi yang dapat menetapkan status DISPOSISI secara manual.',
+                ]);
+            }
         }
 
         $updateFiles = [];
@@ -593,6 +620,23 @@ class IncomingMailController extends Controller
         return redirect()
             ->route('incoming-mails.index')
             ->with('success', 'Surat Masuk berhasil dihapus.');
+    }
+
+    /**
+     * Manual creation of a document in a final status is a Direksi-only control.
+     *
+     * @param  array<int, string|null>  $statuses
+     */
+    private function guardManualFinalization(array $statuses): void
+    {
+        foreach ($statuses as $status) {
+            if (IncomingMailStatus::canonical($status) === IncomingMailStatus::DISPOSISI
+                && ! Gate::allows('finalizeAny', IncomingMail::class)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Hanya Direksi yang dapat menetapkan status DISPOSISI secara manual.',
+                ]);
+            }
+        }
     }
 
     /**

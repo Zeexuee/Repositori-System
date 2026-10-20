@@ -20,7 +20,7 @@ class OutgoingMailReturnController extends Controller
 {
     public function show(OutgoingMail $outgoingMail): JsonResponse
     {
-        Gate::authorize('update', $outgoingMail);
+        Gate::authorize('view', $outgoingMail);
 
         $outgoingMail->load(['returnRecipients' => fn ($query) => $query->orderBy('sort_order')]);
 

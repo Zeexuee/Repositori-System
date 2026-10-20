@@ -25,7 +25,7 @@ class IncomingMailReturnController extends Controller
 
     public function show(IncomingMail $incomingMail): JsonResponse
     {
-        Gate::authorize('update', $incomingMail);
+        Gate::authorize('view', $incomingMail);
 
         $incomingMail->load(['returnRecipients' => fn ($query) => $query->orderBy('sort_order')]);
 

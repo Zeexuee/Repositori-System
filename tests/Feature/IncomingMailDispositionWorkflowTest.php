@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\IncomingMail;
 use App\Models\User;
 use App\Support\IncomingMailStatus;
+use App\Support\Roles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +20,7 @@ class IncomingMailDispositionWorkflowTest extends TestCase
 
     private function actor(): User
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 

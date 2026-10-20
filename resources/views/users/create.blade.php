@@ -60,8 +60,8 @@
                 </label>
                 <select name="role" id="role" required
                     class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                    <option value="Staf" {{ old('role') === 'Staf' ? 'selected' : '' }}>Staf</option>
-                    <option value="Direksi" {{ old('role') === 'Direksi' ? 'selected' : '' }}>Direksi</option>
+                    <option value="{{ \App\Support\Roles::STAFF }}" {{ old('role') === \App\Support\Roles::STAFF ? 'selected' : '' }}>Staf</option>
+                    <option value="{{ \App\Support\Roles::MASTER }}" {{ old('role') === \App\Support\Roles::MASTER ? 'selected' : '' }}>Direksi</option>
                 </select>
                 @error('role')
                     <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>

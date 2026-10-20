@@ -25,7 +25,7 @@ class IncomingMailDispositionController extends Controller
 
     public function show(IncomingMail $incomingMail): JsonResponse
     {
-        Gate::authorize('update', $incomingMail);
+        Gate::authorize('view', $incomingMail);
 
         $incomingMail->load(['dispositionRecipients' => fn ($query) => $query->orderBy('sort_order')]);
 

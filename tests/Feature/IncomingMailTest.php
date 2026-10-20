@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\IncomingMail;
 use App\Models\OutgoingMail;
 use App\Models\User;
+use App\Support\Roles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +18,7 @@ class IncomingMailTest extends TestCase
 
     public function test_user_can_search_incoming_mails_by_all_criteria(): void
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -78,7 +79,7 @@ class IncomingMailTest extends TestCase
 
     public function test_user_can_update_status_to_revisi_and_sync_to_outgoing_mail(): void
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -114,7 +115,7 @@ class IncomingMailTest extends TestCase
 
     public function test_beta_v2_modal_is_rendered_for_authenticated_users(): void
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -128,7 +129,7 @@ class IncomingMailTest extends TestCase
 
     public function test_incoming_mail_create_page_has_editable_received_date_with_default_now(): void
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -142,7 +143,7 @@ class IncomingMailTest extends TestCase
 
     public function test_incoming_mail_stores_custom_received_date_and_time(): void
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -174,7 +175,7 @@ class IncomingMailTest extends TestCase
 
     public function test_incoming_mail_index_displays_action_button_to_add_photo_or_document(): void
     {
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -198,7 +199,7 @@ class IncomingMailTest extends TestCase
     {
         Storage::fake('local');
 
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -245,7 +246,7 @@ class IncomingMailTest extends TestCase
     {
         Storage::fake('local');
 
-        $role = Role::firstOrCreate(['name' => 'Staf']);
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
         $user = User::factory()->create();
         $user->assignRole($role);
 
