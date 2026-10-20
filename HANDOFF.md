@@ -2,8 +2,8 @@
 
 **Tanggal:** 21 Oktober 2026
 **Branch:** `open-beta-oct`
-**Status:** Poin 1–4 di-commit; poin 5 selesai, **belum di-commit**
-**Test:** `php artisan test` → **59 passed, 239 assertions**
+**Status:** Poin 1–5 di-commit; poin 6 selesai, **belum di-commit**
+**Test:** `php artisan test` → **65 passed, 247 assertions**
 
 ---
 
@@ -172,11 +172,30 @@ Perubahan:
 
 ---
 
-## 9. Verifikasi
+## 9. Poin 6 — Unduhan Dokumen Berbasis Kepemilikan (Selesai)
+
+**Keputusan:** fallback berbasis role dihapus; path hanya dilayani jika ter-resolve ke dokumen yang boleh dilihat.
+
+Temuan:
+- `download()` menerima `path` mentah dari query string.
+- Bila path tidak ditemukan di tabel mana pun, kode hanya memeriksa role, sehingga pengguna ber-role bisa mengunduh file apa pun yang ada di disk `local`.
+
+Perubahan:
+- `DocumentDownloadController` dipecah menjadi `findIncomingMail()` dan `findOutgoingMail()`.
+- Path harus cocok dengan salah satu pemilik: file/foto/tanda terima surat masuk, attachment, tanda tangan return/disposisi, atau sisi surat keluar (file, attachment, tanda tangan return, file history).
+- Tanpa pemilik → **404**. Pemilik ditemukan tetapi policy menolak → **403**. Tidak ada lagi fallback role.
+- Signature route tidak berubah, sehingga seluruh view/controller pemanggil tetap kompatibel.
+- Test baru `tests/Feature/DocumentDownloadTest.php` (6 test): unduh & inline, path tanpa pemilik 404, signature lewat return recipient, user tanpa role 403, guest redirect.
+
+Catatan: bila storage pindah ke S3, ganti mekanisme ini dengan temporary signed URL sesuai `agent.md`.
+
+---
+
+## 10. Verifikasi
 
 ```bash
 php artisan test --compact
-# 59 passed, 239 assertions
+# 65 passed, 247 assertions
 ```
 
 Catatan environment: MySQL Laragon aktif di sesi ini. Migrasi berikut sudah dijalankan ke DB lokal:
@@ -191,14 +210,14 @@ Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lam
 
 ---
 
-## 10. Sisa Poin Audit (Belum Dikerjakan)
+## 11. Sisa Poin Audit (Belum Dikerjakan)
 
 1. ~~Policy hampir kosong / RBAC tidak ditegakkan~~ ✅ **SELESAI**
 2. ~~Alur tanda tangan surat keluar praktis tidak tercapai~~ ✅ **SELESAI** — fitur PSrE orphan dihapus; alur resmi = penerimaan per penerima.
 3. ~~`ProcessDigitalSignatureJob` menulis status di luar state machine~~ ✅ **SELESAI** — job dihapus.
 4. ~~Sinkronisasi surat keluar berbasis `LIKE` subject~~ ✅ **SELESAI** — sinkronisasi otomatis dihapus.
 5. ~~Quick-login tanpa password~~ ✅ **SELESAI** — route dan method dihapus.
-6. **`DocumentDownloadController`** validasi berbasis string path, bukan kepemilikan; fallback mengizinkan siapa pun ber-role mengunduh path yang ada.
+6. ~~`DocumentDownloadController` validasi berbasis string path~~ ✅ **SELESAI** — path wajib ter-resolve ke dokumen yang diotorisasi; fallback role dihapus.
 7. **"Thin controller" belum tercapai** — `IncomingMailController` ~700 baris, validasi inline di beberapa method.
 8. **Redis belum dipakai** (queue/cache/session = `database`); `OcrProcessingService` masih placeholder (`return ''`). PSrE belum diimplementasikan.
 9. **Artefak debug**: `test_repo_ajax.php`, `app/Console/Commands/TestRevisi.php`, `welcome.blade.php` (2030 baris, tidak dipakai).
@@ -208,17 +227,17 @@ Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lam
 
 ---
 
-## 11. Cara Melanjutkan
+## 12. Cara Melanjutkan
 
 1. Buka sesi baru di direktori `D:\laragon\www\Repository`.
 2. Baca file ini + `git status` + `git diff`.
 3. Nyalakan MySQL (Laragon), lalu `php artisan migrate`.
 4. Jalankan `php artisan test --compact` untuk baseline.
-5. Lanjut ke poin 6 (`DocumentDownloadController`) — perlu keputusan: validasi kepemilikan per dokumen vs fallback path lama.
+5. Lanjut ke poin 7 ("thin controller") — `IncomingMailController` ~700 baris. Pecah bertahap per alur (store batch, update, attachments) ke Form Request/Service tanpa mengubah perilaku.
 
 ---
 
-## 12. Perintah Berguna
+## 13. Perintah Berguna
 
 ```bash
 php artisan test --compact

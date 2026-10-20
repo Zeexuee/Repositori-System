@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\IncomingMail;
+use App\Models\IncomingMailAttachment;
+use App\Models\IncomingMailDispositionRecipient;
+use App\Models\IncomingMailReturnRecipient;
 use App\Models\OutgoingMail;
-use App\Support\Roles;
+use App\Models\OutgoingMailAttachment;
+use App\Models\OutgoingMailFileHistory;
+use App\Models\OutgoingMailReturnRecipient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -17,81 +22,92 @@ class DocumentDownloadController extends Controller
 {
     /**
      * Download or stream a secure document from local disk storage.
+     *
+     * A path is only served when it belongs to a document the user may view.
+     * Unknown paths are rejected even for privileged roles, so this endpoint
+     * cannot be used as a generic file reader.
      */
     public function download(Request $request): StreamedResponse|Response
     {
         $path = (string) $request->query('path');
 
-        if (empty($path)) {
+        if ($path === '') {
             abort(404, 'Path dokumen tidak valid.');
         }
 
-        // Cari dokumen di tabel IncomingMail atau OutgoingMail untuk otorisasi Policy
-        $incomingMail = IncomingMail::where('file_path', $path)
-            ->orWhere('document_photo_path', $path)
-            ->orWhere('receipt_signature_path', $path)
-            ->first();
+        $incomingMail = $this->findIncomingMail($path);
+        $outgoingMail = $incomingMail === null ? $this->findOutgoingMail($path) : null;
 
-        if (! $incomingMail) {
-            $attachment = \App\Models\IncomingMailAttachment::where('file_path', $path)->first();
-            if ($attachment) {
-                $incomingMail = $attachment->incomingMail;
-            } else {
-                $incomingReturn = \App\Models\IncomingMailReturnRecipient::where('signature_path', $path)->first();
-                if ($incomingReturn) {
-                    $incomingMail = $incomingReturn->incomingMail;
-                } else {
-                    $incomingDisposition = \App\Models\IncomingMailDispositionRecipient::where('signature_path', $path)->first();
-                    if ($incomingDisposition) {
-                        $incomingMail = $incomingDisposition->incomingMail;
-                    }
-                }
-            }
-        }
-
-        $outgoingMail = OutgoingMail::where('file_path', $path)->first();
-
-        if (! $outgoingMail) {
-            $outgoingAttachment = \App\Models\OutgoingMailAttachment::where('file_path', $path)->first();
-            if ($outgoingAttachment) {
-                $outgoingMail = $outgoingAttachment->outgoingMail;
-            } else {
-                $outgoingReturn = \App\Models\OutgoingMailReturnRecipient::where('signature_path', $path)->first();
-                if ($outgoingReturn) {
-                    $outgoingMail = $outgoingReturn->outgoingMail;
-                } else {
-                    $history = \App\Models\OutgoingMailFileHistory::where('file_path', $path)->first();
-                    if ($history) {
-                        $outgoingMail = $history->outgoingMail;
-                    }
-                }
-            }
-        }
-
-        if ($incomingMail) {
+        if ($incomingMail !== null) {
             Gate::authorize('view', $incomingMail);
-        } elseif ($outgoingMail) {
+        } elseif ($outgoingMail !== null) {
             Gate::authorize('view', $outgoingMail);
         } else {
-            // Jika tidak ditemukan di kedua entitas, pastikan pengguna memiliki peran yang valid
-            if (! auth()->user()?->hasAnyRole(Roles::all())) {
-                abort(403, 'Anda tidak memiliki hak akses untuk dokumen ini.');
-            }
+            abort(404, 'Dokumen tidak ditemukan.');
         }
 
         if (! Storage::disk('local')->exists($path)) {
             abort(404, 'Berkas dokumen tidak ditemukan pada penyimpanan lokal.');
         }
 
-        // Jika rute dipanggil untuk inline preview (gambar), kembalikan response file inline
         if ($request->boolean('inline')) {
-            $mimeType = Storage::disk('local')->mimeType($path) ?? 'application/octet-stream';
-
             return response()->file(Storage::disk('local')->path($path), [
-                'Content-Type' => $mimeType,
+                'Content-Type' => Storage::disk('local')->mimeType($path) ?? 'application/octet-stream',
             ]);
         }
 
         return Storage::disk('local')->download($path);
+    }
+
+    private function findIncomingMail(string $path): ?IncomingMail
+    {
+        $mail = IncomingMail::query()
+            ->where('file_path', $path)
+            ->orWhere('document_photo_path', $path)
+            ->orWhere('receipt_signature_path', $path)
+            ->first();
+
+        if ($mail !== null) {
+            return $mail;
+        }
+
+        $attachment = IncomingMailAttachment::where('file_path', $path)->first();
+
+        if ($attachment !== null) {
+            return $attachment->incomingMail;
+        }
+
+        $returnRecipient = IncomingMailReturnRecipient::where('signature_path', $path)->first();
+
+        if ($returnRecipient !== null) {
+            return $returnRecipient->incomingMail;
+        }
+
+        return IncomingMailDispositionRecipient::where('signature_path', $path)
+            ->first()
+            ?->incomingMail;
+    }
+
+    private function findOutgoingMail(string $path): ?OutgoingMail
+    {
+        $mail = OutgoingMail::where('file_path', $path)->first();
+
+        if ($mail !== null) {
+            return $mail;
+        }
+
+        $attachment = OutgoingMailAttachment::where('file_path', $path)->first();
+
+        if ($attachment !== null) {
+            return $attachment->outgoingMail;
+        }
+
+        $returnRecipient = OutgoingMailReturnRecipient::where('signature_path', $path)->first();
+
+        if ($returnRecipient !== null) {
+            return $returnRecipient->outgoingMail;
+        }
+
+        return OutgoingMailFileHistory::where('file_path', $path)->first()?->outgoingMail;
     }
 }
