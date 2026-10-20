@@ -2,8 +2,8 @@
 
 **Tanggal:** 21 Oktober 2026
 **Branch:** `open-beta-oct`
-**Status:** Poin 1–3 di-commit; poin 4 selesai, perubahan **belum di-commit**
-**Test:** `php artisan test` → **48 passed, 208 assertions**
+**Status:** Poin 1–4 selesai; poin 1–4 di-commit, cleanup data & generator nomor **belum di-commit**
+**Test:** `php artisan test` → **51 passed, 213 assertions**
 
 ---
 
@@ -134,11 +134,18 @@ Perubahan:
 - Hapus dependency + pemanggilan di `IncomingMailController`, `IncomingMailDispositionController`, `IncomingMailReturnController`, dan `IncomingMailStatusTransitionService`.
 - Test regresi: transisi `REVISI` dan finalisasi `RETURN` tidak membuat/mengubah surat keluar (`OutgoingMail::count() === 0`).
 
-**Belum ditangani (menunggu keputusan):** 2 record ghost di DB lokal hasil sync lama:
+**Penanganan data lama (selesai):** 2 record ghost hasil sync lama sudah di-hard-delete:
 - `SK-20261021-0005` — `[REVISI] Makan siang bersama Keren`
 - `SK-20261021-0006` — `[REVISI] Undangan makan Malam`
 
-Catatan teknis: `OutgoingMailController::store()`/`update()` memakai `OutgoingMail::whereNotNull('mail_number')->count() + 1` untuk nomor otomatis. Query default mengecualikan soft-deleted, sehingga soft delete ghost **tidak** mengosongkan nomor dan berpotensi memicu unique violation saat nomor yang sama dibuat lagi.
+Backup JSON (lokal, tidak di-commit karena `storage/app/private` di-gitignore):
+`storage/app/private/backups/ghost-outgoing-mails-2026-10-21.json`
+
+**Generator nomor surat diperbaiki:** `app/Support/OutgoingMailNumber.php` menghitung urutan tertinggi dari `SK-<tanggal>-NNNN` **termasuk soft-deleted**, lalu +1. Dipakai di `OutgoingMailController::store()` dan `update()`. Sebelumnya `count()+1` (mengecualikan trashed) yang rawan unique violation.
+
+Catatan residual: generator belum concurrency-safe. Dua request create bersamaan masih bisa menghasilkan nomor sama; penanganan penuh butuh lock/sequence table.
+
+Catatan deployment: lingkungan lain yang pernah menjalankan sync dapat memiliki ghost record serupa. Identifikasi lewat subject berprefix `[REVISI]`/`[RETURN]` pada surat keluar, lalu review manual — jangan hapus otomatis berdasarkan prefix saja.
 
 ---
 
@@ -146,7 +153,7 @@ Catatan teknis: `OutgoingMailController::store()`/`update()` memakai `OutgoingMa
 
 ```bash
 php artisan test --compact
-# 48 passed, 208 assertions
+# 51 passed, 213 assertions
 ```
 
 Catatan environment: **MySQL lokal sedang mati** saat sesi ini (`127.0.0.1:3306` refused), jadi migrasi belum dijalankan ke DB lokal. Jalankan saat DB aktif:
@@ -171,6 +178,7 @@ Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lam
 8. **Redis belum dipakai** (queue/cache/session = `database`); `OcrProcessingService` masih placeholder (`return ''`). PSrE belum diimplementasikan.
 9. **Artefak debug**: `test_repo_ajax.php`, `app/Console/Commands/TestRevisi.php`, `welcome.blade.php` (2030 baris, tidak dipakai).
 10. **Dokumen vs implementasi**: `agent.md` menyebut 4 role hierarki + S3, implementasi 2 role + local disk.
+11. **Generator nomor surat belum concurrency-safe** — dua create bersamaan masih bisa bentrok; butuh lock atau tabel sequence.
 
 ---
 

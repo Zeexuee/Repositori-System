@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateOutgoingMailRequest;
 use App\Models\OutgoingMail;
 use App\Models\OutgoingMailFileHistory;
 use App\Services\OutgoingMailStatusTransitionService;
+use App\Support\OutgoingMailNumber;
 use App\Support\OutgoingMailStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -163,7 +164,7 @@ class OutgoingMailController extends Controller
 
             $mailNumber = ! empty($doc['mail_number'])
                 ? $doc['mail_number']
-                : 'SK-'.now()->format('Ymd').'-'.sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1);
+                : OutgoingMailNumber::next();
 
             $outgoingMail = OutgoingMail::create([
                 'mail_number' => $mailNumber,
@@ -255,7 +256,7 @@ class OutgoingMailController extends Controller
         }
 
         if (empty($data['mail_number']) && empty($outgoingMail->mail_number)) {
-            $data['mail_number'] = 'SK-'.now()->format('Ymd').'-'.sprintf('%04d', OutgoingMail::whereNotNull('mail_number')->count() + 1);
+            $data['mail_number'] = OutgoingMailNumber::next();
         }
 
         $outgoingMail->update($data);
