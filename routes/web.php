@@ -46,11 +46,10 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/incoming-mails/{incomingMail}/attachments/{attachment}', [IncomingMailController::class, 'destroyAttachment'])->name('incoming-mails.attachments.destroy');
     Route::resource('incoming-mails', IncomingMailController::class);
 
-    // Tanda Tangan Digital Surat Keluar
+    // Alur Status & Penerimaan Surat Keluar
     Route::post('/outgoing-mails/bulk-update-status', [OutgoingMailController::class, 'bulkUpdateStatus'])->name('outgoing-mails.bulk-update-status');
     Route::get('/outgoing-mails/{outgoingMail}/return-recipients', [\App\Http\Controllers\OutgoingMailReturnController::class, 'show'])->name('outgoing-mails.return-recipients.show');
     Route::post('/outgoing-mails/return-workflow', [\App\Http\Controllers\OutgoingMailReturnController::class, 'store'])->name('outgoing-mails.return-workflow.store');
-    Route::post('/outgoing-mails/{outgoingMail}/sign', [OutgoingMailController::class, 'sign'])->name('outgoing-mails.sign');
     Route::resource('outgoing-mails', OutgoingMailController::class);
 
     // Jejak Audit

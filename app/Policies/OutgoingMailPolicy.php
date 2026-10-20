@@ -53,14 +53,6 @@ class OutgoingMailPolicy
         return $user->hasRole(Roles::MASTER);
     }
 
-    /**
-     * Determine whether the user can execute digital signature.
-     */
-    public function sign(User $user, OutgoingMail $outgoingMail): bool
-    {
-        return $user->hasRole(Roles::MASTER) && $outgoingMail->status === 'APPROVED';
-    }
-
     private function hasDocumentAccess(User $user): bool
     {
         return $user->hasAnyRole([Roles::STAFF, Roles::MASTER]);

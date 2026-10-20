@@ -1,9 +1,9 @@
-# Handoff — Perbaikan RBAC (Poin 1)
+# Handoff — Perbaikan Audit (Poin 1–3)
 
 **Tanggal:** 21 Oktober 2026
 **Branch:** `open-beta-oct`
-**Status:** Poin 1 selesai, perubahan **belum di-commit**
-**Test:** `php artisan test` → **46 passed, 199 assertions**
+**Status:** Poin 1 di-commit (`239e207`); poin 2 & 3 selesai, perubahan **belum di-commit**
+**Test:** `php artisan test` → **48 passed, 209 assertions**
 
 ---
 
@@ -97,11 +97,32 @@ State machine:
 
 ---
 
-## 6. Verifikasi
+## 6. Poin 2 & 3 — Fitur PSrE Orphan (Selesai)
+
+**Keputusan:** fitur PSrE dihapus, bukan diperbaiki.
+
+Alasan:
+- `OutgoingMailPolicy::sign()` mensyaratkan `status === 'APPROVED'`, sedangkan `APPROVED` adalah alias `RECEIVE` (status final terkunci). Endpoint tidak pernah bisa dipakai.
+- Tidak ada tombol/UI yang memanggil route `outgoing-mails.sign`.
+- Alur tanda tangan yang benar-benar dipakai adalah penerimaan per penerima (`OutgoingMailReturnController`) yang sudah memakai state machine dan transisi ke `RECEIVE`.
+
+Perubahan:
+- Hapus `POST /outgoing-mails/{id}/sign`, `OutgoingMailController::sign()`, `OutgoingMailPolicy::sign()`.
+- Hapus `app/Jobs/ProcessDigitalSignatureJob.php` dan `app/Services/DocumentSignatureService.php` (tidak ada pemakai lain).
+- Hapus 2 test sign di `RoleAccessControlTest`.
+- Tambah `tests/Feature/OutgoingMailReceiveWorkflowTest.php` (4 test): finalisasi `complete` → `RECEIVE`, `skip_remaining` → `RECEIVE`, validasi tanda tangan wajib, dan dokumen final menolak alur ulang (403).
+
+Konsekuensi:
+- Tidak ada lagi penulisan status `SIGNED` / `SIGN_FAILED` di luar state machine (poin 3 tertutup).
+- Integrasi PSrE belum ada sama sekali. Bila nanti dibutuhkan, harus dibuat status/alur eksplisit di state machine, bukan menumpang status penerimaan.
+
+---
+
+## 7. Verifikasi
 
 ```bash
 php artisan test --compact
-# 46 passed, 199 assertions
+# 48 passed, 209 assertions
 ```
 
 Catatan environment: **MySQL lokal sedang mati** saat sesi ini (`127.0.0.1:3306` refused), jadi migrasi belum dijalankan ke DB lokal. Jalankan saat DB aktif:
@@ -114,34 +135,32 @@ Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lam
 
 ---
 
-## 7. Sisa Poin Audit (Belum Dikerjakan)
+## 8. Sisa Poin Audit (Belum Dikerjakan)
 
 1. ~~Policy hampir kosong / RBAC tidak ditegakkan~~ ✅ **SELESAI**
-2. **Alur tanda tangan surat keluar praktis tidak tercapai**
-   - `OutgoingMailPolicy::sign()` butuh `status === 'APPROVED'`, padahal status nyata `WAITING_RECEIVE/REVISI/RECEIVE` (`APPROVED` hanya alias `RECEIVE`).
-   - Perlu diputuskan: status apa yang valid untuk sign, dan siapa yang mengubah ke status itu.
-3. **`ProcessDigitalSignatureJob` menulis status di luar state machine** (`SIGNED`, `SIGN_FAILED`).
+2. ~~Alur tanda tangan surat keluar praktis tidak tercapai~~ ✅ **SELESAI** — fitur PSrE orphan dihapus; alur resmi = penerimaan per penerima.
+3. ~~`ProcessDigitalSignatureJob` menulis status di luar state machine~~ ✅ **SELESAI** — job dihapus.
 4. **Sinkronisasi surat keluar berbasis `LIKE` subject** di `IncomingMailStatusSyncService` — rapuh, bisa cocok ke surat salah.
 5. **Quick-login tanpa password** (`POST /quick-login/{email}`) — matikan untuk produksi.
 6. **`DocumentDownloadController`** validasi berbasis string path, bukan kepemilikan; fallback mengizinkan siapa pun ber-role mengunduh path yang ada.
 7. **"Thin controller" belum tercapai** — `IncomingMailController` ~700 baris, validasi inline di beberapa method.
-8. **Redis belum dipakai** (queue/cache/session = `database`); `OcrProcessingService` & `DocumentSignatureService` masih placeholder (`return ''` / `return true`).
+8. **Redis belum dipakai** (queue/cache/session = `database`); `OcrProcessingService` masih placeholder (`return ''`). PSrE belum diimplementasikan.
 9. **Artefak debug**: `test_repo_ajax.php`, `app/Console/Commands/TestRevisi.php`, `welcome.blade.php` (2030 baris, tidak dipakai).
 10. **Dokumen vs implementasi**: `agent.md` menyebut 4 role hierarki + S3, implementasi 2 role + local disk.
 
 ---
 
-## 8. Cara Melanjutkan
+## 9. Cara Melanjutkan
 
 1. Buka sesi baru di direktori `D:\laragon\www\Repository`.
 2. Baca file ini + `git status` + `git diff`.
 3. Nyalakan MySQL (Laragon), lalu `php artisan migrate`.
 4. Jalankan `php artisan test --compact` untuk baseline.
-5. Lanjut ke poin 2 (alur sign) — perlu keputusan status valid & aktor yang boleh mengubahnya.
+5. Lanjut ke poin 4 (sinkronisasi via `LIKE` subject) — perlu keputusan: relasi eksplisit (mis. `outgoing_mail_id`/nomor surat) vs hentikan sinkronisasi otomatis.
 
 ---
 
-## 9. Perintah Berguna
+## 10. Perintah Berguna
 
 ```bash
 php artisan test --compact

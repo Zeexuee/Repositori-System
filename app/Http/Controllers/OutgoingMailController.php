@@ -6,7 +6,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreOutgoingMailRequest;
 use App\Http\Requests\UpdateOutgoingMailRequest;
-use App\Jobs\ProcessDigitalSignatureJob;
 use App\Models\OutgoingMail;
 use App\Models\OutgoingMailFileHistory;
 use App\Services\OutgoingMailStatusTransitionService;
@@ -203,20 +202,6 @@ class OutgoingMailController extends Controller
         ]);
 
         return view('outgoing-mails.show', compact('outgoingMail'));
-    }
-
-    /**
-     * Issue PSrE Digital Signature for the outgoing mail.
-     */
-    public function sign(OutgoingMail $outgoingMail): RedirectResponse
-    {
-        Gate::authorize('sign', $outgoingMail);
-
-        ProcessDigitalSignatureJob::dispatch($outgoingMail, auth()->user());
-
-        return redirect()
-            ->route('outgoing-mails.show', $outgoingMail)
-            ->with('success', 'Tanda tangan digital (PSrE) berhasil dipicu.');
     }
 
     /**

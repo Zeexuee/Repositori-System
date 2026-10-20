@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Jobs\ProcessDigitalSignatureJob;
 use App\Models\IncomingMail;
 use App\Models\OutgoingMail;
 use App\Models\User;
 use App\Support\Roles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -177,34 +175,6 @@ class RoleAccessControlTest extends TestCase
         $this->actingAs($master)->get(route('audit-logs.index'))->assertOk();
         $this->actingAs($master)->get(route('users.index'))->assertOk();
         $this->actingAs($master)->get(route('broadcast-emails.index'))->assertOk();
-    }
-
-    public function test_staff_cannot_sign_outgoing_mail(): void
-    {
-        Queue::fake();
-
-        $staff = $this->staff();
-        $mail = $this->outgoingMail('APPROVED');
-
-        $this->actingAs($staff)
-            ->post(route('outgoing-mails.sign', $mail))
-            ->assertForbidden();
-
-        Queue::assertNothingPushed();
-    }
-
-    public function test_master_can_sign_outgoing_mail(): void
-    {
-        Queue::fake();
-
-        $master = $this->master();
-        $mail = $this->outgoingMail('APPROVED');
-
-        $this->actingAs($master)
-            ->post(route('outgoing-mails.sign', $mail))
-            ->assertRedirect(route('outgoing-mails.show', $mail));
-
-        Queue::assertPushed(ProcessDigitalSignatureJob::class);
     }
 
     public function test_master_can_create_staff_user_with_canonical_role(): void
