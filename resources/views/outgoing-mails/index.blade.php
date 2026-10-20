@@ -946,12 +946,11 @@
                         this.allIds = data.allIds;
                         this.statusById = { ...this.statusById, ...(data.statuses || {}) };
                         
-                        // Clean up existing Alpine tree before DOM replacement
-                        if (window.Alpine && this.$refs.tableBody) {
-                            window.Alpine.destroyTree(this.$refs.tableBody);
-                        }
-
-                        // Update table content
+                        // Update table content.
+                        // Jangan panggil Alpine.destroyTree() pada element x-ref: itu juga
+                        // menghapus registrasi $ref (dan listener @click) milik tableBody
+                        // sehingga baris lama tetap tampil tapi tidak bisa diklik.
+                        // Alpine mendeteksi node baru lewat MutationObserver.
                         this.$refs.tableBody.innerHTML = data.html;
                         
                         // Update pagination
@@ -965,9 +964,6 @@
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
-                            if (window.Alpine && this.$refs.tableBody) {
-                                window.Alpine.initTree(this.$refs.tableBody);
-                            }
                             this.updateCheckboxStates();
                         });
                         
@@ -1246,12 +1242,11 @@
                         
                         const data = await response.json();
                         
-                        // Clean up existing Alpine tree before DOM replacement
-                        if (window.Alpine && this.$refs.tableBody) {
-                            window.Alpine.destroyTree(this.$refs.tableBody);
-                        }
-
-                        // Update table content
+                        // Update table content.
+                        // Jangan panggil Alpine.destroyTree() pada element x-ref: itu juga
+                        // menghapus registrasi $ref (dan listener @click) milik tableBody
+                        // sehingga baris lama tetap tampil tapi tidak bisa diklik.
+                        // Alpine mendeteksi node baru lewat MutationObserver.
                         this.$refs.tableBody.innerHTML = data.html;
                         
                         // Update pagination
@@ -1266,9 +1261,6 @@
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
-                            if (window.Alpine && this.$refs.tableBody) {
-                                window.Alpine.initTree(this.$refs.tableBody);
-                            }
                             this.updateCheckboxStates();
                         });
                         
