@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\Route;
 // Autentikasi
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/quick-login/{email}', [AuthController::class, 'quickLogin'])->name('quick-login');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::get('/', function () {

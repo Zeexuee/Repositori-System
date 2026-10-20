@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -40,24 +39,6 @@ class AuthController extends Controller
         return back()->withErrors([
             'email' => 'Kredensial yang Anda masukkan tidak cocok dengan data kami.',
         ])->onlyInput('email');
-    }
-
-    /**
-     * Quick login for local demonstration & testing environment.
-     */
-    public function quickLogin(Request $request, string $email): RedirectResponse
-    {
-        $user = User::where('email', $email)->first();
-
-        if (! $user) {
-            return back()->with('error', 'Pengguna tidak ditemukan.');
-        }
-
-        Auth::login($user);
-        $request->session()->regenerate();
-        $request->session()->flash('first_login_beta_v2', true);
-
-        return redirect()->intended(route('incoming-mails.index'));
     }
 
     /**

@@ -2,8 +2,8 @@
 
 **Tanggal:** 21 Oktober 2026
 **Branch:** `open-beta-oct`
-**Status:** Poin 1–4 di-commit; tindak lanjut (sequence nomor + tooling ghost) **belum di-commit**
-**Test:** `php artisan test` → **56 passed, 229 assertions**
+**Status:** Poin 1–4 di-commit; poin 5 selesai, **belum di-commit**
+**Test:** `php artisan test` → **59 passed, 239 assertions**
 
 ---
 
@@ -156,11 +156,27 @@ Backup JSON (lokal, tidak di-commit karena `storage/app/private` di-gitignore):
 
 ---
 
-## 8. Verifikasi
+## 8. Poin 5 — Quick-login Tanpa Password (Selesai)
+
+**Keputusan:** dihapus total.
+
+Alasan:
+- `POST /quick-login/{email}` bisa login sebagai pengguna mana pun hanya dengan mengetahui email, tanpa password.
+- Tidak ada UI/tombol yang memanggil route ini (`auth/login.blade.php` hanya berisi form email + password); route hanya tersisa dari demo lama.
+- Tidak ada test yang bergantung padanya.
+
+Perubahan:
+- Hapus route `quick-login` dari `routes/web.php`.
+- Hapus `AuthController::quickLogin()` dan import `User` yang tidak lagi terpakai.
+- Tambah `tests/Feature/AuthenticationTest.php` (3 test): endpoint quick-login mengembalikan 404 dan tetap guest, password salah ditolak, login dengan kredensial valid berhasil.
+
+---
+
+## 9. Verifikasi
 
 ```bash
 php artisan test --compact
-# 56 passed, 229 assertions
+# 59 passed, 239 assertions
 ```
 
 Catatan environment: MySQL Laragon aktif di sesi ini. Migrasi berikut sudah dijalankan ke DB lokal:
@@ -175,13 +191,13 @@ Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lam
 
 ---
 
-## 9. Sisa Poin Audit (Belum Dikerjakan)
+## 10. Sisa Poin Audit (Belum Dikerjakan)
 
 1. ~~Policy hampir kosong / RBAC tidak ditegakkan~~ ✅ **SELESAI**
 2. ~~Alur tanda tangan surat keluar praktis tidak tercapai~~ ✅ **SELESAI** — fitur PSrE orphan dihapus; alur resmi = penerimaan per penerima.
 3. ~~`ProcessDigitalSignatureJob` menulis status di luar state machine~~ ✅ **SELESAI** — job dihapus.
 4. ~~Sinkronisasi surat keluar berbasis `LIKE` subject~~ ✅ **SELESAI** — sinkronisasi otomatis dihapus.
-5. **Quick-login tanpa password** (`POST /quick-login/{email}`) — matikan untuk produksi.
+5. ~~Quick-login tanpa password~~ ✅ **SELESAI** — route dan method dihapus.
 6. **`DocumentDownloadController`** validasi berbasis string path, bukan kepemilikan; fallback mengizinkan siapa pun ber-role mengunduh path yang ada.
 7. **"Thin controller" belum tercapai** — `IncomingMailController` ~700 baris, validasi inline di beberapa method.
 8. **Redis belum dipakai** (queue/cache/session = `database`); `OcrProcessingService` masih placeholder (`return ''`). PSrE belum diimplementasikan.
@@ -192,17 +208,17 @@ Pint hanya dijalankan pada file baru (project punya banyak pelanggaran style lam
 
 ---
 
-## 10. Cara Melanjutkan
+## 11. Cara Melanjutkan
 
 1. Buka sesi baru di direktori `D:\laragon\www\Repository`.
 2. Baca file ini + `git status` + `git diff`.
 3. Nyalakan MySQL (Laragon), lalu `php artisan migrate`.
 4. Jalankan `php artisan test --compact` untuk baseline.
-5. Lanjut ke poin 5 (quick-login tanpa password) — perlu keputusan: hapus total atau batasi ke environment `local`/`demo`.
+5. Lanjut ke poin 6 (`DocumentDownloadController`) — perlu keputusan: validasi kepemilikan per dokumen vs fallback path lama.
 
 ---
 
-## 11. Perintah Berguna
+## 12. Perintah Berguna
 
 ```bash
 php artisan test --compact
