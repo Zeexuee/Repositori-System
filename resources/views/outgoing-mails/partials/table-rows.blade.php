@@ -72,6 +72,11 @@
                 Detail
             </a>
             @can('update', $mail)
+                <button type="button"
+                    @click="window.openUploadAttachmentModal(@js((string) $mail->id), @js((string) $mail->mail_number), @js((string) $mail->subject))"
+                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold rounded-lg text-xs transition-all border border-slate-200 cursor-pointer">
+                    Upload Gambar
+                </button>
                 <a href="{{ route('outgoing-mails.edit', $mail) }}"
                     class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 rounded-lg font-semibold text-xs transition-all shadow-2xs">
                     Edit

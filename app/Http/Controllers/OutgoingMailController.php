@@ -7,13 +7,16 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreOutgoingMailRequest;
 use App\Http\Requests\UpdateOutgoingMailRequest;
 use App\Models\OutgoingMail;
+use App\Models\OutgoingMailAttachment;
 use App\Models\OutgoingMailFileHistory;
 use App\Services\OutgoingMailStatusTransitionService;
 use App\Support\OutgoingMailNumber;
 use App\Support\OutgoingMailStatus;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -346,5 +349,120 @@ class OutgoingMailController extends Controller
                 'file_path' => $primaryFilePath,
             ]);
         }
+    }
+
+    /**
+     * Get attachments for an outgoing mail.
+     */
+    public function getAttachments(OutgoingMail $outgoingMail): JsonResponse
+    {
+        Gate::authorize('view', $outgoingMail);
+
+        $outgoingMail->load('attachments');
+
+        $existingFilePaths = $outgoingMail->attachments->pluck('file_path')->all();
+        $legacyAttachments = collect();
+
+        if ($outgoingMail->file_path && ! in_array($outgoingMail->file_path, $existingFilePaths, true)) {
+            $isImg = (bool) preg_match('/\.(jpe?g|png|webp)$/i', $outgoingMail->file_path);
+
+            $legacyAttachments->push([
+                'id' => 'legacy-file',
+                'file_name' => basename($outgoingMail->file_path),
+                'file_size' => Storage::disk('local')->exists($outgoingMail->file_path) ? Storage::disk('local')->size($outgoingMail->file_path) : null,
+                'mime_type' => $isImg ? 'image/jpeg' : 'application/pdf',
+                'is_image' => $isImg,
+                'is_legacy' => true,
+                'preview_url' => route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]),
+                'download_url' => route('document.download', ['path' => $outgoingMail->file_path]),
+                'created_at' => $outgoingMail->created_at?->format('d/m/Y H:i'),
+            ]);
+        }
+
+        $attachments = $outgoingMail->attachments->map(function (OutgoingMailAttachment $att) {
+            $isImg = str_starts_with((string) $att->mime_type, 'image/');
+
+            return [
+                'id' => (string) $att->id,
+                'file_name' => $att->file_name ?? basename($att->file_path),
+                'file_size' => $att->file_size,
+                'mime_type' => $att->mime_type,
+                'is_image' => $isImg,
+                'is_legacy' => false,
+                'preview_url' => route('document.download', ['path' => $att->file_path, 'inline' => 1]),
+                'download_url' => route('document.download', ['path' => $att->file_path]),
+                'created_at' => $att->created_at?->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'mail' => [
+                'id' => (string) $outgoingMail->id,
+                'mail_number' => $outgoingMail->mail_number,
+                'subject' => $outgoingMail->subject,
+                'recipient' => $outgoingMail->recipient,
+            ],
+            'attachments' => $legacyAttachments->merge($attachments)->values(),
+        ]);
+    }
+
+    /**
+     * Store new attachments (photos or documents) for an outgoing mail.
+     */
+    public function storeAttachments(Request $request, OutgoingMail $outgoingMail): JsonResponse
+    {
+        Gate::authorize('update', $outgoingMail);
+
+        $validated = $request->validate([
+            'files' => ['required', 'array', 'min:1'],
+            'files.*' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+        ], [
+            'files.required' => 'Pilih minimal satu foto atau dokumen.',
+            'files.array' => 'Format berkas tidak valid.',
+            'files.*.file' => 'Berkas harus berupa file yang valid.',
+            'files.*.mimes' => 'Format file harus berupa PDF, JPG, JPEG, PNG, atau WEBP.',
+            'files.*.max' => 'Ukuran file tidak boleh melebihi 10MB.',
+        ]);
+
+        $this->saveAttachments($outgoingMail, $validated['files']);
+
+        return response()->json([
+            'success' => true,
+            'message' => count($validated['files']) . ' foto/dokumen berhasil ditambahkan.',
+            'total_attachments' => $outgoingMail->attachments()->count(),
+        ]);
+    }
+
+    /**
+     * Delete an attachment from an outgoing mail.
+     */
+    public function destroyAttachment(OutgoingMail $outgoingMail, OutgoingMailAttachment $attachment): JsonResponse
+    {
+        Gate::authorize('update', $outgoingMail);
+
+        if ($attachment->outgoing_mail_id !== $outgoingMail->id) {
+            abort(404, 'Lampiran tidak ditemukan untuk surat keluar ini.');
+        }
+
+        if (Storage::disk('local')->exists($attachment->file_path)) {
+            Storage::disk('local')->delete($attachment->file_path);
+        }
+
+        $deletedFilePath = $attachment->file_path;
+        $attachment->delete();
+
+        if ($outgoingMail->file_path === $deletedFilePath) {
+            $next = $outgoingMail->attachments()->where('file_path', '!=', $deletedFilePath)->first();
+            $outgoingMail->update([
+                'file_path' => $next?->file_path,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Berkas berhasil dihapus.',
+            'total_attachments' => $outgoingMail->attachments()->count(),
+        ]);
     }
 }

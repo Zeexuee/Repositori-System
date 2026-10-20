@@ -88,8 +88,8 @@
                             :required="revisionIsRequired"
                             :aria-required="revisionIsRequired"
                             :placeholder="revisionIsRequired
-                                ? 'Jelaskan bagian mana yang perlu diperbaiki.'
-                                : 'Jelaskan bagaimana revisi diselesaikan (boleh dikosongkan).'"
+                                ? ''
+                                : 'Opsional'"
                             class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
                         <p class="text-[11px] text-slate-400 text-right">
                             <span x-text="revisionNote.length"></span>/2000

@@ -49,6 +49,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/outgoing-mails/bulk-update-status', [OutgoingMailController::class, 'bulkUpdateStatus'])->name('outgoing-mails.bulk-update-status');
     Route::get('/outgoing-mails/{outgoingMail}/return-recipients', [\App\Http\Controllers\OutgoingMailReturnController::class, 'show'])->name('outgoing-mails.return-recipients.show');
     Route::post('/outgoing-mails/return-workflow', [\App\Http\Controllers\OutgoingMailReturnController::class, 'store'])->name('outgoing-mails.return-workflow.store');
+    Route::get('/outgoing-mails/{outgoingMail}/attachments', [OutgoingMailController::class, 'getAttachments'])->name('outgoing-mails.attachments.index');
+    Route::post('/outgoing-mails/{outgoingMail}/attachments', [OutgoingMailController::class, 'storeAttachments'])->name('outgoing-mails.attachments.store');
+    Route::delete('/outgoing-mails/{outgoingMail}/attachments/{attachment}', [OutgoingMailController::class, 'destroyAttachment'])->name('outgoing-mails.attachments.destroy');
     Route::resource('outgoing-mails', OutgoingMailController::class);
 
     // Jejak Audit

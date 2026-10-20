@@ -189,7 +189,7 @@ class IncomingMailTest extends TestCase
         $response = $this->actingAs($user)->get(route('incoming-mails.index'));
 
         $response->assertOk();
-        $response->assertSee('Add Doc');
+        $response->assertSee('Upload Gambar');
         $response->assertSee('window.openUploadAttachmentModal');
     }
 

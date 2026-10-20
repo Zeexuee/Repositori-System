@@ -89,7 +89,7 @@
                             :aria-required="revisionIsRequired"
                             :placeholder="revisionIsRequired
                                 ? 'Jelaskan bagian mana yang perlu diperbaiki.'
-                                : 'Jelaskan bagaimana revisi diselesaikan (boleh dikosongkan).'"
+                                : 'Opsional.'"
                             class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
                         <p class="text-[11px] text-slate-400 text-right">
                             <span x-text="revisionNote.length"></span>/2000
@@ -243,6 +243,170 @@
             </div>
         </template>
 
+        <!-- Teleported Upload Attachment Modal (Foto / Dokumen) -->
+        <template x-teleport="body">
+            <div x-show="showUploadAttachmentModal" x-cloak
+                class="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6"
+                role="dialog" aria-modal="true" aria-labelledby="upload-attachment-title"
+                @keydown.escape.window="closeUploadAttachmentModal()">
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" @click="closeUploadAttachmentModal()"></div>
+
+                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-xl max-h-[92vh] overflow-hidden flex flex-col"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95">
+
+                    <!-- Header -->
+                    <div class="px-5 sm:px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-4">
+                        <div class="space-y-0.5">
+                            <h2 id="upload-attachment-title" class="text-base font-bold text-slate-900">
+                                Berkas Dokumen
+                            </h2>
+                            <p class="text-xs text-slate-500 font-mono">
+                                <span class="font-bold text-slate-800" x-text="uploadAttachmentMail.mail_number"></span>
+                                <span class="mx-1">·</span>
+                                <span class="truncate max-w-md inline-block align-bottom font-sans text-slate-600" x-text="uploadAttachmentMail.subject"></span>
+                            </p>
+                        </div>
+                        <button type="button" @click="closeUploadAttachmentModal()" :disabled="isUploadingAttachments"
+                            class="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors disabled:opacity-50 cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
+
+                    <!-- Body (Scrollable) -->
+                    <div class="px-5 sm:px-6 py-5 overflow-y-auto space-y-5">
+
+                        <!-- Error Banner (if any) -->
+                        <div x-show="uploadAttachmentError" x-cloak class="p-3 bg-slate-100 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium">
+                            <span x-text="uploadAttachmentError"></span>
+                        </div>
+
+                        <!-- Section A: Existing Attachments -->
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                    Berkas Terunggah <span class="text-slate-400 font-normal font-mono" x-show="!isLoadingAttachments" x-text="'(' + existingAttachments.length + ')'"></span>
+                                </span>
+                            </div>
+
+                            <!-- Skeleton loader while fetching -->
+                            <div x-show="isLoadingAttachments" class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500 font-medium">
+                                Memuat berkas...
+                            </div>
+
+                            <!-- Empty State -->
+                            <div x-show="!isLoadingAttachments && existingAttachments.length === 0" class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-xs text-slate-400 italic">
+                                Belum ada berkas terunggah.
+                            </div>
+
+                            <!-- Attachments List -->
+                            <div x-show="!isLoadingAttachments && existingAttachments.length > 0" class="space-y-2 max-h-52 overflow-y-auto">
+                                <template x-for="att in existingAttachments" :key="att.id">
+                                    <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs gap-3">
+                                        <div class="flex items-center space-x-2.5 min-w-0 pr-1">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200 flex-shrink-0"
+                                                x-text="att.is_image ? 'FOTO' : 'PDF'">
+                                            </span>
+                                            <div class="truncate">
+                                                <span class="font-bold text-slate-900 truncate block" x-text="att.file_name" :title="att.file_name"></span>
+                                                <span class="text-[10px] text-slate-400 font-mono" x-show="att.file_size" x-text="formatBytes(att.file_size)"></span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-1.5 flex-shrink-0">
+                                            <a :href="att.preview_url" target="_blank"
+                                                class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-lg text-xs transition-all border border-slate-200">
+                                                Lihat
+                                            </a>
+                                            <template x-if="!att.is_legacy">
+                                                <button type="button" @click="deleteAttachment(att.id)" :disabled="isDeletingAttachmentId === att.id"
+                                                    class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 font-semibold rounded-lg text-xs transition-all border border-slate-200 cursor-pointer disabled:opacity-50">
+                                                    Hapus
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Section B: Upload Zone -->
+                        <div class="space-y-3 pt-3 border-t border-slate-100">
+                            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                                Tambah Berkas Baru
+                            </span>
+
+                            <!-- Drag & Drop Zone -->
+                            <div class="border border-dashed border-slate-300 hover:border-slate-800 bg-slate-50/70 hover:bg-slate-100/70 rounded-xl p-5 text-center transition-all cursor-pointer"
+                                @click="$refs.attachmentFileInput.click()"
+                                @dragover.prevent="$el.classList.add('border-slate-900', 'bg-slate-100')"
+                                @dragleave.prevent="$el.classList.remove('border-slate-900', 'bg-slate-100')"
+                                @drop.prevent="$el.classList.remove('border-slate-900', 'bg-slate-100'); handleAttachmentDrop($event)">
+                                
+                                <input type="file" x-ref="attachmentFileInput" multiple accept="image/*,application/pdf"
+                                    class="hidden" @change="handleAttachmentFileInput($event)">
+
+                                <div class="space-y-1">
+                                    <p class="text-xs font-bold text-slate-900">
+                                        Pilih Berkas atau Tarik ke Sini
+                                    </p>
+                                    <p class="text-[11px] text-slate-500 font-mono">
+                                        PDF, JPG, PNG, WEBP (Maks. 10MB)
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Staged Files Preview -->
+                            <div x-show="selectedAttachmentFiles.length > 0" x-cloak class="space-y-2 pt-2">
+                                <div class="flex items-center justify-between text-xs font-bold text-slate-700">
+                                    <span>Berkas Terpilih (<span x-text="selectedAttachmentFiles.length"></span>)</span>
+                                    <button type="button" @click="clearSelectedAttachments()" class="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer">
+                                        Bersihkan
+                                    </button>
+                                </div>
+                                <div class="space-y-2 max-h-48 overflow-y-auto">
+                                    <template x-for="(item, index) in selectedAttachmentFiles" :key="index">
+                                        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs gap-3">
+                                            <div class="flex items-center space-x-2.5 min-w-0 pr-1">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-800 border border-slate-300 flex-shrink-0"
+                                                    x-text="item.is_image ? 'FOTO' : 'PDF'">
+                                                </span>
+                                                <div class="truncate">
+                                                    <span class="font-bold text-slate-900 truncate block" x-text="item.name"></span>
+                                                    <span class="text-[10px] text-slate-500 font-mono" x-text="formatBytes(item.size)"></span>
+                                                </div>
+                                            </div>
+                                            <button type="button" @click="removeSelectedAttachmentFile(index)"
+                                                class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 font-semibold rounded-lg text-xs border border-slate-200 cursor-pointer">
+                                                Batal
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="px-5 sm:px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+                        <button type="button" @click="closeUploadAttachmentModal()" :disabled="isUploadingAttachments"
+                            class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-all disabled:opacity-50 cursor-pointer">
+                            Tutup
+                        </button>
+                        <button type="button" @click="submitUploadAttachments()"
+                            :disabled="selectedAttachmentFiles.length === 0 || isUploadingAttachments"
+                            class="px-5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                            <span x-text="isUploadingAttachments ? 'Mengunggah...' : 'Unggah'"></span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </template>
 
         <!-- Teleported Single Status Dropdown (Topmost, outside all clipping containers) -->
         <template x-teleport="body">
@@ -499,6 +663,19 @@
                 returnPreviousFocus: null,
                 
 
+                // Upload Attachment Modal state (Foto / Dokumen)
+                showUploadAttachmentModal: false,
+                isLoadingAttachments: false,
+                isUploadingAttachments: false,
+                isDeletingAttachmentId: null,
+                uploadAttachmentMail: {
+                    id: '',
+                    mail_number: '',
+                    subject: '',
+                },
+                existingAttachments: [],
+                selectedAttachmentFiles: [],
+                uploadAttachmentError: '',
                 
                 // Toast state
                 showSuccessToast: false,
@@ -530,6 +707,10 @@
                         this.openReturnWorkflow([id], mailNumber, true);
                     };
 
+                    window.openUploadAttachmentModal = (id, mailNumber, subject) => {
+                        this.openUploadAttachmentModal(id, mailNumber, subject);
+                    };
+
                     window.addEventListener('scroll', () => {
                         if (this.showStatusDropdown) this.showStatusDropdown = false;
                     }, true);
@@ -545,14 +726,21 @@
                     
                     // Watch modal state untuk prevent body scroll
                     this.$watch('showConfirmModal', (value) => {
-                        if (value || this.showReturnModal) {
+                        if (value || this.showReturnModal || this.showUploadAttachmentModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
                         }
                     });
                     this.$watch('showReturnModal', (value) => {
-                        if (value || this.showConfirmModal) {
+                        if (value || this.showConfirmModal || this.showUploadAttachmentModal) {
+                            document.body.style.overflow = 'hidden';
+                        } else {
+                            document.body.style.overflow = '';
+                        }
+                    });
+                    this.$watch('showUploadAttachmentModal', (value) => {
+                        if (value || this.showConfirmModal || this.showReturnModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
@@ -1286,6 +1474,211 @@
                     }
 
                     this.requestStatusChange([detail.id], `dokumen ${detail.mailNumber}`, targetStatus);
+                },
+
+                openUploadAttachmentModal(mailId, mailNumber, subject) {
+                    this.showUploadAttachmentModal = true;
+                    this.uploadAttachmentError = '';
+                    this.selectedAttachmentFiles = [];
+                    this.existingAttachments = [];
+                    this.uploadAttachmentMail = {
+                        id: mailId,
+                        mail_number: mailNumber || '-',
+                        subject: subject || '-',
+                    };
+                    this.fetchAttachments(mailId);
+                },
+
+                closeUploadAttachmentModal() {
+                    if (this.isUploadingAttachments) return;
+                    this.showUploadAttachmentModal = false;
+                    this.clearSelectedAttachments();
+                    this.uploadAttachmentError = '';
+                },
+
+                clearSelectedAttachments() {
+                    this.selectedAttachmentFiles.forEach(item => {
+                        if (item.preview_url) URL.revokeObjectURL(item.preview_url);
+                    });
+                    this.selectedAttachmentFiles = [];
+                },
+
+                async fetchAttachments(mailId) {
+                    this.isLoadingAttachments = true;
+                    try {
+                        const baseUrl = @js(url('/outgoing-mails'));
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailId)}/attachments`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                        });
+                        const data = await response.json();
+                        if (response.ok && data.success) {
+                            this.existingAttachments = data.attachments || [];
+                            if (data.mail) {
+                                this.uploadAttachmentMail.mail_number = data.mail.mail_number;
+                                this.uploadAttachmentMail.subject = data.mail.subject;
+                            }
+                        } else {
+                            this.uploadAttachmentError = data.message || 'Gagal memuat berkas surat.';
+                        }
+                    } catch (err) {
+                        console.error('Fetch attachments error:', err);
+                        this.uploadAttachmentError = 'Terjadi kesalahan saat memuat berkas.';
+                    } finally {
+                        this.isLoadingAttachments = false;
+                    }
+                },
+
+                handleAttachmentFileInput(event) {
+                    const files = Array.from(event.target.files || []);
+                    if (!files.length) return;
+
+                    files.forEach(file => {
+                        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                        const isImg = file.type.startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.name);
+                        if (!isPdf && !isImg) return;
+
+                        const exists = this.selectedAttachmentFiles.some(f => f.name === file.name && f.size === file.size);
+                        if (!exists) {
+                            const previewUrl = isImg ? URL.createObjectURL(file) : null;
+                            this.selectedAttachmentFiles.push({
+                                file: file,
+                                name: file.name,
+                                size: file.size,
+                                is_image: isImg,
+                                preview_url: previewUrl,
+                            });
+                        }
+                    });
+                    event.target.value = '';
+                    this.uploadAttachmentError = '';
+                },
+
+                handleAttachmentDrop(event) {
+                    const files = Array.from(event.dataTransfer?.files || []);
+                    if (!files.length) return;
+
+                    files.forEach(file => {
+                        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                        const isImg = file.type.startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.name);
+                        if (!isPdf && !isImg) return;
+
+                        const exists = this.selectedAttachmentFiles.some(f => f.name === file.name && f.size === file.size);
+                        if (!exists) {
+                            const previewUrl = isImg ? URL.createObjectURL(file) : null;
+                            this.selectedAttachmentFiles.push({
+                                file: file,
+                                name: file.name,
+                                size: file.size,
+                                is_image: isImg,
+                                preview_url: previewUrl,
+                            });
+                        }
+                    });
+                    this.uploadAttachmentError = '';
+                },
+
+                removeSelectedAttachmentFile(index) {
+                    const item = this.selectedAttachmentFiles[index];
+                    if (item && item.preview_url) {
+                        URL.revokeObjectURL(item.preview_url);
+                    }
+                    this.selectedAttachmentFiles.splice(index, 1);
+                },
+
+                async submitUploadAttachments() {
+                    if (this.selectedAttachmentFiles.length === 0 || this.isUploadingAttachments) {
+                        return;
+                    }
+
+                    this.isUploadingAttachments = true;
+                    this.uploadAttachmentError = '';
+
+                    const formData = new FormData();
+                    this.selectedAttachmentFiles.forEach(item => {
+                        formData.append('files[]', item.file);
+                    });
+
+                    try {
+                        const baseUrl = @js(url('/outgoing-mails'));
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(this.uploadAttachmentMail.id)}/attachments`, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: formData,
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok || !data.success) {
+                            let msg = data.message || 'Gagal mengunggah foto atau dokumen.';
+                            if (data.errors) {
+                                const errorMessages = Object.values(data.errors).flat();
+                                if (errorMessages.length > 0) msg = errorMessages.join(' ');
+                            }
+                            throw new Error(msg);
+                        }
+
+                        this.clearSelectedAttachments();
+                        this.showToast(data.message || 'Foto / dokumen berhasil ditambahkan.');
+                        await this.fetchAttachments(this.uploadAttachmentMail.id);
+                        await this.refreshTableData();
+                    } catch (err) {
+                        console.error('Upload attachments error:', err);
+                        this.uploadAttachmentError = err.message || 'Terjadi kesalahan saat mengunggah berkas.';
+                    } finally {
+                        this.isUploadingAttachments = false;
+                    }
+                },
+
+                async deleteAttachment(attachmentId) {
+                    if (!confirm('Apakah Anda yakin ingin menghapus berkas ini?')) return;
+
+                    this.isDeletingAttachmentId = attachmentId;
+                    this.uploadAttachmentError = '';
+
+                    try {
+                        const baseUrl = @js(url('/outgoing-mails'));
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(this.uploadAttachmentMail.id)}/attachments/${encodeURIComponent(attachmentId)}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok || !data.success) {
+                            throw new Error(data.message || 'Gagal menghapus berkas.');
+                        }
+
+                        this.showToast('Berkas berhasil dihapus.');
+                        await this.fetchAttachments(this.uploadAttachmentMail.id);
+                        await this.refreshTableData();
+                    } catch (err) {
+                        console.error('Delete attachment error:', err);
+                        this.uploadAttachmentError = err.message || 'Terjadi kesalahan saat menghapus berkas.';
+                    } finally {
+                        this.isDeletingAttachmentId = null;
+                    }
+                },
+
+                formatBytes(bytes) {
+                    if (!bytes || bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
                 }
             };
         }
