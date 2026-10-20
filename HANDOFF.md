@@ -24,7 +24,7 @@ Entitas utama:
 - `MailDisposition`, `AuditLog`, `BroadcastEmail`, `User`
 
 State machine:
-- `app/Support/IncomingMailStatus.php` — `DRAFT → RECEIVE/REVISI/DISPOSISI`, `RECEIVE → REVISI/RETURN/DISPOSISI`, `REVISI → RECEIVE/DISPOSISI`, `WAITING_RETURN → RETURN`, `DISPOSISI` final.
+- `app/Support/IncomingMailStatus.php` — `DRAFT → RECEIVE/REVISI/DISPOSISI`, `RECEIVE → REVISI/RETURN/DISPOSISI`, `REVISI → RECEIVE`, `WAITING_RETURN → RETURN`, `DISPOSISI` final.
 - `app/Support/OutgoingMailStatus.php` — `WAITING_RECEIVE → RECEIVE/REVISI`, `REVISI → WAITING_RECEIVE`, `RECEIVE` final.
 - Transisi lewat `IncomingMailStatusTransitionService` / `OutgoingMailStatusTransitionService` (transaction + lockForUpdate).
 

@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
  * Standard operating procedure:
  *   DRAFT           -> RECEIVE, REVISI, DISPOSISI
  *   RECEIVE         -> REVISI, RETURN, DISPOSISI
- *   REVISI          -> RECEIVE, DISPOSISI
+ *   REVISI          -> RECEIVE (revision must be resolved before disposition)
  *   WAITING_RETURN  -> RETURN (only by completing the signature workflow)
  *   RETURN          -> REVISI, DISPOSISI
  *   DISPOSISI       -> final state, no further transition
@@ -61,7 +61,7 @@ final class IncomingMailStatus
     private const TRANSITIONS = [
         self::DRAFT => [self::RECEIVE, self::REVISI, self::DISPOSISI],
         self::RECEIVE => [self::REVISI, self::RETURN, self::DISPOSISI],
-        self::REVISI => [self::RECEIVE, self::DISPOSISI],
+        self::REVISI => [self::RECEIVE],
         self::WAITING_RETURN => [self::RETURN],
         self::RETURN => [self::REVISI, self::DISPOSISI],
         self::WAITING_DISPOSISI => [self::DISPOSISI],

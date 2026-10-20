@@ -57,7 +57,7 @@ class IncomingMailStatusSopTest extends TestCase
             IncomingMailStatus::allowedTransitions('RECEIVE')
         );
         $this->assertSame(
-            ['RECEIVE', 'DISPOSISI'],
+            ['RECEIVE'],
             IncomingMailStatus::allowedTransitions('REVISI')
         );
         $this->assertSame(
@@ -186,6 +186,26 @@ class IncomingMailStatusSopTest extends TestCase
         ])->assertStatus(200);
 
         $this->assertSame('RECEIVE', $mail->fresh()->status);
+        $this->assertSame(0, $mail->revisionNotes()->count());
+    }
+
+    public function test_revisi_cannot_transition_directly_to_disposisi(): void
+    {
+        $user = $this->master();
+        $mail = $this->mailWithStatus('REVISI');
+
+        $this->assertFalse(IncomingMailStatus::canProcessDisposition('REVISI'));
+
+        $response = $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'DISPOSISI',
+            'disposition_note' => 'Mohon ditindaklanjuti Divisi Keuangan.',
+        ]);
+
+        $response->assertStatus(422);
+
+        $mail->refresh();
+        $this->assertSame('REVISI', $mail->status);
         $this->assertSame(0, $mail->revisionNotes()->count());
     }
 
