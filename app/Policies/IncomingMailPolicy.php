@@ -47,8 +47,8 @@ class IncomingMailPolicy
 
     /**
      * Determine whether the user can force a final status through the manual
-     * status override (bulk update). The standard disposition/return
-     * workflows remain available to staff through the update ability.
+     * status override (bulk update). The standard return workflow remains
+     * available to staff through the update ability.
      */
     public function finalize(User $user, IncomingMail $incomingMail): bool
     {
@@ -80,7 +80,8 @@ class IncomingMailPolicy
     private function isFinal(IncomingMail $incomingMail): bool
     {
         // COMPLETED is a retired value that must stay locked for old records.
-        return IncomingMailStatus::canonical($incomingMail->status) === IncomingMailStatus::DISPOSISI
-            || strtoupper(trim((string) $incomingMail->status)) === 'COMPLETED';
+        // RETURN is intentionally not final: a returned document may still be
+        // sent back for revision (RETURN -> REVISI).
+        return strtoupper(trim((string) $incomingMail->status)) === 'COMPLETED';
     }
 }

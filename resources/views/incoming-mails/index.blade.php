@@ -113,156 +113,6 @@
             </div>
         </template>
 
-        <!-- Disposition Workflow Modal -->
-        <template x-teleport="body">
-            <div x-show="showDispositionModal" x-cloak
-                class="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6"
-                role="dialog" aria-modal="true" aria-labelledby="disposition-workflow-title"
-                @keydown.escape.window="closeDispositionModal()">
-                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
-
-                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col"
-                    x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0 scale-95"
-                    x-transition:enter-end="opacity-100 scale-100">
-                    <div class="px-5 sm:px-7 py-5 border-b border-slate-200 flex items-start justify-between gap-4">
-                        <div>
-                            <h2 id="disposition-workflow-title" class="text-lg font-bold text-slate-900">Alur Disposisi Dokumen</h2>
-                            <p class="text-xs text-slate-500 mt-1">
-                                <span x-text="dispositionMailLabel"></span> · <span x-text="dispositionMailIds.length"></span> dokumen
-                            </p>
-                        </div>
-                        <button type="button" @click="closeDispositionModal()" :disabled="isSavingDisposition"
-                            aria-label="Tutup proses disposisi"
-                            class="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-50">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    </div>
-
-                    <div class="px-5 sm:px-7 py-5 overflow-y-auto bg-slate-50/70 space-y-4">
-                        <!-- Petunjuk SOP Disposisi -->
-                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed">
-                            Masukkan <strong>Catatan Disposisi</strong> terlebih dahulu, lalu tambahkan penerima disposisi yang dituju. Anda dapat menyimpan progres sementara melalui <strong>Lanjut Nanti</strong> atau menyelesaikan alur ketika tanda tangan telah lengkap.
-                        </div>
-
-                        <!-- 1. Form Input Catatan Disposisi (Wajib diisi SEBELUM form penerima) -->
-                        <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs">
-                            <div class="flex items-center justify-between">
-                                <label for="disposition-workflow-note" class="block text-xs font-bold text-slate-800">
-                                    Catatan Disposisi <span class="text-rose-600">*</span>
-                                </label>
-                                <span class="text-[11px] font-mono text-slate-400">
-                                    <span x-text="dispositionNote.length"></span>/2000
-                                </span>
-                            </div>
-                            <textarea id="disposition-workflow-note" x-model="dispositionNote" @input="dispositionDirty = true" rows="4" maxlength="2000"
-                                required aria-required="true"
-                                placeholder=""
-                                class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
-                        </div>
-
-                        <!-- Loading Indicator jika membuka kembali progres -->
-                        <div x-show="isLoadingDisposition" class="py-12 flex items-center justify-center gap-3 text-sm font-semibold text-slate-600">
-                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                            Memuat data disposisi...
-                        </div>
-
-                        <!-- 2. Form Input Penerima dan Lain-lain (Setelah Catatan Disposisi) -->
-                        <div x-show="!isLoadingDisposition" class="space-y-4">
-                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider px-1">
-                                Penerima Disposisi
-                            </h3>
-
-                            <template x-for="(recipient, index) in dispositionRecipients" :key="recipient.client_key">
-                                <fieldset class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
-                                    <legend class="px-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                        Penerima <span x-text="index + 1"></span>
-                                    </legend>
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label :for="`disposition-recipient-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penerima / Unit Tujuan <span class="text-rose-600">*</span></label>
-                                            <input type="text" :id="`disposition-recipient-${recipient.client_key}`"
-                                                x-model="recipient.recipient_name" @input="dispositionDirty = true" maxlength="255"
-                                                placeholder="Contoh: Kepala Biro Umum / Bagian Keuangan"
-                                                class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900" required>
-                                        </div>
-                                        <div>
-                                            <label :for="`disposition-signer-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penandatangan</label>
-                                            <input type="text" :id="`disposition-signer-${recipient.client_key}`"
-                                                x-model="recipient.signer_name" @input="dispositionDirty = true" maxlength="255"
-                                                placeholder="Boleh dikosongkan jika belum hadir / lanjut nanti"
-                                                class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div class="flex items-center justify-between gap-3 mb-1.5">
-                                            <span class="text-xs font-bold text-slate-700">Tanda Tangan Penerima Disposisi</span>
-                                            <span x-show="recipient.has_signature" class="text-[11px] font-semibold text-slate-700">Tanda tangan tersimpan</span>
-                                        </div>
-                                        <canvas width="800" height="220"
-                                            x-init="$nextTick(() => setupDispositionCanvas(recipient, $el))"
-                                            @pointerdown.prevent="startDispositionSignature($event, recipient)"
-                                            @pointermove.prevent="drawDispositionSignature($event, recipient)"
-                                            @pointerup.prevent="finishDispositionSignature($event, recipient)"
-                                            @pointercancel.prevent="finishDispositionSignature($event, recipient)"
-                                            aria-label="Area tanda tangan penerima disposisi"
-                                            class="w-full h-40 bg-white border border-slate-300 rounded-xl touch-none cursor-crosshair"></canvas>
-                                        <div class="mt-2 flex items-center justify-between gap-3">
-                                            <p class="text-[11px] text-slate-500">Gunakan mouse, pena digital, atau layar sentuh.</p>
-                                            <button type="button" @click="clearDispositionSignature(recipient)"
-                                                class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100">
-                                                Bersihkan
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex justify-end" x-show="dispositionRecipients.length > 1">
-                                        <button type="button" @click="removeDispositionRecipient(index)"
-                                            class="text-xs font-semibold text-slate-700 hover:underline">Hapus penerima ini</button>
-                                    </div>
-                                </fieldset>
-                            </template>
-
-                            <button type="button" @click="addDispositionRecipient()"
-                                class="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-white hover:border-slate-500 transition-colors">
-                                + Tambah Penerima Disposisi
-                            </button>
-                        </div>
-
-                        <p x-show="dispositionError" x-text="dispositionError" role="alert" aria-live="assertive"
-                            class="p-3 rounded-xl bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-800"></p>
-                    </div>
-
-                    <div class="px-5 sm:px-7 py-4 border-t border-slate-200 bg-white flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <button type="button" @click="closeDispositionModal()" :disabled="isSavingDisposition"
-                            class="px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50">
-                            Batal
-                        </button>
-                        <div class="flex flex-col sm:flex-row gap-2">
-                            <button type="button" @click="saveDispositionWorkflow('save_later')"
-                                :disabled="isSavingDisposition || isLoadingDisposition"
-                                class="px-5 py-2.5 text-xs font-bold text-slate-800 bg-slate-100 border border-slate-300 rounded-xl hover:bg-slate-200 disabled:opacity-50">
-                                Lanjut Nanti
-                            </button>
-                            <button type="button" @click="skipRemainingDispositionSignatures()"
-                                :disabled="isSavingDisposition || isLoadingDisposition"
-                                title="Tutup disposisi tanpa menunggu tanda tangan penerima yang tersisa"
-                                class="px-5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-xl hover:bg-slate-100 disabled:opacity-50">
-                                Lewati Proses Tanda Tangan yang Tersisa
-                            </button>
-                            <button type="button" @click="saveDispositionWorkflow('complete')"
-                                :disabled="isSavingDisposition || isLoadingDisposition"
-                                class="px-5 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center justify-center gap-2">
-                                <svg x-show="isSavingDisposition" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                Selesaikan Disposisi
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </template>
 
         <!-- Fitur Intip Catatan Status Disposisi Modal -->
         <template x-teleport="body">
@@ -284,7 +134,7 @@
                                     Disposisi
                                 </span>
                                 <h2 id="disposition-preview-title" class="text-base font-bold text-slate-900">
-                                    Catatan & Penerima Disposisi
+                                    Catatan Disposisi & Penerima Dokumen
                                 </h2>
                             </div>
                             <p class="text-xs text-slate-500 font-mono mt-1" x-text="dispositionPreviewMail ? 'No: ' + dispositionPreviewMail.mail_number : ''"></p>
@@ -402,7 +252,24 @@
 
                     <div class="px-5 sm:px-7 py-5 overflow-y-auto bg-slate-50/70 space-y-4">
                         <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed">
-                            Tambahkan semua penerima dokumen. Isi nama orang yang menandatangani dan bubuhkan tanda tangan untuk penerima yang sudah mengambil dokumen. Progres yang belum lengkap dapat disimpan melalui <strong>Lanjut Nanti</strong>.
+                            Isi <strong>Catatan Disposisi</strong> bila dokumen ini perlu didisposisikan, lalu tambahkan semua penerima dokumen. Isi nama orang yang menandatangani dan bubuhkan tanda tangan untuk penerima yang sudah mengambil dokumen. Progres yang belum lengkap dapat disimpan melalui <strong>Lanjut Nanti</strong>.
+                        </div>
+
+                        <!-- Catatan Disposisi (opsional) - digabung ke dalam alur pengembalian -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <label for="return-disposition-note" class="block text-xs font-bold text-slate-800">
+                                    Catatan Disposisi <span class="font-semibold text-slate-500">(Opsional)</span>
+                                </label>
+                                <span class="text-[11px] font-mono text-slate-400">
+                                    <span x-text="returnDispositionNote.length"></span>/2000
+                                </span>
+                            </div>
+                            <textarea id="return-disposition-note" x-model="returnDispositionNote"
+                                @input="returnDirty = true; returnDispositionNoteTouched = true"
+                                rows="4" maxlength="2000"
+                                placeholder="Boleh dikosongkan bila dokumen tidak memerlukan disposisi."
+                                class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
                         </div>
 
                         <div x-show="isLoadingReturn" class="py-12 flex items-center justify-center gap-3 text-sm font-semibold text-slate-600">
@@ -974,19 +841,6 @@
                 revisionMailIds: [],
                 revisionMailLabel: '',
 
-                // Disposition workflow state
-                showDispositionModal: false,
-                isLoadingDisposition: false,
-                isSavingDisposition: false,
-                dispositionDirty: false,
-                dispositionNote: '',
-                dispositionError: '',
-                dispositionMailIds: [],
-                dispositionMailLabel: '',
-                dispositionRecipients: [],
-                dispositionCanvases: {},
-                dispositionDrawingKey: null,
-                dispositionPreviousFocus: null,
 
                 // Disposition preview state (Fitur Intip Catatan Status Disposisi)
                 showDispositionPreviewModal: false,
@@ -1016,6 +870,9 @@
                 returnError: '',
                 returnMailIds: [],
                 returnMailLabel: '',
+                // Catatan disposisi kini dikumpulkan di alur pengembalian dan bersifat opsional.
+                returnDispositionNote: '',
+                returnDispositionNoteTouched: false,
                 returnRecipients: [],
                 returnCanvases: {},
                 returnDrawingKey: null,
@@ -1055,10 +912,6 @@
                         this.openReturnWorkflow([id], mailNumber, true);
                     };
 
-                    window.resumeDispositionWorkflow = (id, mailNumber) => {
-                        this.openDispositionWorkflow([id], mailNumber, true);
-                    };
-
                     window.openDispositionPreviewModal = (id, mailNumber) => {
                         this.openDispositionPreview(id, mailNumber);
                     };
@@ -1082,7 +935,7 @@
                     
                     // Watch modal state untuk prevent body scroll
                     const checkOverflow = () => {
-                        if (this.showConfirmModal || this.showReturnModal || this.showDispositionModal || this.showDispositionPreviewModal || this.showUploadAttachmentModal) {
+                        if (this.showConfirmModal || this.showReturnModal || this.showDispositionPreviewModal || this.showUploadAttachmentModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
@@ -1091,7 +944,6 @@
 
                     this.$watch('showConfirmModal', checkOverflow);
                     this.$watch('showReturnModal', checkOverflow);
-                    this.$watch('showDispositionModal', checkOverflow);
                     this.$watch('showDispositionPreviewModal', checkOverflow);
                     this.$watch('showUploadAttachmentModal', checkOverflow);
                 },
@@ -1150,8 +1002,6 @@
                         REVISI: 'bg-amber-400',
                         RETURN: 'border border-slate-400 bg-white',
                         WAITING_RETURN: 'bg-blue-500',
-                        WAITING_DISPOSISI: 'bg-cyan-500',
-                        DISPOSISI: 'bg-slate-600',
                     }[this.normalizeStatus(status)] ?? 'bg-slate-400';
                 },
 
@@ -1199,242 +1049,6 @@
                     }
                 },
 
-                newDispositionRecipient(data = {}) {
-                    return {
-                        id: data.id || null,
-                        client_key: data.client_key || (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`),
-                        recipient_name: data.recipient_name || '',
-                        signer_name: data.signer_name || '',
-                        signature: null,
-                        signature_url: data.signature_url || null,
-                        has_signature: Boolean(data.has_signature),
-                        remove_signature: false,
-                    };
-                },
-
-                async openDispositionWorkflow(mailIds, label, resume = false) {
-                    this.showStatusDropdown = false;
-                    this.dispositionPreviousFocus = document.activeElement;
-                    this.dispositionMailIds = [...mailIds];
-                    this.dispositionMailLabel = label || 'Dokumen terpilih';
-                    this.dispositionNote = '';
-                    this.dispositionRecipients = [this.newDispositionRecipient()];
-                    this.dispositionCanvases = {};
-                    this.dispositionError = '';
-                    this.dispositionDirty = false;
-                    this.showDispositionModal = true;
-
-                    if (!resume) return;
-
-                    this.isLoadingDisposition = true;
-                    try {
-                        const baseUrl = @js(url('/incoming-mails'));
-                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailIds[0])}/disposition-recipients`, {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                            },
-                        });
-                        const data = await response.json();
-                        if (!response.ok) {
-                            throw new Error(data.message || 'Progres disposisi gagal dimuat.');
-                        }
-
-                        this.dispositionMailLabel = data.mail?.mail_number || this.dispositionMailLabel;
-                        this.dispositionNote = data.mail?.disposition_note || '';
-                        this.dispositionRecipients = data.recipients?.length
-                            ? data.recipients.map(recipient => this.newDispositionRecipient(recipient))
-                            : [this.newDispositionRecipient()];
-                    } catch (error) {
-                        console.error('Disposition workflow load error:', error);
-                        this.dispositionError = error.message || 'Progres disposisi gagal dimuat.';
-                    } finally {
-                        this.isLoadingDisposition = false;
-                    }
-                },
-
-                closeDispositionModal() {
-                    if (this.isSavingDisposition) return;
-                    if (this.dispositionDirty && !window.confirm('Perubahan yang belum disimpan akan hilang. Tutup proses ini?')) return;
-
-                    this.dispositionDirty = false;
-                    this.showDispositionModal = false;
-                    this.dispositionError = '';
-                    this.$nextTick(() => this.dispositionPreviousFocus?.focus?.());
-                },
-
-                addDispositionRecipient() {
-                    this.dispositionRecipients.push(this.newDispositionRecipient());
-                    this.dispositionDirty = true;
-                },
-
-                removeDispositionRecipient(index) {
-                    if (this.dispositionRecipients.length === 1) return;
-                    const [removed] = this.dispositionRecipients.splice(index, 1);
-                    delete this.dispositionCanvases[removed.client_key];
-                    this.dispositionDirty = true;
-                },
-
-                setupDispositionCanvas(recipient, canvas) {
-                    const context = canvas.getContext('2d');
-                    context.lineWidth = 3;
-                    context.lineCap = 'round';
-                    context.lineJoin = 'round';
-                    context.strokeStyle = '#0f172a';
-                    this.dispositionCanvases[recipient.client_key] = canvas;
-
-                    if (recipient.signature_url) {
-                        const image = new Image();
-                        image.onload = () => context.drawImage(image, 0, 0, canvas.width, canvas.height);
-                        image.src = recipient.signature_url;
-                    }
-                },
-
-                dispositionCanvasPosition(event, canvas) {
-                    const rect = canvas.getBoundingClientRect();
-                    return {
-                        x: (event.clientX - rect.left) * (canvas.width / rect.width),
-                        y: (event.clientY - rect.top) * (canvas.height / rect.height),
-                    };
-                },
-
-                startDispositionSignature(event, recipient) {
-                    const canvas = this.dispositionCanvases[recipient.client_key];
-                    if (!canvas) return;
-                    canvas.setPointerCapture?.(event.pointerId);
-                    const point = this.dispositionCanvasPosition(event, canvas);
-                    const context = canvas.getContext('2d');
-                    context.beginPath();
-                    context.moveTo(point.x, point.y);
-                    this.dispositionDrawingKey = recipient.client_key;
-                },
-
-                drawDispositionSignature(event, recipient) {
-                    if (this.dispositionDrawingKey !== recipient.client_key) return;
-                    const canvas = this.dispositionCanvases[recipient.client_key];
-                    if (!canvas) return;
-                    const point = this.dispositionCanvasPosition(event, canvas);
-                    const context = canvas.getContext('2d');
-                    context.lineTo(point.x, point.y);
-                    context.stroke();
-                },
-
-                finishDispositionSignature(event, recipient) {
-                    if (this.dispositionDrawingKey !== recipient.client_key) return;
-                    const canvas = this.dispositionCanvases[recipient.client_key];
-                    this.dispositionDrawingKey = null;
-                    if (!canvas) return;
-                    canvas.releasePointerCapture?.(event.pointerId);
-                    recipient.signature = canvas.toDataURL('image/png');
-                    recipient.has_signature = true;
-                    recipient.remove_signature = false;
-                    this.dispositionDirty = true;
-                },
-
-                clearDispositionSignature(recipient) {
-                    const canvas = this.dispositionCanvases[recipient.client_key];
-                    canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
-                    recipient.signature = null;
-                    recipient.signature_url = null;
-                    recipient.has_signature = false;
-                    recipient.remove_signature = true;
-                    this.dispositionDirty = true;
-                },
-
-                get unsignedDispositionRecipientCount() {
-                    return this.dispositionRecipients.filter(
-                        recipient => !recipient.signer_name.trim() || (!recipient.signature && !recipient.has_signature)
-                    ).length;
-                },
-
-                skipRemainingDispositionSignatures() {
-                    const pending = this.unsignedDispositionRecipientCount;
-
-                    if (pending === 0) {
-                        this.saveDispositionWorkflow('complete');
-                        return;
-                    }
-
-                    const confirmed = window.confirm(
-                        `${pending} penerima belum menandatangani. Disposisi akan ditutup dan status menjadi DISPOSISI, ` +
-                        'sementara penerima tersebut tetap tercatat belum menandatangani. Lanjutkan?'
-                    );
-
-                    if (confirmed) {
-                        this.saveDispositionWorkflow('skip_remaining');
-                    }
-                },
-
-                async saveDispositionWorkflow(action) {
-                    if (this.isSavingDisposition) return;
-
-                    const note = this.dispositionNote.trim();
-                    if (!note) {
-                        this.dispositionError = 'Catatan disposisi wajib diisi.';
-                        return;
-                    }
-
-                    const missingRecipient = this.dispositionRecipients.find(recipient => !recipient.recipient_name.trim());
-                    if (missingRecipient) {
-                        this.dispositionError = 'Nama setiap penerima / unit tujuan disposisi wajib diisi.';
-                        return;
-                    }
-
-                    if (action === 'complete') {
-                        const incomplete = this.dispositionRecipients.find(recipient =>
-                            !recipient.signer_name.trim() || (!recipient.signature && !recipient.has_signature)
-                        );
-                        if (incomplete) {
-                            this.dispositionError = 'Lengkapi nama penandatangan dan tanda tangan seluruh penerima sebelum menyelesaikan disposisi.';
-                            return;
-                        }
-                    }
-
-                    this.isSavingDisposition = true;
-                    this.dispositionError = '';
-
-                    try {
-                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-                        const response = await fetch(@js(route('incoming-mails.disposition-workflow.store')), {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                mail_ids: this.dispositionMailIds,
-                                disposition_note: note,
-                                action,
-                                recipients: this.dispositionRecipients.map(recipient => ({
-                                    id: recipient.id,
-                                    recipient_name: recipient.recipient_name.trim(),
-                                    signer_name: recipient.signer_name.trim() || null,
-                                    signature: recipient.signature,
-                                    remove_signature: recipient.remove_signature,
-                                })),
-                            }),
-                        });
-
-                        const result = await response.json();
-                        if (!response.ok) {
-                            const validationMessage = Object.values(result.errors || {}).flat()[0];
-                            throw new Error(validationMessage || result.message || 'Progres disposisi gagal disimpan.');
-                        }
-
-                        this.dispositionDirty = false;
-                        this.showDispositionModal = false;
-                        this.showToast(result.message);
-                        this.selectedIds = [];
-                        await this.refreshTableData();
-                    } catch (error) {
-                        console.error('Disposition workflow save error:', error);
-                        this.dispositionError = error.message || 'Progres disposisi gagal disimpan.';
-                    } finally {
-                        this.isSavingDisposition = false;
-                    }
-                },
 
                 async openDispositionPreview(mailId, mailNumber) {
                     this.showDispositionPreviewModal = true;
@@ -1448,7 +1062,7 @@
 
                     try {
                         const baseUrl = @js(url('/incoming-mails'));
-                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailId)}/disposition-recipients`, {
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailId)}/return-recipients`, {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
@@ -1691,13 +1305,17 @@
                     this.returnPreviousFocus = document.activeElement;
                     this.returnMailIds = [...mailIds];
                     this.returnMailLabel = label || 'Dokumen terpilih';
+                    this.returnDispositionNote = '';
+                    this.returnDispositionNoteTouched = false;
                     this.returnRecipients = [this.newReturnRecipient()];
                     this.returnCanvases = {};
                     this.returnError = '';
                     this.returnDirty = false;
                     this.showReturnModal = true;
 
-                    if (!resume) return;
+                    // Untuk satu dokumen, catatan disposisi yang sudah ada diisikan lebih dulu
+                    // agar operator tidak menimpanya dengan nilai kosong tanpa sadar.
+                    if (!resume && mailIds.length !== 1) return;
 
                     this.isLoadingReturn = true;
                     try {
@@ -1714,9 +1332,13 @@
                         }
 
                         this.returnMailLabel = data.mail?.mail_number || this.returnMailLabel;
-                        this.returnRecipients = data.recipients?.length
-                            ? data.recipients.map(recipient => this.newReturnRecipient(recipient))
-                            : [this.newReturnRecipient()];
+                        this.returnDispositionNote = data.mail?.disposition_note || '';
+
+                        if (resume) {
+                            this.returnRecipients = data.recipients?.length
+                                ? data.recipients.map(recipient => this.newReturnRecipient(recipient))
+                                : [this.newReturnRecipient()];
+                        }
                     } catch (error) {
                         console.error('Return workflow load error:', error);
                         this.returnError = error.message || 'Progres pengembalian gagal dimuat.';
@@ -1859,6 +1481,25 @@
                     this.isSavingReturn = true;
                     this.returnError = '';
 
+                    const payload = {
+                        mail_ids: this.returnMailIds,
+                        action,
+                        recipients: this.returnRecipients.map(recipient => ({
+                            id: recipient.id,
+                            recipient_name: recipient.recipient_name.trim(),
+                            signer_name: recipient.signer_name.trim() || null,
+                            signature: recipient.signature,
+                            remove_signature: recipient.remove_signature,
+                        })),
+                    };
+
+                    // Kirim catatan disposisi hanya bila operator benar-benar mengisi atau
+                    // menyuntingnya. Tanpa kunci ini, catatan lama dibiarkan apa adanya,
+                    // sehingga pengembalian massal tidak menghapus catatan yang sudah ada.
+                    if (this.returnDispositionNoteTouched || this.returnDispositionNote.trim() !== '') {
+                        payload.disposition_note = this.returnDispositionNote.trim();
+                    }
+
                     try {
                         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
                         const response = await fetch(@js(route('incoming-mails.return-workflow.store')), {
@@ -1869,17 +1510,7 @@
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
                             },
-                            body: JSON.stringify({
-                                mail_ids: this.returnMailIds,
-                                action,
-                                recipients: this.returnRecipients.map(recipient => ({
-                                    id: recipient.id,
-                                    recipient_name: recipient.recipient_name.trim(),
-                                    signer_name: recipient.signer_name.trim() || null,
-                                    signature: recipient.signature,
-                                    remove_signature: recipient.remove_signature,
-                                })),
-                            }),
+                            body: JSON.stringify(payload),
                         });
 
                         const result = await response.json();
@@ -2147,11 +1778,6 @@
                         return;
                     }
 
-                    if (this.normalizeStatus(targetStatus) === 'DISPOSISI') {
-                        this.openDispositionWorkflow(eligibleIds, label);
-                        return;
-                    }
-
                     this.requestStatusChange(eligibleIds, label, targetStatus, blocked.length);
                 },
 
@@ -2163,9 +1789,10 @@
                     const target = this.normalizeStatus(targetStatus);
                     const leavingRevisi = mailIds.some(id => this.normalizeStatus(this.statusById[id]) === 'REVISI');
 
-                    // Disposisi selalu wajib disertai alur catatan disposisi & penerima.
-                    if (target === 'DISPOSISI') {
-                        this.openDispositionWorkflow(mailIds, label);
+                    // RETURN selalu melalui alur tanda tangan pengembalian, yang sekaligus
+                    // menampung catatan disposisi.
+                    if (target === 'RETURN') {
+                        this.openReturnWorkflow(mailIds, label);
                         return;
                     }
 
@@ -2203,7 +1830,7 @@
                  * Persist a status change for the given documents.
                  * Returns true when at least one document was updated.
                  */
-                async applyStatusChange(mailIds, targetStatus, revisionNote = null, dispositionNote = null) {
+                async applyStatusChange(mailIds, targetStatus, revisionNote = null) {
                     if (this.isSubmitting || mailIds.length === 0) return false;
 
                     this.isSubmitting = true;
@@ -2215,9 +1842,6 @@
                         formData.append('status', targetStatus);
                         if (revisionNote) {
                             formData.append('revision_note', revisionNote);
-                        }
-                        if (dispositionNote) {
-                            formData.append('disposition_note', dispositionNote);
                         }
                         mailIds.forEach(id => formData.append('ids[]', id));
 
@@ -2321,11 +1945,6 @@
 
                     if (targetStatus === 'RETURN') {
                         this.openReturnWorkflow([detail.id], detail.mailNumber);
-                        return;
-                    }
-
-                    if (targetStatus === 'DISPOSISI') {
-                        this.openDispositionWorkflow([detail.id], detail.mailNumber);
                         return;
                     }
 

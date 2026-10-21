@@ -47,6 +47,48 @@ class OutgoingMailReceiveWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_receive_workflow_stores_the_optional_disposition_note(): void
+    {
+        $staff = $this->staff();
+        $mail = $this->outgoingMail($staff);
+
+        $this->actingAs($staff)->postJson(route('outgoing-mails.return-workflow.store'), [
+            'mail_ids' => [$mail->id],
+            'disposition_note' => 'Arsipkan setelah diterima penerima.',
+            'action' => 'skip_remaining',
+            'recipients' => [['recipient_name' => 'PT Mitra']],
+        ])->assertOk();
+
+        $this->assertSame('Arsipkan setelah diterima penerima.', $mail->fresh()->disposition_note);
+    }
+
+    public function test_omitting_the_note_preserves_the_stored_note(): void
+    {
+        $staff = $this->staff();
+        $mail = $this->outgoingMail($staff);
+        $mail->update(['disposition_note' => 'Catatan lama yang harus bertahan']);
+
+        $this->actingAs($staff)->postJson(route('outgoing-mails.return-workflow.store'), [
+            'mail_ids' => [$mail->id],
+            'action' => 'skip_remaining',
+            'recipients' => [['recipient_name' => 'PT Mitra']],
+        ])->assertOk();
+
+        $this->assertSame('Catatan lama yang harus bertahan', $mail->fresh()->disposition_note);
+    }
+
+    public function test_receive_recipients_endpoint_exposes_the_disposition_note(): void
+    {
+        $staff = $this->staff();
+        $mail = $this->outgoingMail($staff);
+        $mail->update(['disposition_note' => 'Catatan disposisi surat keluar']);
+
+        $this->actingAs($staff)
+            ->getJson(route('outgoing-mails.return-recipients.show', $mail))
+            ->assertOk()
+            ->assertJsonPath('mail.disposition_note', 'Catatan disposisi surat keluar');
+    }
+
     public function test_completing_receive_workflow_finalizes_mail_to_receive(): void
     {
         $staff = $this->staff();

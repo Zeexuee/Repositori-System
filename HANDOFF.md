@@ -24,9 +24,11 @@ Entitas utama:
 - `MailDisposition`, `AuditLog`, `BroadcastEmail`, `User`
 
 State machine:
-- `app/Support/IncomingMailStatus.php` — `DRAFT → RECEIVE/REVISI/DISPOSISI`, `RECEIVE → REVISI/RETURN/DISPOSISI`, `REVISI → RECEIVE`, `WAITING_RETURN → RETURN`, `DISPOSISI` final.
+- `app/Support/IncomingMailStatus.php` — `DRAFT → RECEIVE/REVISI/RETURN`, `RECEIVE → REVISI/RETURN`, `REVISI → RECEIVE`, `WAITING_RETURN → RETURN`, `RETURN → REVISI`.
 - `app/Support/OutgoingMailStatus.php` — `WAITING_RECEIVE → RECEIVE/REVISI`, `REVISI → WAITING_RECEIVE`, `RECEIVE` final.
 - Transisi lewat `IncomingMailStatusTransitionService` / `OutgoingMailStatusTransitionService` (transaction + lockForUpdate).
+- **Status disposisi sudah digabung ke status return.** `DISPOSISI`/`DISPATCHED` dialias ke `RETURN`, dan `WAITING_DISPOSISI`/`PENDING_DISPOSITION` ke `WAITING_RETURN`. Kolom `disposition_note` tetap ada di kedua tabel surat dan kini dikumpulkan sebagai field **opsional** di dalam alur pengembalian/penerimaan.
+- `RETURN` **bukan** status akhir: dokumen yang sudah dikembalikan masih bisa dikirim ke `REVISI`. Hanya nilai legacy `COMPLETED` yang terkunci.
 
 ---
 
@@ -37,10 +39,10 @@ State machine:
    - `staff` = staf sekretariat
    - Role lama `Staf` / `Direksi` dinormalisasi lewat migrasi.
 2. **Matriks izin:**
-   - staff: view + create + update dokumen non-final, termasuk alur SOP disposisi/pengembalian.
-   - master: semua, plus delete, finalisasi manual `DISPOSISI`, tanda tangan digital, Audit/User/Broadcast.
-3. **Alur SOP tetap boleh staff.** Yang master-only hanya *shortcut manual* finalisasi (`bulk update`, create/edit langsung ke `DISPOSISI`).
-4. **Dokumen final dikunci total** (tidak bisa edit/ubah lampiran) — termasuk untuk master.
+   - staff: view + create + update dokumen non-final, termasuk alur SOP pengembalian.
+   - master: semua, plus delete, tanda tangan digital, Audit/User/Broadcast.
+3. **`RETURN`/`WAITING_RETURN` tidak dapat diset manual oleh siapa pun** (termasuk master) — satu-satunya jalan adalah alur tanda tangan pengembalian, yang sekaligus menampung catatan disposisi. Lihat `IncomingMailStatus::manuallyAssignable()`.
+4. **Dokumen final dikunci total** (tidak bisa edit/ubah lampiran) — termasuk untuk master. Setelah penggabungan disposisi, yang final hanya nilai legacy `COMPLETED`.
 
 ---
 
@@ -79,8 +81,8 @@ State machine:
 
 **Test**
 - `tests/Feature/IncomingMailTest.php`
-- `tests/Feature/IncomingMailStatusSopTest.php` (tambah helper `master()`; test finalisasi DISPOSISI pakai master)
-- `tests/Feature/IncomingMailDispositionWorkflowTest.php`
+- `tests/Feature/IncomingMailStatusSopTest.php` (matriks transisi + alias status disposisi legacy)
+- `tests/Feature/IncomingMailReturnDispositionNoteTest.php` (catatan disposisi opsional di alur pengembalian)
 - `tests/Feature/OutgoingMailTest.php`
 - Semua role `'Staf'` diganti `Roles::STAFF`.
 
@@ -88,8 +90,8 @@ State machine:
 
 ## 5. Perubahan Perilaku Penting
 
-1. Dokumen `DISPOSISI` (masuk) dan `RECEIVE` (keluar) terkunci: `update` = false → edit, tambah/hapus lampiran, ubah status ditolak.
-2. Staff tidak bisa set `DISPOSISI` manual via bulk/create/edit; harus lewat alur disposisi (tanda tangan) atau master.
+1. Dokumen `RECEIVE` (keluar) terkunci: `update` = false → edit, tambah/hapus lampiran, ubah status ditolak. Di sisi surat masuk, hanya nilai legacy `COMPLETED` yang terkunci — `RETURN` tetap dapat diedit dan masih bisa dikirim ke `REVISI`.
+2. `RETURN` tidak bisa diset manual via bulk/create/edit oleh staff maupun master; harus lewat alur pengembalian (tanda tangan), yang juga mengumpulkan catatan disposisi opsional.
 3. Staff tidak melihat tombol Hapus (view memakai `@can('delete')`).
 4. Modul Audit/User/Broadcast mengembalikan **403** untuk staff.
 5. User tanpa role `staff`/`master` ditolak di halaman dokumen.

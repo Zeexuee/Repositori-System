@@ -219,24 +219,24 @@ class IncomingMailController extends Controller
      */
     public function bulkUpdateStatus(Request $request)
     {
+        // RETURN dan WAITING_RETURN hanya dapat dicapai melalui alur tanda tangan
+        // pengembalian, yang sekaligus menampung catatan disposisi.
+        $assignableStatuses = implode(',', IncomingMailStatus::manuallyAssignable());
+
         $validated = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['required', 'string', 'exists:incoming_mails,id'],
-            'status' => ['required', 'string', 'in:RECEIVE,RECEIVED,REVISI,DISPOSISI,DRAFT'],
+            'status' => ['required', 'string', 'in:'.$assignableStatuses.',RECEIVED'],
             'revision_note' => ['nullable', 'string', 'max:2000'],
-            'disposition_note' => ['nullable', 'string', 'max:2000', 'required_if:status,DISPOSISI'],
         ], [
             'ids.required' => 'Pilih minimal satu dokumen.',
             'status.in' => 'Status tujuan tidak tersedia. Status RETURN hanya dapat dicapai melalui proses tanda tangan pengembalian.',
             'revision_note.max' => 'Catatan revisi maksimal 2000 karakter.',
-            'disposition_note.required_if' => 'Catatan disposisi wajib diisi.',
-            'disposition_note.max' => 'Catatan disposisi maksimal 2000 karakter.',
         ]);
 
         $targetStatus = IncomingMailStatus::canonical($validated['status']);
         $targetLabel = IncomingMailStatus::label($targetStatus);
         $revisionNote = $validated['revision_note'] ?? null;
-        $dispositionNote = $validated['disposition_note'] ?? null;
         $actorId = auth()->id();
 
         $mails = IncomingMail::whereIn('id', $validated['ids'])->get();
@@ -248,15 +248,6 @@ class IncomingMailController extends Controller
                 $rejected[] = [
                     'mail_number' => $mail->mail_number,
                     'reason' => 'Anda tidak memiliki izin mengubah dokumen ini.',
-                ];
-
-                continue;
-            }
-
-            if ($targetStatus === IncomingMailStatus::DISPOSISI && ! Gate::allows('finalize', $mail)) {
-                $rejected[] = [
-                    'mail_number' => $mail->mail_number,
-                    'reason' => 'Hanya Direksi yang dapat menetapkan status DISPOSISI secara manual. Gunakan alur disposisi untuk proses standar.',
                 ];
 
                 continue;
@@ -274,7 +265,7 @@ class IncomingMailController extends Controller
             }
 
             try {
-                $this->statusTransitionService->apply($mail, $targetStatus, $actorId, $revisionNote, $dispositionNote);
+                $this->statusTransitionService->apply($mail, $targetStatus, $actorId, $revisionNote);
                 $updatedCount++;
             } catch (ValidationException $exception) {
                 $rejected[] = [
@@ -367,18 +358,6 @@ class IncomingMailController extends Controller
         ];
 
         $documents = $request->input('documents');
-
-        if ($request->input('is_draft') != '1') {
-            $requestedStatuses = [$globalStatus];
-
-            if (is_array($documents)) {
-                foreach ($documents as $doc) {
-                    $requestedStatuses[] = $doc['status'] ?? $globalStatus;
-                }
-            }
-
-            $this->guardManualFinalization($requestedStatuses);
-        }
 
         if (is_array($documents) && count($documents) > 0) {
             foreach ($documents as $index => $doc) {
@@ -517,11 +496,6 @@ class IncomingMailController extends Controller
                 throw ValidationException::withMessages(['status' => $reason]);
             }
 
-            if ($statusChange === IncomingMailStatus::DISPOSISI && ! Gate::allows('finalize', $incomingMail)) {
-                throw ValidationException::withMessages([
-                    'status' => 'Hanya Direksi yang dapat menetapkan status DISPOSISI secara manual.',
-                ]);
-            }
         }
 
         $updateFiles = [];
@@ -612,23 +586,6 @@ class IncomingMailController extends Controller
         return redirect()
             ->route('incoming-mails.index')
             ->with('success', 'Surat Masuk berhasil dihapus.');
-    }
-
-    /**
-     * Manual creation of a document in a final status is a Direksi-only control.
-     *
-     * @param  array<int, string|null>  $statuses
-     */
-    private function guardManualFinalization(array $statuses): void
-    {
-        foreach ($statuses as $status) {
-            if (IncomingMailStatus::canonical($status) === IncomingMailStatus::DISPOSISI
-                && ! Gate::allows('finalizeAny', IncomingMail::class)) {
-                throw ValidationException::withMessages([
-                    'status' => 'Hanya Direksi yang dapat menetapkan status DISPOSISI secara manual.',
-                ]);
-            }
-        }
     }
 
     /**

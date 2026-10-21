@@ -143,7 +143,24 @@
 
                     <div class="px-5 sm:px-7 py-5 overflow-y-auto bg-slate-50/70 space-y-4">
                         <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed">
-                            Tambahkan semua penerima dokumen. Isi nama orang yang menandatangani dan bubuhkan tanda tangan untuk penerima yang sudah mengambil dokumen. Progres yang belum lengkap dapat disimpan melalui <strong>Lanjut Nanti</strong>.
+                            Isi <strong>Catatan Disposisi</strong> bila dokumen ini perlu didisposisikan, lalu tambahkan semua penerima dokumen. Isi nama orang yang menandatangani dan bubuhkan tanda tangan untuk penerima yang sudah mengambil dokumen. Progres yang belum lengkap dapat disimpan melalui <strong>Lanjut Nanti</strong>.
+                        </div>
+
+                        <!-- Catatan Disposisi (opsional) - digabung ke dalam alur penerimaan -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <label for="outgoing-return-disposition-note" class="block text-xs font-bold text-slate-800">
+                                    Catatan Disposisi <span class="font-semibold text-slate-500">(Opsional)</span>
+                                </label>
+                                <span class="text-[11px] font-mono text-slate-400">
+                                    <span x-text="returnDispositionNote.length"></span>/2000
+                                </span>
+                            </div>
+                            <textarea id="outgoing-return-disposition-note" x-model="returnDispositionNote"
+                                @input="returnDirty = true; returnDispositionNoteTouched = true"
+                                rows="4" maxlength="2000"
+                                placeholder="Boleh dikosongkan bila dokumen tidak memerlukan disposisi."
+                                class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
                         </div>
 
                         <div x-show="isLoadingReturn" class="py-12 flex items-center justify-center gap-3 text-sm font-semibold text-slate-600">
@@ -657,6 +674,9 @@
                 returnError: '',
                 returnMailIds: [],
                 returnMailLabel: '',
+                // Catatan disposisi kini dikumpulkan di alur penerimaan dan bersifat opsional.
+                returnDispositionNote: '',
+                returnDispositionNoteTouched: false,
                 returnRecipients: [],
                 returnCanvases: {},
                 returnDrawingKey: null,
@@ -868,6 +888,8 @@
                     this.returnPreviousFocus = document.activeElement;
                     this.returnMailIds = [...mailIds];
                     this.returnMailLabel = label || 'Dokumen terpilih';
+                    this.returnDispositionNote = '';
+                    this.returnDispositionNoteTouched = false;
                     this.returnRecipients = [this.newReturnRecipient()];
                     this.returnCanvases = {};
                     this.returnError = '';
@@ -891,6 +913,7 @@
                         }
 
                         this.returnMailLabel = data.mail?.mail_number || this.returnMailLabel;
+                        this.returnDispositionNote = data.mail?.disposition_note || '';
                         this.returnRecipients = data.recipients?.length
                             ? data.recipients.map(recipient => this.newReturnRecipient(recipient))
                             : [this.newReturnRecipient()];
@@ -1050,6 +1073,25 @@
                     this.isSavingReturn = true;
                     this.returnError = '';
 
+                    const payload = {
+                        mail_ids: this.returnMailIds,
+                        action,
+                        recipients: this.returnRecipients.map(recipient => ({
+                            id: recipient.id,
+                            recipient_name: (recipient.recipient_name || '').trim(),
+                            signer_name: (recipient.signer_name || '').trim() || null,
+                            signature: recipient.signature,
+                            remove_signature: recipient.remove_signature,
+                        })),
+                    };
+
+                    // Kirim catatan disposisi hanya bila operator benar-benar mengisi atau
+                    // menyuntingnya. Tanpa kunci ini, catatan lama dibiarkan apa adanya,
+                    // sehingga penerimaan massal tidak menghapus catatan yang sudah ada.
+                    if (this.returnDispositionNoteTouched || this.returnDispositionNote.trim() !== '') {
+                        payload.disposition_note = this.returnDispositionNote.trim();
+                    }
+
                     try {
                         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
                         const response = await fetch(@js(route('outgoing-mails.return-workflow.store')), {
@@ -1060,17 +1102,7 @@
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
                             },
-                            body: JSON.stringify({
-                                mail_ids: this.returnMailIds,
-                                action,
-                                recipients: this.returnRecipients.map(recipient => ({
-                                    id: recipient.id,
-                                    recipient_name: (recipient.recipient_name || '').trim(),
-                                    signer_name: (recipient.signer_name || '').trim() || null,
-                                    signature: recipient.signature,
-                                    remove_signature: recipient.remove_signature,
-                                })),
-                            }),
+                            body: JSON.stringify(payload),
                         });
 
                         const result = await response.json();
@@ -1311,12 +1343,6 @@
                 requestStatusChange(mailIds, label, targetStatus, blockedCount = 0) {
                     const target = this.normalizeStatus(targetStatus);
                     const leavingRevisi = mailIds.some(id => this.normalizeStatus(this.statusById[id]) === 'REVISI');
-
-                    // Disposisi selalu wajib disertai catatan disposisi.
-                    if (target === 'DISPOSISI') {
-                        this.openDispositionModal({ mailIds, label, blockedCount });
-                        return;
-                    }
 
                     if (target === 'REVISI') {
                         this.openRevisionModal({ mailIds, label, targetStatus: target, isRequired: true });

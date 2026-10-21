@@ -63,8 +63,6 @@
                             App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300',
                             App\Support\IncomingMailStatus::RETURN => 'bg-white text-slate-800 border-slate-300',
                             App\Support\IncomingMailStatus::DRAFT => 'bg-indigo-50 text-indigo-800 border-indigo-300',
-                            App\Support\IncomingMailStatus::WAITING_DISPOSISI => 'bg-cyan-50 text-cyan-800 border-cyan-300',
-                            App\Support\IncomingMailStatus::DISPOSISI => 'bg-slate-200 text-slate-900 border-slate-400',
                             default => 'bg-slate-900 text-white border-slate-900',
                         };
                     @endphp
@@ -143,11 +141,15 @@
         @endif
 
         <!-- Section Disposisi & Penerima Berkas -->
-        @if ($incomingMail->disposition_note || $incomingMail->dispositionRecipients->isNotEmpty() || in_array($canonicalStatus, [App\Support\IncomingMailStatus::DISPOSISI, App\Support\IncomingMailStatus::WAITING_DISPOSISI]))
-            @php
-                $signedDispositionRecipients = $incomingMail->dispositionRecipients->filter(fn ($recipient) => $recipient->signed_at !== null)->count();
-                $totalDispositionRecipients = $incomingMail->dispositionRecipients->count();
-            @endphp
+        @php
+            // Penerima disposisi lama tetap ditampilkan; penerima baru dicatat lewat alur pengembalian.
+            $dispositionRecipients = $incomingMail->dispositionRecipients->isNotEmpty()
+                ? $incomingMail->dispositionRecipients
+                : $incomingMail->returnRecipients;
+            $signedDispositionRecipients = $dispositionRecipients->filter(fn ($recipient) => $recipient->signed_at !== null)->count();
+            $totalDispositionRecipients = $dispositionRecipients->count();
+        @endphp
+        @if ($incomingMail->disposition_note || $totalDispositionRecipients > 0 || in_array($canonicalStatus, [App\Support\IncomingMailStatus::RETURN, App\Support\IncomingMailStatus::WAITING_RETURN], true))
             <section class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-5" aria-labelledby="disposition-heading">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
                     <div>
@@ -178,7 +180,7 @@
                 </div>
 
                 <!-- Tabel / Daftar Penerima Disposisi -->
-                @if ($incomingMail->dispositionRecipients->isNotEmpty())
+                @if ($totalDispositionRecipients > 0)
                     <div class="space-y-3">
                         <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
                             Daftar Penerima & Bukti Tanda Tangan
@@ -197,7 +199,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-200 bg-white">
-                                    @foreach ($incomingMail->dispositionRecipients as $index => $dispositionRecipient)
+                                    @foreach ($dispositionRecipients as $index => $dispositionRecipient)
                                         <tr>
                                             <td class="px-4 py-3 font-semibold text-slate-500">{{ $index + 1 }}</td>
                                             <td class="px-4 py-3 font-semibold text-slate-900">{{ $dispositionRecipient->recipient_name }}</td>

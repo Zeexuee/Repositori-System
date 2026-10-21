@@ -10,12 +10,15 @@ use Illuminate\Support\Str;
  * Single source of truth for incoming mail statuses and their allowed transitions.
  *
  * Standard operating procedure:
- *   DRAFT           -> RECEIVE, REVISI, DISPOSISI
- *   RECEIVE         -> REVISI, RETURN, DISPOSISI
- *   REVISI          -> RECEIVE (revision must be resolved before disposition)
+ *   DRAFT           -> RECEIVE, REVISI, RETURN
+ *   RECEIVE         -> REVISI, RETURN
+ *   REVISI          -> RECEIVE (revision must be resolved before returning)
  *   WAITING_RETURN  -> RETURN (only by completing the signature workflow)
- *   RETURN          -> REVISI, DISPOSISI
- *   DISPOSISI       -> final state, no further transition
+ *   RETURN          -> REVISI
+ *
+ * The former DISPOSISI and WAITING_DISPOSISI statuses were merged into RETURN and
+ * WAITING_RETURN. The disposition note itself is retained as an optional field that
+ * the return workflow collects, so RETURN is the single terminal handover status.
  */
 final class IncomingMailStatus
 {
@@ -29,12 +32,10 @@ final class IncomingMailStatus
 
     public const RETURN = 'RETURN';
 
-    public const WAITING_DISPOSISI = 'WAITING_DISPOSISI';
-
-    public const DISPOSISI = 'DISPOSISI';
-
     /**
      * Legacy values that must be interpreted as a current status.
+     *
+     * The disposition family collapses into the return family.
      *
      * @var array<string, string>
      */
@@ -43,10 +44,14 @@ final class IncomingMailStatus
         'REGISTERED' => self::RECEIVE,
         'RETURNED' => self::RETURN,
         'WAITING RETURN' => self::WAITING_RETURN,
-        'WAITING DISPOSISI' => self::WAITING_DISPOSISI,
-        'WAITING_DISPOSITION' => self::WAITING_DISPOSISI,
-        'WAITING DISPOSITION' => self::WAITING_DISPOSISI,
-        'PENDING_DISPOSITION' => self::WAITING_DISPOSISI,
+        'DISPOSISI' => self::RETURN,
+        'DISPOSITION' => self::RETURN,
+        'DISPATCHED' => self::RETURN,
+        'WAITING_DISPOSISI' => self::WAITING_RETURN,
+        'WAITING DISPOSISI' => self::WAITING_RETURN,
+        'WAITING_DISPOSITION' => self::WAITING_RETURN,
+        'WAITING DISPOSITION' => self::WAITING_RETURN,
+        'PENDING_DISPOSITION' => self::WAITING_RETURN,
         'PROGRES' => self::DRAFT,
         'PROGRESS' => self::DRAFT,
         'IN_PROGRESS' => self::DRAFT,
@@ -59,13 +64,11 @@ final class IncomingMailStatus
      * @var array<string, array<int, string>>
      */
     private const TRANSITIONS = [
-        self::DRAFT => [self::RECEIVE, self::REVISI, self::DISPOSISI],
-        self::RECEIVE => [self::REVISI, self::RETURN, self::DISPOSISI],
+        self::DRAFT => [self::RECEIVE, self::REVISI, self::RETURN],
+        self::RECEIVE => [self::REVISI, self::RETURN],
         self::REVISI => [self::RECEIVE],
         self::WAITING_RETURN => [self::RETURN],
-        self::RETURN => [self::REVISI, self::DISPOSISI],
-        self::WAITING_DISPOSISI => [self::DISPOSISI],
-        self::DISPOSISI => [],
+        self::RETURN => [self::REVISI],
     ];
 
     /**
@@ -79,8 +82,6 @@ final class IncomingMailStatus
         self::REVISI => 'REVISI',
         self::WAITING_RETURN => 'WAITING RETURN',
         self::RETURN => 'RETURN',
-        self::WAITING_DISPOSISI => 'WAITING DISPOSISI',
-        self::DISPOSISI => 'DISPOSISI',
     ];
 
     /**
@@ -91,6 +92,19 @@ final class IncomingMailStatus
     public static function all(): array
     {
         return array_keys(self::TRANSITIONS);
+    }
+
+    /**
+     * Statuses an operator may set directly, without a signature workflow.
+     *
+     * @return array<int, string>
+     */
+    public static function manuallyAssignable(): array
+    {
+        return array_values(array_diff(
+            self::all(),
+            [self::WAITING_RETURN, self::RETURN]
+        ));
     }
 
     /**
@@ -130,22 +144,14 @@ final class IncomingMailStatus
 
     /**
      * Whether the return signature workflow may be started or continued.
+     *
+     * This also covers what used to be the disposition workflow.
      */
     public static function canProcessReturn(?string $from): bool
     {
         $canonical = self::canonical($from);
 
         return $canonical === self::WAITING_RETURN || self::canTransition($canonical, self::RETURN);
-    }
-
-    /**
-     * Whether the disposition workflow may be started or continued.
-     */
-    public static function canProcessDisposition(?string $from): bool
-    {
-        $canonical = self::canonical($from);
-
-        return $canonical === self::WAITING_DISPOSISI || self::canTransition($canonical, self::DISPOSISI);
     }
 
     public static function label(?string $status): string

@@ -117,7 +117,7 @@
                     <div class="p-6 overflow-y-auto space-y-2.5 text-xs text-slate-700 leading-normal">
                         <div class="p-3 border border-slate-200 rounded-xl">
                             <h3 class="font-bold text-slate-900">1. Alur Status Dokumen & SOP</h3>
-                            <p class="text-slate-600 mt-0.5">Penambahan status Revisi dan Disposisi dengan kewajiban input catatan.</p>
+                            <p class="text-slate-600 mt-0.5">Penambahan status Revisi, serta penggabungan Disposisi ke dalam alur Return dengan catatan disposisi opsional.</p>
                         </div>
 
                         <div class="p-3 border border-slate-200 rounded-xl">

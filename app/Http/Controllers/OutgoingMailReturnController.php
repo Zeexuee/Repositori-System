@@ -29,6 +29,7 @@ class OutgoingMailReturnController extends Controller
                 'id' => $outgoingMail->id,
                 'mail_number' => $outgoingMail->mail_number,
                 'status' => $outgoingMail->status,
+                'disposition_note' => $outgoingMail->disposition_note,
             ],
             'recipients' => $outgoingMail->returnRecipients->map(fn (OutgoingMailReturnRecipient $recipient) => [
                 'id' => $recipient->id,
@@ -50,6 +51,14 @@ class OutgoingMailReturnController extends Controller
         $action = $validated['action'];
         $recipientInputs = $validated['recipients'];
         $actorId = $request->user()?->id;
+
+        // Catatan disposisi opsional. Kunci yang dikirim dengan nilai kosong berarti
+        // operator sengaja mengosongkan catatan, sedangkan kunci yang tidak dikirim
+        // sama sekali membiarkan catatan lama apa adanya.
+        $hasDispositionNote = array_key_exists('disposition_note', $validated);
+        $dispositionNote = filled($validated['disposition_note'] ?? null)
+            ? trim((string) $validated['disposition_note'])
+            : null;
 
         $mails = OutgoingMail::whereIn('id', $mailIds)->get();
         if ($mails->count() !== count($mailIds)) {
@@ -85,6 +94,8 @@ class OutgoingMailReturnController extends Controller
                 $recipientInputs,
                 $action,
                 $actorId,
+                $hasDispositionNote,
+                $dispositionNote,
                 &$newSignaturePaths,
                 &$obsoleteSignaturePaths
             ): void {
@@ -157,11 +168,17 @@ class OutgoingMailReturnController extends Controller
 
                     $isFinalizing = in_array($action, ['complete', 'skip_remaining'], true);
 
-                    $mail->update([
+                    $attributes = [
                         'status' => $isFinalizing
                             ? OutgoingMailStatus::RECEIVE
                             : OutgoingMailStatus::WAITING_RECEIVE,
-                    ]);
+                    ];
+
+                    if ($hasDispositionNote) {
+                        $attributes['disposition_note'] = $dispositionNote;
+                    }
+
+                    $mail->update($attributes);
                 }
             });
         } catch (Throwable $exception) {

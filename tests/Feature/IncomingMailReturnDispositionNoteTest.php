@@ -14,7 +14,11 @@ use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class IncomingMailDispositionWorkflowTest extends TestCase
+/**
+ * The disposition workflow was merged into the return workflow. The return form
+ * now collects an optional disposition note alongside the recipient signatures.
+ */
+class IncomingMailReturnDispositionNoteTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -46,13 +50,13 @@ class IncomingMailDispositionWorkflowTest extends TestCase
         return 'data:image/png;base64,'.base64_encode((string) file_get_contents($image->getPathname()));
     }
 
-    public function test_user_can_save_disposition_progress_as_waiting_disposisi(): void
+    public function test_return_progress_stores_the_disposition_note_as_waiting_return(): void
     {
         Storage::fake('local');
         $user = $this->actor();
         $mail = $this->createMail('RECEIVE');
 
-        $response = $this->actingAs($user)->postJson(route('incoming-mails.disposition-workflow.store'), [
+        $response = $this->actingAs($user)->postJson(route('incoming-mails.return-workflow.store'), [
             'mail_ids' => [$mail->id],
             'disposition_note' => 'Mohon dipelajari dan disiapkan draft tanggapan.',
             'action' => 'save_later',
@@ -73,15 +77,15 @@ class IncomingMailDispositionWorkflowTest extends TestCase
         $response->assertStatus(200);
         $response->assertJson([
             'success' => true,
-            'status' => IncomingMailStatus::WAITING_DISPOSISI,
+            'status' => IncomingMailStatus::WAITING_RETURN,
         ]);
 
         $mail->refresh();
-        $this->assertSame(IncomingMailStatus::WAITING_DISPOSISI, $mail->status);
+        $this->assertSame(IncomingMailStatus::WAITING_RETURN, $mail->status);
         $this->assertSame('Mohon dipelajari dan disiapkan draft tanggapan.', $mail->disposition_note);
-        $this->assertCount(2, $mail->dispositionRecipients);
+        $this->assertCount(2, $mail->returnRecipients);
 
-        $first = $mail->dispositionRecipients->first();
+        $first = $mail->returnRecipients->first();
         $this->assertSame('Divisi Hukum', $first->recipient_name);
         $this->assertSame('Budi Santoso', $first->signer_name);
         $this->assertNotNull($first->signature_path);
@@ -89,13 +93,13 @@ class IncomingMailDispositionWorkflowTest extends TestCase
         Storage::disk('local')->assertExists($first->signature_path);
     }
 
-    public function test_user_can_complete_disposition_workflow(): void
+    public function test_completing_a_return_keeps_the_disposition_note(): void
     {
         Storage::fake('local');
         $user = $this->actor();
-        $mail = $this->createMail('WAITING_DISPOSISI');
+        $mail = $this->createMail('WAITING_RETURN');
 
-        $response = $this->actingAs($user)->postJson(route('incoming-mails.disposition-workflow.store'), [
+        $response = $this->actingAs($user)->postJson(route('incoming-mails.return-workflow.store'), [
             'mail_ids' => [$mail->id],
             'disposition_note' => 'Disposisi telah selesai diparaf seluruh unit.',
             'action' => 'complete',
@@ -111,28 +115,75 @@ class IncomingMailDispositionWorkflowTest extends TestCase
         $response->assertStatus(200);
         $response->assertJson([
             'success' => true,
-            'status' => IncomingMailStatus::DISPOSISI,
+            'status' => IncomingMailStatus::RETURN,
         ]);
 
         $mail->refresh();
-        $this->assertSame(IncomingMailStatus::DISPOSISI, $mail->status);
+        $this->assertSame(IncomingMailStatus::RETURN, $mail->status);
         $this->assertSame('Disposisi telah selesai diparaf seluruh unit.', $mail->disposition_note);
-        $this->assertCount(1, $mail->dispositionRecipients);
-        $this->assertNotNull($mail->dispositionRecipients->first()->signature_path);
+        $this->assertCount(1, $mail->returnRecipients);
+        $this->assertNotNull($mail->returnRecipients->first()->signature_path);
     }
 
-    public function test_disposition_recipients_can_be_retrieved_via_show(): void
+    public function test_disposition_note_is_optional_when_returning(): void
     {
         $user = $this->actor();
-        $mail = $this->createMail('DISPOSISI');
+        $mail = $this->createMail('RECEIVE');
+
+        $this->actingAs($user)->postJson(route('incoming-mails.return-workflow.store'), [
+            'mail_ids' => [$mail->id],
+            'action' => 'skip_remaining',
+            'recipients' => [['recipient_name' => 'Divisi Keuangan']],
+        ])->assertStatus(200);
+
+        $mail->refresh();
+        $this->assertSame(IncomingMailStatus::RETURN, $mail->status);
+        $this->assertNull($mail->disposition_note);
+    }
+
+    public function test_an_empty_submitted_note_clears_the_stored_note(): void
+    {
+        $user = $this->actor();
+        $mail = $this->createMail('RECEIVE');
+        $mail->update(['disposition_note' => 'Catatan lama']);
+
+        $this->actingAs($user)->postJson(route('incoming-mails.return-workflow.store'), [
+            'mail_ids' => [$mail->id],
+            'disposition_note' => '',
+            'action' => 'skip_remaining',
+            'recipients' => [['recipient_name' => 'Divisi Keuangan']],
+        ])->assertStatus(200);
+
+        $this->assertNull($mail->fresh()->disposition_note);
+    }
+
+    public function test_omitting_the_note_preserves_the_stored_note(): void
+    {
+        $user = $this->actor();
+        $mail = $this->createMail('RECEIVE');
+        $mail->update(['disposition_note' => 'Catatan lama yang harus bertahan']);
+
+        $this->actingAs($user)->postJson(route('incoming-mails.return-workflow.store'), [
+            'mail_ids' => [$mail->id],
+            'action' => 'skip_remaining',
+            'recipients' => [['recipient_name' => 'Divisi Keuangan']],
+        ])->assertStatus(200);
+
+        $this->assertSame('Catatan lama yang harus bertahan', $mail->fresh()->disposition_note);
+    }
+
+    public function test_return_recipients_endpoint_exposes_the_disposition_note(): void
+    {
+        $user = $this->actor();
+        $mail = $this->createMail('RETURN');
         $mail->update(['disposition_note' => 'Catatan penting disposisi']);
-        $mail->dispositionRecipients()->create([
+        $mail->returnRecipients()->create([
             'recipient_name' => 'Biro Keuangan',
             'signer_name' => 'Siti Rahma',
             'sort_order' => 0,
         ]);
 
-        $response = $this->actingAs($user)->getJson(route('incoming-mails.disposition-recipients.show', $mail));
+        $response = $this->actingAs($user)->getJson(route('incoming-mails.return-recipients.show', $mail));
 
         $response->assertStatus(200);
         $response->assertJsonPath('mail.mail_number', $mail->mail_number);
@@ -144,9 +195,9 @@ class IncomingMailDispositionWorkflowTest extends TestCase
     public function test_disposition_note_and_recipients_are_rendered_in_show_page(): void
     {
         $user = $this->actor();
-        $mail = $this->createMail('DISPOSISI');
+        $mail = $this->createMail('RETURN');
         $mail->update(['disposition_note' => 'Catatan Khusus Disposisi Direksi']);
-        $mail->dispositionRecipients()->create([
+        $mail->returnRecipients()->create([
             'recipient_name' => 'Biro Perencanaan',
             'signer_name' => 'Ir. Hendra',
             'sort_order' => 0,
@@ -161,16 +212,45 @@ class IncomingMailDispositionWorkflowTest extends TestCase
         $response->assertSee('Ir. Hendra');
     }
 
-    public function test_table_renders_intip_button_for_disposisi_status(): void
+    public function test_legacy_disposition_recipients_are_still_rendered_in_show_page(): void
     {
         $user = $this->actor();
-        $mail = $this->createMail('DISPOSISI');
+        $mail = $this->createMail('RETURN');
+        $mail->dispositionRecipients()->create([
+            'recipient_name' => 'Biro Warisan Lama',
+            'signer_name' => 'Pak Lurah',
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('incoming-mails.show', $mail));
+
+        $response->assertStatus(200);
+        $response->assertSee('Biro Warisan Lama');
+        $response->assertSee('Pak Lurah');
+    }
+
+    public function test_table_renders_the_peek_button_for_returned_documents(): void
+    {
+        $user = $this->actor();
+        $mail = $this->createMail('RETURN');
         $mail->update(['disposition_note' => 'Disposisi Terlaksana']);
 
         $response = $this->actingAs($user)->get(route('incoming-mails.index'));
 
         $response->assertStatus(200);
         $response->assertSee('openDispositionPreviewModal');
-        $response->assertSee('Klik untuk intip catatan status disposisi');
+        $response->assertSee('Intip catatan disposisi & penerima dokumen', false);
+    }
+
+    public function test_return_modal_exposes_the_optional_disposition_note_field(): void
+    {
+        $user = $this->actor();
+        $this->createMail('RECEIVE');
+
+        $response = $this->actingAs($user)->get(route('incoming-mails.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee('return-disposition-note');
+        $response->assertSee('returnDispositionNote');
     }
 }

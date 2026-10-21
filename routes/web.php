@@ -7,7 +7,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BroadcastEmailController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\IncomingMailController;
-use App\Http\Controllers\IncomingMailDispositionController;
 use App\Http\Controllers\IncomingMailReturnController;
 use App\Http\Controllers\MailDispositionController;
 use App\Http\Controllers\OutgoingMailController;
@@ -32,9 +31,8 @@ Route::middleware(['auth'])->group(function () {
     // Repositori Dokumen (Card Per Bulan)
     Route::get('/repository', [RepositoryController::class, 'index'])->name('repository.index');
 
-    // Disposisi Surat Masuk
-    Route::get('/incoming-mails/{incomingMail}/disposition-recipients', [IncomingMailDispositionController::class, 'show'])->name('incoming-mails.disposition-recipients.show');
-    Route::post('/incoming-mails/disposition-workflow', [IncomingMailDispositionController::class, 'store'])->name('incoming-mails.disposition-workflow.store');
+    // Alur Status & Pengembalian Surat Masuk.
+    // Catatan disposisi kini dikumpulkan di dalam alur pengembalian (return-workflow).
     Route::post('/incoming-mails/{incomingMail}/dispositions', [MailDispositionController::class, 'store'])->name('incoming-mails.dispositions.store');
     Route::post('/incoming-mails/bulk-update-status', [IncomingMailController::class, 'bulkUpdateStatus'])->name('incoming-mails.bulk-update-status');
     Route::get('/incoming-mails/{incomingMail}/return-recipients', [IncomingMailReturnController::class, 'show'])->name('incoming-mails.return-recipients.show');

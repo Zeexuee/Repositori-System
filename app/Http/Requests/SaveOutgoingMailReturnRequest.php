@@ -21,6 +21,8 @@ class SaveOutgoingMailReturnRequest extends FormRequest
         return [
             'mail_ids' => ['required', 'array', 'min:1', 'max:50'],
             'mail_ids.*' => ['required', 'uuid', 'distinct', 'exists:outgoing_mails,id'],
+            // Catatan disposisi ikut dikumpulkan di alur penerimaan dan bersifat opsional.
+            'disposition_note' => ['nullable', 'string', 'max:2000'],
             'action' => ['required', 'string', 'in:save_later,complete,skip_remaining'],
             'recipients' => ['required', 'array', 'min:1', 'max:20'],
             'recipients.*.id' => ['nullable', 'uuid', 'distinct'],
@@ -38,6 +40,7 @@ class SaveOutgoingMailReturnRequest extends FormRequest
     {
         return [
             'mail_ids.required' => 'Pilih minimal satu dokumen.',
+            'disposition_note.max' => 'Catatan disposisi maksimal 2000 karakter.',
             'recipients.required' => 'Tambahkan minimal satu penerima.',
             'recipients.*.recipient_name.required' => 'Nama penerima wajib diisi.',
             'recipients.*.signature.max' => 'Ukuran tanda tangan terlalu besar.',

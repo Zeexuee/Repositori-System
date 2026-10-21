@@ -72,7 +72,6 @@
                                                     App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300 font-bold',
                                                     App\Support\IncomingMailStatus::REVISI => 'bg-amber-50 text-amber-800 border-amber-300 font-bold',
                                                     App\Support\IncomingMailStatus::DRAFT => 'bg-indigo-50 text-indigo-800 border-indigo-300 font-bold',
-                                                    App\Support\IncomingMailStatus::DISPOSISI => 'bg-slate-200 text-slate-900 border-slate-400 font-bold',
                                                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                                                 };
                                                 $displayStatus = App\Support\IncomingMailStatus::label($mail->status);

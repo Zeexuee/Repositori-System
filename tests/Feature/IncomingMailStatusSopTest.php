@@ -49,11 +49,11 @@ class IncomingMailStatusSopTest extends TestCase
     public function test_transition_matrix_matches_the_standard_operating_procedure(): void
     {
         $this->assertSame(
-            ['RECEIVE', 'REVISI', 'DISPOSISI'],
+            ['RECEIVE', 'REVISI', 'RETURN'],
             IncomingMailStatus::allowedTransitions('DRAFT')
         );
         $this->assertSame(
-            ['REVISI', 'RETURN', 'DISPOSISI'],
+            ['REVISI', 'RETURN'],
             IncomingMailStatus::allowedTransitions('RECEIVE')
         );
         $this->assertSame(
@@ -65,10 +65,39 @@ class IncomingMailStatusSopTest extends TestCase
             IncomingMailStatus::allowedTransitions('WAITING_RETURN')
         );
         $this->assertSame(
-            ['REVISI', 'DISPOSISI'],
+            ['REVISI'],
             IncomingMailStatus::allowedTransitions('RETURN')
         );
-        $this->assertSame([], IncomingMailStatus::allowedTransitions('DISPOSISI'));
+    }
+
+    public function test_retired_disposition_statuses_are_merged_into_the_return_family(): void
+    {
+        foreach (['DISPOSISI', 'DISPOSITION', 'DISPATCHED'] as $legacy) {
+            $this->assertSame('RETURN', IncomingMailStatus::canonical($legacy));
+        }
+
+        foreach ([
+            'WAITING_DISPOSISI',
+            'WAITING DISPOSISI',
+            'WAITING_DISPOSITION',
+            'WAITING DISPOSITION',
+            'PENDING_DISPOSITION',
+        ] as $legacy) {
+            $this->assertSame('WAITING_RETURN', IncomingMailStatus::canonical($legacy));
+        }
+
+        $this->assertSame(
+            ['DRAFT', 'RECEIVE', 'REVISI', 'WAITING_RETURN', 'RETURN'],
+            IncomingMailStatus::all()
+        );
+    }
+
+    public function test_return_and_waiting_return_are_not_manually_assignable(): void
+    {
+        $this->assertSame(
+            ['DRAFT', 'RECEIVE', 'REVISI'],
+            IncomingMailStatus::manuallyAssignable()
+        );
     }
 
     public function test_retired_progres_status_is_interpreted_as_draft(): void
@@ -92,41 +121,39 @@ class IncomingMailStatusSopTest extends TestCase
         $this->assertSame('RETURN', $mail->fresh()->status);
     }
 
-    public function test_disposisi_is_a_final_status(): void
+    public function test_a_returned_document_can_still_be_sent_back_for_revision(): void
+    {
+        $user = $this->actor();
+        $mail = $this->mailWithStatus('RETURN');
+
+        $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'REVISI',
+            'revision_note' => 'Berkas yang dikembalikan kurang satu lampiran.',
+        ])->assertStatus(200);
+
+        $this->assertSame('REVISI', $mail->fresh()->status);
+    }
+
+    public function test_legacy_disposition_status_is_treated_as_return(): void
     {
         $user = $this->actor();
         $mail = $this->mailWithStatus('DISPOSISI');
 
-        $response = $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
+        // A stored legacy value normalizes to RETURN, so only RETURN's
+        // transitions are available.
+        $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
             'status' => 'RECEIVE',
-        ]);
-
-        $response->assertStatus(422);
-        $this->assertSame('DISPOSISI', $mail->fresh()->status);
-    }
-
-    public function test_entering_disposisi_requires_a_disposition_note_and_stores_it(): void
-    {
-        $user = $this->master();
-        $mail = $this->mailWithStatus('RECEIVE');
+        ])->assertStatus(422);
 
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'DISPOSISI',
-        ])->assertStatus(422)->assertJsonValidationErrors('disposition_note');
-
-        $this->assertSame('RECEIVE', $mail->fresh()->status);
-
-        $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
-            'ids' => [$mail->id],
-            'status' => 'DISPOSISI',
-            'disposition_note' => 'Mohon ditindaklanjuti Divisi Keuangan.',
+            'status' => 'REVISI',
+            'revision_note' => 'Dokumen lama perlu diperbaiki.',
         ])->assertStatus(200);
 
-        $mail->refresh();
-        $this->assertSame('DISPOSISI', $mail->status);
-        $this->assertSame('Mohon ditindaklanjuti Divisi Keuangan.', $mail->disposition_note);
+        $this->assertSame('REVISI', $mail->fresh()->status);
     }
 
     public function test_entering_revisi_requires_a_note_and_records_it(): void
@@ -189,20 +216,18 @@ class IncomingMailStatusSopTest extends TestCase
         $this->assertSame(0, $mail->revisionNotes()->count());
     }
 
-    public function test_revisi_cannot_transition_directly_to_disposisi(): void
+    public function test_revisi_cannot_be_returned_before_the_revision_is_resolved(): void
     {
         $user = $this->master();
         $mail = $this->mailWithStatus('REVISI');
 
-        $this->assertFalse(IncomingMailStatus::canProcessDisposition('REVISI'));
+        $this->assertFalse(IncomingMailStatus::canProcessReturn('REVISI'));
 
-        $response = $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
-            'ids' => [$mail->id],
-            'status' => 'DISPOSISI',
-            'disposition_note' => 'Mohon ditindaklanjuti Divisi Keuangan.',
-        ]);
-
-        $response->assertStatus(422);
+        $this->actingAs($user)->postJson(route('incoming-mails.return-workflow.store'), [
+            'mail_ids' => [$mail->id],
+            'action' => 'skip_remaining',
+            'recipients' => [['recipient_name' => 'Divisi Keuangan']],
+        ])->assertStatus(422);
 
         $mail->refresh();
         $this->assertSame('REVISI', $mail->status);
