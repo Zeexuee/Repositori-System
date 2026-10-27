@@ -27,19 +27,21 @@
             @php
                 $canonicalStatus = App\Support\OutgoingMailStatus::canonical($mail->status) ?? $mail->status;
                 $hasReturnProgress = $mail->returnRecipients && $mail->returnRecipients->isNotEmpty();
+                if ($canonicalStatus === App\Support\OutgoingMailStatus::WAITING_RECEIVE && ! $hasReturnProgress) {
+                    $canonicalStatus = App\Support\OutgoingMailStatus::READY_TO_DELIVERY;
+                }
                 $badgeClasses = match ($canonicalStatus) {
                     'RECEIVE' => 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800',
                     'REVISI' => 'bg-slate-100 text-slate-800 border-slate-400 hover:bg-slate-200 font-bold',
-                    'WAITING_RECEIVE' => $hasReturnProgress
-                        ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100 font-bold'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 font-bold',
+                    'READY_TO_DELIVERY' => 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 font-bold',
+                    'WAITING_RECEIVE' => 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100 font-bold',
                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                 };
                 $displayStatus = App\Support\OutgoingMailStatus::label($canonicalStatus);
             @endphp
 
             @if (auth()->user()?->can('update', $mail))
-                @if ($canonicalStatus === 'WAITING_RECEIVE' && $hasReturnProgress)
+                @if ($canonicalStatus === App\Support\OutgoingMailStatus::WAITING_RECEIVE || ($canonicalStatus !== App\Support\OutgoingMailStatus::RECEIVE && $hasReturnProgress))
                     <button type="button"
                         onclick="window.resumeReturnWorkflow('{{ $mail->id }}', '{{ addslashes($mail->mail_number ?? '-') }}')"
                         title="Lanjutkan pengisian tanda tangan penerimaan"

@@ -163,5 +163,76 @@ class OutgoingMailTest extends TestCase
         $delResponse->assertOk();
         $this->assertCount(1, $mail->fresh()->attachments);
     }
-}
 
+    public function test_storing_outgoing_mail_sets_status_to_ready_to_delivery(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $response = $this->actingAs($user)->post(route('outgoing-mails.store'), [
+            'documents' => [
+                [
+                    'subject' => 'Surat Pengantar Kerjasama Baru',
+                    'recipient' => 'PT Mitra Baru',
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('outgoing-mails.index'));
+        $response->assertSessionHas('success', '1 Surat Keluar berhasil dicatat (Status: READY TO DELIVERY).');
+
+        $mail = OutgoingMail::where('subject', 'Surat Pengantar Kerjasama Baru')->first();
+        $this->assertNotNull($mail);
+        $this->assertSame('READY_TO_DELIVERY', $mail->status);
+    }
+
+    public function test_outgoing_mail_index_displays_ready_to_delivery(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = OutgoingMail::create([
+            'mail_number' => 'SK-20261027-0099',
+            'subject' => 'Surat Siap Dikirim',
+            'recipient' => 'Dinas Perhubungan',
+            'created_by' => $user->id,
+            'status' => 'READY_TO_DELIVERY',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('outgoing-mails.index'));
+
+        $response->assertOk();
+        $response->assertSee('READY TO DELIVERY');
+    }
+
+    public function test_outgoing_mail_can_transition_from_revisi_back_to_ready_to_delivery(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = OutgoingMail::create([
+            'mail_number' => 'SK-20261027-0100',
+            'subject' => 'Surat Perbaikan',
+            'recipient' => 'Dinas Lingkungan',
+            'created_by' => $user->id,
+            'status' => 'REVISI',
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'READY_TO_DELIVERY',
+            'revision_note' => 'Revisi telah diperbaiki dan siap dikirim ulang',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'updated_count' => 1,
+        ]);
+
+        $this->assertSame('READY_TO_DELIVERY', $mail->fresh()->status);
+    }
+}

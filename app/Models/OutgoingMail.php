@@ -46,8 +46,8 @@ class OutgoingMail extends Model
         static::saving(function (OutgoingMail $mail) {
             if (! empty($mail->status) && ! empty($mail->subject)) {
                 $statusTag = '['.Str::upper($mail->status).']';
-                if (preg_match('/^\[(WAITING_RECEIVE|RECEIVE|RECEIVED|REVISI|WAITING_RETURN|RETURN|RETURNED|PROGRES|PROGRESS|IN_PROGRESS|APPROVED|PENDING|SIGNED)\]\s*/i', $mail->subject)) {
-                    $mail->subject = (string) preg_replace('/^\[(WAITING_RECEIVE|RECEIVE|RECEIVED|REVISI|WAITING_RETURN|RETURN|RETURNED|PROGRES|PROGRESS|IN_PROGRESS|APPROVED|PENDING|SIGNED)\]\s*/i', $statusTag.' ', $mail->subject);
+                if (preg_match('/^\[(READY_TO_DELIVERY|READY TO DELIVERY|WAITING_RECEIVE|RECEIVE|RECEIVED|REVISI|WAITING_RETURN|RETURN|RETURNED|PROGRES|PROGRESS|IN_PROGRESS|APPROVED|PENDING|SIGNED)\]\s*/i', $mail->subject)) {
+                    $mail->subject = (string) preg_replace('/^\[(READY_TO_DELIVERY|READY TO DELIVERY|WAITING_RECEIVE|RECEIVE|RECEIVED|REVISI|WAITING_RETURN|RETURN|RETURNED|PROGRES|PROGRESS|IN_PROGRESS|APPROVED|PENDING|SIGNED)\]\s*/i', $statusTag.' ', $mail->subject);
                 }
             }
         });

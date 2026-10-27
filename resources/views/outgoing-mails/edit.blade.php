@@ -9,7 +9,7 @@
             <p class="text-xs text-slate-500 mt-1">Perbarui rincian, berkas lampiran, atau status surat keluar.</p>
         </div>
         <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
-            <span>Status: <strong class="text-slate-900 font-mono">{{ $outgoingMail->status }}</strong></span>
+            <span>Status: <strong class="text-slate-900 font-mono">{{ App\Support\OutgoingMailStatus::label($outgoingMail->status) }}</strong></span>
         </div>
     </div>
 

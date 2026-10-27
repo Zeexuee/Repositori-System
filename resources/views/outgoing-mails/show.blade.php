@@ -46,15 +46,20 @@
                 <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status Dokumen</span>
                 @php
                     $canonicalStatus = App\Support\OutgoingMailStatus::canonical($outgoingMail->status);
+                    $hasReturnProgress = $outgoingMail->returnRecipients && $outgoingMail->returnRecipients->isNotEmpty();
+                    if ($canonicalStatus === App\Support\OutgoingMailStatus::WAITING_RECEIVE && ! $hasReturnProgress) {
+                        $canonicalStatus = App\Support\OutgoingMailStatus::READY_TO_DELIVERY;
+                    }
                     $statusBadge = match ($canonicalStatus) {
                         App\Support\OutgoingMailStatus::REVISI => 'bg-amber-50 text-amber-800 border-amber-300',
+                        App\Support\OutgoingMailStatus::READY_TO_DELIVERY => 'bg-white text-slate-700 border-slate-300',
                         App\Support\OutgoingMailStatus::WAITING_RECEIVE => 'bg-blue-50 text-blue-800 border-blue-300',
                         App\Support\OutgoingMailStatus::RECEIVE => 'bg-slate-900 text-white border-slate-900',
                         default => 'bg-slate-100 text-slate-800 border-slate-300',
                     };
                 @endphp
                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
-                    {{ App\Support\OutgoingMailStatus::label($outgoingMail->status) }}
+                    {{ App\Support\OutgoingMailStatus::label($canonicalStatus) }}
                 </span>
             </div>
         </div>

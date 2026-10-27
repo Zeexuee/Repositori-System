@@ -818,7 +818,8 @@
                 statusDotClass(status) {
                     return {
                         RECEIVE: 'bg-slate-900',
-                        WAITING_RECEIVE: 'bg-white border border-slate-400',
+                        WAITING_RECEIVE: 'bg-blue-600',
+                        READY_TO_DELIVERY: 'bg-white border border-slate-400',
                         DRAFT: 'bg-slate-500',
                         REVISI: 'bg-slate-300',
                     }[this.normalizeStatus(status)] ?? 'bg-slate-400';

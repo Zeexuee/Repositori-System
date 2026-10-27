@@ -70,7 +70,7 @@ class OutgoingMailController extends Controller
         $validated = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['required', 'string', 'exists:outgoing_mails,id'],
-            'status' => ['required', 'string', 'in:REVISI,WAITING_RECEIVE'],
+            'status' => ['required', 'string', 'in:REVISI,WAITING_RECEIVE,READY_TO_DELIVERY'],
             'revision_note' => ['nullable', 'string', 'max:2000'],
         ], [
             'ids.required' => 'Pilih minimal satu dokumen.',
@@ -163,7 +163,7 @@ class OutgoingMailController extends Controller
         $createdCount = 0;
 
         foreach ($documents as $index => $doc) {
-            $status = 'WAITING_RECEIVE';
+            $status = OutgoingMailStatus::READY_TO_DELIVERY;
 
             $mailNumber = ! empty($doc['mail_number'])
                 ? $doc['mail_number']
@@ -187,7 +187,7 @@ class OutgoingMailController extends Controller
 
         return redirect()
             ->route('outgoing-mails.index')
-            ->with('success', "{$createdCount} Surat Keluar berhasil dicatat (Status: WAITING RECEIVE).");
+            ->with('success', "{$createdCount} Surat Keluar berhasil dicatat (Status: READY TO DELIVERY).");
     }
 
     /**

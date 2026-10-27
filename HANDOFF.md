@@ -25,7 +25,7 @@ Entitas utama:
 
 State machine:
 - `app/Support/IncomingMailStatus.php` — `DRAFT → RECEIVE/REVISI/RETURN`, `RECEIVE → REVISI/RETURN`, `REVISI → RECEIVE`, `WAITING_RETURN → RETURN`, `RETURN → REVISI`.
-- `app/Support/OutgoingMailStatus.php` — `WAITING_RECEIVE → RECEIVE/REVISI`, `REVISI → WAITING_RECEIVE`, `RECEIVE` final.
+- `app/Support/OutgoingMailStatus.php` — `READY_TO_DELIVERY → RECEIVE/WAITING_RECEIVE/REVISI`, `WAITING_RECEIVE → RECEIVE/REVISI`, `REVISI → READY_TO_DELIVERY`, `RECEIVE` final. Status awal surat keluar adalah `READY_TO_DELIVERY`, dan berubah menjadi `WAITING_RECEIVE` saat progres alur penerimaan/tanda tangan mulai disimpan.
 - Transisi lewat `IncomingMailStatusTransitionService` / `OutgoingMailStatusTransitionService` (transaction + lockForUpdate).
 - **Status disposisi sudah digabung ke status return.** `DISPOSISI`/`DISPATCHED` dialias ke `RETURN`, dan `WAITING_DISPOSISI`/`PENDING_DISPOSITION` ke `WAITING_RETURN`. Kolom `disposition_note` tetap ada di kedua tabel surat dan kini dikumpulkan sebagai field **opsional** di dalam alur pengembalian/penerimaan.
 - `RETURN` **bukan** status akhir: dokumen yang sudah dikembalikan masih bisa dikirim ke `REVISI`. Hanya nilai legacy `COMPLETED` yang terkunci.
