@@ -115,6 +115,116 @@
 
 
 
+        <!-- Fitur Intip Catatan Status Disposisi / Penerimaan Modal -->
+        <template x-teleport="body">
+            <div x-show="showReceiptPreviewModal" x-cloak
+                class="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6"
+                role="dialog" aria-modal="true" aria-labelledby="receipt-preview-title"
+                @keydown.escape.window="showReceiptPreviewModal = false">
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" @click="showReceiptPreviewModal = false"></div>
+
+                <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100">
+                    
+                    <div class="px-6 py-5 border-b border-slate-200 flex items-start justify-between gap-4 bg-white">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white uppercase tracking-wider">
+                                    Penerimaan
+                                </span>
+                                <h2 id="receipt-preview-title" class="text-base font-bold text-slate-900">
+                                    Catatan Disposisi & Penerima Dokumen
+                                </h2>
+                            </div>
+                            <p class="text-xs text-slate-500 font-mono mt-1" x-text="receiptPreviewMail ? 'No: ' + receiptPreviewMail.mail_number : ''"></p>
+                        </div>
+                        <button type="button" @click="showReceiptPreviewModal = false"
+                            class="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="p-6 overflow-y-auto space-y-5 bg-slate-50/60">
+                        <div x-show="isLoadingReceiptPreview" class="py-12 flex items-center justify-center gap-3 text-sm font-semibold text-slate-600">
+                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Memuat data penerimaan...
+                        </div>
+
+                        <div x-show="!isLoadingReceiptPreview" class="space-y-5">
+                            <!-- Catatan Disposisi Card -->
+                            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-2">
+                                <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    Isi Catatan Disposisi
+                                </span>
+                                <p class="text-sm text-slate-800 whitespace-pre-line leading-relaxed font-medium"
+                                    x-text="receiptPreviewMail?.disposition_note || 'Tidak ada catatan khusus.'"></p>
+                            </div>
+
+                            <!-- Daftar Penerima Disposisi -->
+                            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-3">
+                                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                        Penerima & Tanda Tangan (<span x-text="receiptPreviewRecipients.length"></span>)
+                                    </h3>
+                                </div>
+
+                                <template x-if="receiptPreviewRecipients.length === 0">
+                                    <p class="text-xs text-slate-400 italic py-2">
+                                        Belum ada daftar tanda tangan penerima tercatat untuk dokumen ini.
+                                    </p>
+                                </template>
+
+                                <div class="space-y-3" x-show="receiptPreviewRecipients.length > 0">
+                                    <template x-for="(recipient, index) in receiptPreviewRecipients" :key="recipient.id || index">
+                                        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                            <div class="space-y-1">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs font-bold text-slate-900" x-text="recipient.recipient_name"></span>
+                                                    <span x-show="recipient.has_signature" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                                                        Sudah Ditandatangani
+                                                    </span>
+                                                    <span x-show="!recipient.has_signature" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-200 text-slate-700">
+                                                        Belum Ditandatangani
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-slate-600" x-text="'Penandatangan: ' + (recipient.signer_name || '-')"></p>
+                                                <p class="text-[11px] text-slate-400 font-mono" x-show="recipient.signed_at"
+                                                    x-text="'Waktu: ' + (recipient.signed_at ? new Date(recipient.signed_at).toLocaleString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit'}) : '')"></p>
+                                            </div>
+
+                                            <div x-show="recipient.signature_url" class="shrink-0">
+                                                <a :href="recipient.signature_url" target="_blank"
+                                                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-800 transition-colors">
+                                                    <span>Lihat Tanda Tangan</span>
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-white border-t border-slate-200 flex items-center justify-between">
+                        <template x-if="receiptPreviewMail">
+                            <a :href="`{{ url('/outgoing-mails') }}/${receiptPreviewMail.id}`"
+                                class="text-xs font-bold text-slate-700 hover:text-slate-900 hover:underline">
+                                Lihat Halaman Detail Surat →
+                            </a>
+                        </template>
+                        <button type="button" @click="showReceiptPreviewModal = false"
+                            class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
         <!-- Return Signature Workflow Modal -->
         <template x-teleport="body">
             <div x-show="showReturnModal" x-cloak
@@ -664,7 +774,11 @@
                 revisionMailIds: [],
                 revisionMailLabel: '',
 
-
+                // Receipt preview state (Fitur Intip Catatan Status Penerimaan & Disposisi)
+                showReceiptPreviewModal: false,
+                isLoadingReceiptPreview: false,
+                receiptPreviewMail: null,
+                receiptPreviewRecipients: [],
 
                 // Return signature workflow state
                 showReturnModal: false,
@@ -727,6 +841,10 @@
                         this.openReturnWorkflow([id], mailNumber, true);
                     };
 
+                    window.openReceiptPreviewModal = (id, mailNumber) => {
+                        this.openReceiptPreview(id, mailNumber);
+                    };
+
                     window.openUploadAttachmentModal = (id, mailNumber, subject) => {
                         this.openUploadAttachmentModal(id, mailNumber, subject);
                     };
@@ -745,27 +863,18 @@
                     });
                     
                     // Watch modal state untuk prevent body scroll
-                    this.$watch('showConfirmModal', (value) => {
-                        if (value || this.showReturnModal || this.showUploadAttachmentModal) {
+                    const checkOverflow = () => {
+                        if (this.showConfirmModal || this.showReturnModal || this.showReceiptPreviewModal || this.showUploadAttachmentModal) {
                             document.body.style.overflow = 'hidden';
                         } else {
                             document.body.style.overflow = '';
                         }
-                    });
-                    this.$watch('showReturnModal', (value) => {
-                        if (value || this.showConfirmModal || this.showUploadAttachmentModal) {
-                            document.body.style.overflow = 'hidden';
-                        } else {
-                            document.body.style.overflow = '';
-                        }
-                    });
-                    this.$watch('showUploadAttachmentModal', (value) => {
-                        if (value || this.showConfirmModal || this.showReturnModal) {
-                            document.body.style.overflow = 'hidden';
-                        } else {
-                            document.body.style.overflow = '';
-                        }
-                    });
+                    };
+
+                    this.$watch('showConfirmModal', checkOverflow);
+                    this.$watch('showReturnModal', checkOverflow);
+                    this.$watch('showReceiptPreviewModal', checkOverflow);
+                    this.$watch('showUploadAttachmentModal', checkOverflow);
                 },
 
                 get availableStatusOptions() {
@@ -1501,6 +1610,38 @@
                     }
 
                     this.requestStatusChange([detail.id], `dokumen ${detail.mailNumber}`, targetStatus);
+                },
+
+                async openReceiptPreview(mailId, mailNumber) {
+                    this.showReceiptPreviewModal = true;
+                    this.isLoadingReceiptPreview = true;
+                    this.receiptPreviewMail = {
+                        id: mailId,
+                        mail_number: mailNumber,
+                        disposition_note: '',
+                    };
+                    this.receiptPreviewRecipients = [];
+
+                    try {
+                        const baseUrl = @js(url('/outgoing-mails'));
+                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailId)}/return-recipients`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Catatan penerimaan gagal dimuat.');
+                        }
+
+                        this.receiptPreviewMail = data.mail;
+                        this.receiptPreviewRecipients = data.recipients || [];
+                    } catch (error) {
+                        console.error('Receipt preview load error:', error);
+                    } finally {
+                        this.isLoadingReceiptPreview = false;
+                    }
                 },
 
                 openUploadAttachmentModal(mailId, mailNumber, subject) {

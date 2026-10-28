@@ -6,7 +6,6 @@ namespace App\Policies;
 
 use App\Models\OutgoingMail;
 use App\Models\User;
-use App\Support\OutgoingMailStatus;
 use App\Support\Roles;
 
 class OutgoingMailPolicy
@@ -60,7 +59,9 @@ class OutgoingMailPolicy
 
     private function isFinal(OutgoingMail $outgoingMail): bool
     {
-        // APPROVED and SIGNED are legacy aliases that resolve to RECEIVE.
-        return OutgoingMailStatus::canonical($outgoingMail->status) === OutgoingMailStatus::RECEIVE;
+        // COMPLETED is a retired value that must stay locked for old records.
+        // RECEIVE is intentionally not final: a received document may still be
+        // sent back for revision (RECEIVE -> REVISI).
+        return strtoupper(trim((string) $outgoingMail->status)) === 'COMPLETED';
     }
 }

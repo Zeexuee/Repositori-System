@@ -70,6 +70,10 @@ class OutgoingMailReturnController extends Controller
         foreach ($mails as $mail) {
             Gate::authorize('update', $mail);
 
+            if (OutgoingMailStatus::canonical($mail->status) === OutgoingMailStatus::RECEIVE) {
+                abort(403, 'Dokumen sudah berstatus RECEIVE dan tidak dapat diproses penerimaan ulang.');
+            }
+
             if (! OutgoingMailStatus::canProcessReceive($mail->status)) {
                 $label = OutgoingMailStatus::label($mail->status);
 

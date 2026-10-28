@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  *   READY_TO_DELIVERY -> RECEIVE (completing signature workflow), WAITING_RECEIVE (saving progress), REVISI
  *   WAITING_RECEIVE   -> RECEIVE (only by completing the signature workflow), REVISI
  *   REVISI            -> READY_TO_DELIVERY, WAITING_RECEIVE
- *   RECEIVE           -> final state, no further transition
+ *   RECEIVE           -> REVISI
  */
 final class OutgoingMailStatus
 {
@@ -59,7 +59,7 @@ final class OutgoingMailStatus
         self::READY_TO_DELIVERY => [self::RECEIVE, self::WAITING_RECEIVE, self::REVISI],
         self::WAITING_RECEIVE => [self::RECEIVE, self::READY_TO_DELIVERY, self::REVISI],
         self::REVISI => [self::READY_TO_DELIVERY, self::WAITING_RECEIVE],
-        self::RECEIVE => [],
+        self::RECEIVE => [self::REVISI],
     ];
 
     /**
@@ -159,7 +159,9 @@ final class OutgoingMailStatus
             self::REVISI => [
                 ['value' => self::READY_TO_DELIVERY, 'label' => self::LABELS[self::READY_TO_DELIVERY]],
             ],
-            self::RECEIVE => [],
+            self::RECEIVE => [
+                ['value' => self::REVISI, 'label' => self::LABELS[self::REVISI]],
+            ],
         ];
     }
 }

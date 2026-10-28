@@ -235,4 +235,62 @@ class OutgoingMailTest extends TestCase
 
         $this->assertSame('READY_TO_DELIVERY', $mail->fresh()->status);
     }
+
+    public function test_outgoing_mail_with_receive_status_can_transition_to_revisi(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = OutgoingMail::create([
+            'mail_number' => 'SK-20261027-0101',
+            'subject' => 'Surat Selesai Terima',
+            'recipient' => 'PT Sumber Makmur',
+            'created_by' => $user->id,
+            'status' => 'RECEIVE',
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'REVISI',
+            'revision_note' => 'Ada lampiran yang perlu diperbaiki ulang',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'updated_count' => 1,
+        ]);
+
+        $this->assertSame('REVISI', $mail->fresh()->status);
+        $this->assertDatabaseHas('outgoing_mail_revision_notes', [
+            'outgoing_mail_id' => $mail->id,
+            'note' => 'Ada lampiran yang perlu diperbaiki ulang',
+        ]);
+    }
+
+    public function test_outgoing_mail_index_displays_unlocked_receive_status_and_eye_preview_icon(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = OutgoingMail::create([
+            'mail_number' => 'SK-20261027-0102',
+            'subject' => 'Surat Sudah Diterima',
+            'recipient' => 'Dinas Pendidikan',
+            'created_by' => $user->id,
+            'status' => 'RECEIVE',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('outgoing-mails.index'));
+
+        $response->assertOk();
+        // Should have status dropdown button for RECEIVE (not locked span)
+        $response->assertSee('window.openStatusDropdown(event, \''.$mail->id.'\'', false);
+        // Should have eye icon button calling openReceiptPreviewModal
+        $response->assertSee('window.openReceiptPreviewModal(\''.$mail->id.'\'', false);
+        // Modal for receipt preview should be present
+        $response->assertSee('showReceiptPreviewModal');
+    }
 }
