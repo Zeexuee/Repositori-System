@@ -57,7 +57,7 @@ class IncomingMailStatusSopTest extends TestCase
             IncomingMailStatus::allowedTransitions('RECEIVE')
         );
         $this->assertSame(
-            ['RECEIVE'],
+            ['RECEIVE', 'REVISI'],
             IncomingMailStatus::allowedTransitions('REVISI')
         );
         $this->assertSame(
@@ -298,5 +298,51 @@ class IncomingMailStatusSopTest extends TestCase
         ])->assertStatus(422);
 
         $this->assertSame('RECEIVE', $mail->fresh()->status);
+    }
+
+    public function test_revisi_can_transition_directly_to_revisi_again_with_new_note(): void
+    {
+        $user = $this->actor();
+        $mail = $this->mailWithStatus('REVISI');
+
+        $mail->revisionNotes()->create([
+            'type' => IncomingMailRevisionNote::TYPE_REQUESTED,
+            'note' => 'Perbaiki lampiran pertama.',
+            'created_by' => $user->id,
+        ]);
+
+        $this->assertTrue(IncomingMailStatus::canTransition('REVISI', 'REVISI'));
+
+        // Transition without revision_note fails
+        $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'REVISI',
+        ])->assertStatus(422);
+
+        // Transition with new revision note succeeds
+        $response = $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'REVISI',
+            'revision_note' => 'Perbaiki juga tanda tangan pada halaman 2.',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('REVISI', $mail->fresh()->status);
+        $this->assertSame(2, $mail->fresh()->revisionNotes()->count());
+
+        $latestNote = $mail->fresh()->revisionNotes()->latest('id')->first();
+        $this->assertSame(IncomingMailRevisionNote::TYPE_REQUESTED, $latestNote->type);
+        $this->assertSame('Perbaiki juga tanda tangan pada halaman 2.', $latestNote->note);
+    }
+
+    public function test_incoming_mail_index_displays_revisi_dropdown_option_for_revisi_status(): void
+    {
+        $user = $this->actor();
+        $mail = $this->mailWithStatus('REVISI');
+
+        $response = $this->actingAs($user)->get(route('incoming-mails.index'));
+
+        $response->assertOk();
+        $response->assertSee('window.openStatusDropdown($event, \''.$mail->id.'\'', false);
     }
 }

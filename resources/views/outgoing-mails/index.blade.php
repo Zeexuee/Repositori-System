@@ -314,7 +314,7 @@
                                             @pointerup.prevent="finishReturnSignature($event, recipient)"
                                             @pointercancel.prevent="finishReturnSignature($event, recipient)"
                                             aria-label="Area tanda tangan penerima"
-                                            class="w-full h-40 bg-white border border-slate-300 rounded-xl touch-none cursor-crosshair"></canvas>
+                                            class="block w-full h-auto bg-white border border-slate-300 rounded-xl touch-none cursor-crosshair"></canvas>
                                         <div class="mt-2 flex items-center justify-between gap-3">
                                             <p class="text-[11px] text-slate-500">Gunakan mouse, pena digital, atau sentuhan.</p>
                                             <button type="button" @click="clearReturnSignature(recipient)"
@@ -907,11 +907,22 @@
                 },
 
                 get revisionModalTitle() {
+                    const isContinuingRevisi = this.revisionTargetStatus === 'REVISI' && this.revisionMailIds.some(id => this.normalizeStatus(this.statusById[id]) === 'REVISI');
+
+                    if (isContinuingRevisi) {
+                        return 'Tambah Catatan Revisi Baru';
+                    }
+
                     return this.revisionIsRequired ? 'Ajukan Revisi Dokumen' : 'Selesaikan Revisi Dokumen';
                 },
 
                 get revisionModalSubtitle() {
                     const target = this.statusLabel(this.revisionTargetStatus);
+                    const isContinuingRevisi = this.revisionTargetStatus === 'REVISI' && this.revisionMailIds.some(id => this.normalizeStatus(this.statusById[id]) === 'REVISI');
+
+                    if (isContinuingRevisi) {
+                        return `${this.revisionMailLabel} · menambahkan catatan revisi baru (status tetap REVISI)`;
+                    }
 
                     return `${this.revisionMailLabel} · status akan menjadi ${target}`;
                 },
@@ -1073,17 +1084,15 @@
                 },
 
                 returnCanvasPosition(event, canvas) {
-                    const rect = canvas.getBoundingClientRect();
-                    return {
-                        x: (event.clientX - rect.left) * (canvas.width / rect.width),
-                        y: (event.clientY - rect.top) * (canvas.height / rect.height),
-                    };
+                    return window.getSignaturePoint(event, canvas);
                 },
 
                 startReturnSignature(event, recipient) {
                     const canvas = this.returnCanvases[recipient.client_key];
                     if (!canvas) return;
-                    canvas.setPointerCapture?.(event.pointerId);
+                    try {
+                        canvas.setPointerCapture?.(event.pointerId);
+                    } catch (e) {}
                     const point = this.returnCanvasPosition(event, canvas);
                     const context = canvas.getContext('2d');
                     context.beginPath();
@@ -1106,7 +1115,9 @@
                     const canvas = this.returnCanvases[recipient.client_key];
                     this.returnDrawingKey = null;
                     if (!canvas) return;
-                    canvas.releasePointerCapture?.(event.pointerId);
+                    try {
+                        canvas.releasePointerCapture?.(event.pointerId);
+                    } catch (e) {}
                     recipient.signature = canvas.toDataURL('image/png');
                     recipient.has_signature = true;
                     recipient.remove_signature = false;

@@ -29,7 +29,59 @@
                 min-height: 111.1111%;
             }
         }
+
+        /* Pada tablet dan handphone (layar <= 1024px atau perangkat layar sentuh),
+           matikan CSS zoom agar koordinat viewport, sentuhan jari/stylus, dan canvas tanda tangan presisi 1:1 tanpa offset */
+        @media (max-width: 1024px), (pointer: coarse), (any-pointer: coarse), (hover: none) {
+            html {
+                zoom: 100% !important;
+                zoom: 1 !important;
+                -moz-transform: none !important;
+                transform: none !important;
+                width: 100% !important;
+                min-height: 100% !important;
+            }
+        }
     </style>
+
+    <script>
+        /*
+         * Hitung posisi pointer di dalam canvas tanda tangan (dalam piksel canvas).
+         * Hanya memakai clientX/clientY dan getBoundingClientRect() yang berada di ruang koordinat
+         * yang sama, lalu diskalakan ke ukuran bitmap canvas. Tidak memakai offsetX/offsetY karena
+         * nilainya berbeda antar browser mobile (terutama di dalam modal/elemen yang di-transform)
+         * sehingga goresan bergeser dari ujung pena/jari.
+         */
+        window.getSignaturePoint = function (event, canvas) {
+            if (!canvas) return { x: 0, y: 0 };
+
+            const rect = canvas.getBoundingClientRect();
+            if (!rect.width || !rect.height) return { x: 0, y: 0 };
+
+            const source = (event.touches && event.touches[0])
+                || (event.changedTouches && event.changedTouches[0])
+                || event;
+
+            if (typeof source.clientX !== 'number' || typeof source.clientY !== 'number') {
+                return { x: 0, y: 0 };
+            }
+
+            // Bitmap canvas digambar di area konten (di dalam border), bukan di border-box.
+            const style = window.getComputedStyle(canvas);
+            const unit = canvas.offsetWidth ? rect.width / canvas.offsetWidth : 1;
+            const borderLeft = (parseFloat(style.borderLeftWidth) || 0) * unit;
+            const borderTop = (parseFloat(style.borderTopWidth) || 0) * unit;
+            const contentWidth = rect.width - borderLeft - ((parseFloat(style.borderRightWidth) || 0) * unit);
+            const contentHeight = rect.height - borderTop - ((parseFloat(style.borderBottomWidth) || 0) * unit);
+
+            if (contentWidth <= 0 || contentHeight <= 0) return { x: 0, y: 0 };
+
+            return {
+                x: (source.clientX - rect.left - borderLeft) * (canvas.width / contentWidth),
+                y: (source.clientY - rect.top - borderTop) * (canvas.height / contentHeight),
+            };
+        };
+    </script>
 
     <!-- Scripts and Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])

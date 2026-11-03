@@ -58,7 +58,7 @@ final class OutgoingMailStatus
     private const TRANSITIONS = [
         self::READY_TO_DELIVERY => [self::RECEIVE, self::WAITING_RECEIVE, self::REVISI],
         self::WAITING_RECEIVE => [self::RECEIVE, self::READY_TO_DELIVERY, self::REVISI],
-        self::REVISI => [self::READY_TO_DELIVERY, self::WAITING_RECEIVE],
+        self::REVISI => [self::READY_TO_DELIVERY, self::WAITING_RECEIVE, self::REVISI],
         self::RECEIVE => [self::REVISI],
     ];
 
@@ -158,6 +158,7 @@ final class OutgoingMailStatus
             ],
             self::REVISI => [
                 ['value' => self::READY_TO_DELIVERY, 'label' => self::LABELS[self::READY_TO_DELIVERY]],
+                ['value' => self::REVISI, 'label' => self::LABELS[self::REVISI]],
             ],
             self::RECEIVE => [
                 ['value' => self::REVISI, 'label' => self::LABELS[self::REVISI]],

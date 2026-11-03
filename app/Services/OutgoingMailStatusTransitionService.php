@@ -52,6 +52,7 @@ class OutgoingMailStatusTransitionService
 
             $attributes = ['status' => $target];
             $mail->update($attributes);
+            $mail->touch();
 
             if ($target === OutgoingMailStatus::REVISI) {
                 $this->recordNote($mail, OutgoingMailRevisionNote::TYPE_REQUESTED, $revisionNote, $actorId);
@@ -75,12 +76,12 @@ class OutgoingMailStatusTransitionService
             return 'Status tujuan tidak dikenali.';
         }
 
-        if ($current === $target) {
-            return 'Dokumen sudah berada pada status tersebut.';
-        }
-
         if (OutgoingMailStatus::canTransition($current, $target)) {
             return null;
+        }
+
+        if ($current === $target) {
+            return 'Dokumen sudah berada pada status tersebut.';
         }
 
         $allowed = OutgoingMailStatus::allowedTransitions($current);

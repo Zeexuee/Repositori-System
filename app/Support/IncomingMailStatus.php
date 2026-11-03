@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
  * Standard operating procedure:
  *   DRAFT           -> RECEIVE, REVISI, RETURN
  *   RECEIVE         -> REVISI, RETURN
- *   REVISI          -> RECEIVE (revision must be resolved before returning)
+ *   REVISI          -> RECEIVE, REVISI (revision can be revised again directly)
  *   WAITING_RETURN  -> RETURN (only by completing the signature workflow)
  *   RETURN          -> REVISI
  *
@@ -66,7 +66,7 @@ final class IncomingMailStatus
     private const TRANSITIONS = [
         self::DRAFT => [self::RECEIVE, self::REVISI, self::RETURN],
         self::RECEIVE => [self::REVISI, self::RETURN],
-        self::REVISI => [self::RECEIVE],
+        self::REVISI => [self::RECEIVE, self::REVISI],
         self::WAITING_RETURN => [self::RETURN],
         self::RETURN => [self::REVISI],
     ];

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\OutgoingMail;
 use App\Models\User;
+use App\Support\OutgoingMailStatus;
 use App\Support\Roles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -292,5 +293,35 @@ class OutgoingMailTest extends TestCase
         $response->assertSee('window.openReceiptPreviewModal(\''.$mail->id.'\'', false);
         // Modal for receipt preview should be present
         $response->assertSee('showReceiptPreviewModal');
+    }
+
+    public function test_outgoing_mail_can_transition_from_revisi_directly_to_revisi_again(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = OutgoingMail::create([
+            'mail_number' => 'SK-20261028-0201',
+            'subject' => 'Surat Sedang Revisi',
+            'recipient' => 'PT Semen Padang',
+            'created_by' => $user->id,
+            'status' => 'REVISI',
+        ]);
+
+        $this->assertTrue(OutgoingMailStatus::canTransition('REVISI', 'REVISI'));
+
+        $response = $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
+            'ids' => [$mail->id],
+            'status' => 'REVISI',
+            'revision_note' => 'Perbaiki perihal dan lampiran kedua.',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('REVISI', $mail->fresh()->status);
+        $this->assertDatabaseHas('outgoing_mail_revision_notes', [
+            'outgoing_mail_id' => $mail->id,
+            'note' => 'Perbaiki perihal dan lampiran kedua.',
+        ]);
     }
 }

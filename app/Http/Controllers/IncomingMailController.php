@@ -485,7 +485,11 @@ class IncomingMailController extends Controller
         $currentStatus = IncomingMailStatus::canonical($incomingMail->status);
         unset($data['status']);
 
-        $statusChange = $requestedStatus !== null && $requestedStatus !== $currentStatus
+        $isContinuingRevisi = $requestedStatus === IncomingMailStatus::REVISI
+            && $currentStatus === IncomingMailStatus::REVISI
+            && filled($request->input('revision_note'));
+
+        $statusChange = ($requestedStatus !== null && ($requestedStatus !== $currentStatus || $isContinuingRevisi))
             ? $requestedStatus
             : null;
 

@@ -25,6 +25,17 @@
                 min-height: 111.1111%;
             }
         }
+
+        @media (max-width: 1024px), (pointer: coarse) {
+            html {
+                zoom: 100% !important;
+                zoom: 1 !important;
+                -moz-transform: none !important;
+                transform: none !important;
+                width: 100% !important;
+                min-height: 100% !important;
+            }
+        }
     </style>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])

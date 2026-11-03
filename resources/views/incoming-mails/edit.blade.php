@@ -246,7 +246,7 @@
                                 {{ $currentStatusLabel }} (status saat ini)
                             </option>
                             @foreach ($allowedStatuses as $allowedStatus)
-                                @continue($allowedStatus === App\Support\IncomingMailStatus::RETURN)
+                                @continue($allowedStatus === App\Support\IncomingMailStatus::RETURN || $allowedStatus === $currentStatus)
                                 <option value="{{ $allowedStatus }}" {{ $selectedStatus === $allowedStatus ? 'selected' : '' }}>
                                     {{ App\Support\IncomingMailStatus::label($allowedStatus) }}
                                 </option>
@@ -394,14 +394,11 @@
                                 <canvas x-ref="canvas" 
                                         width="600" 
                                         height="200" 
-                                        @mousedown="onStart($event)"
-                                        @mousemove="onMove($event)"
-                                        @mouseup="onEnd($event)"
-                                        @mouseleave="onEnd($event)"
-                                        @touchstart.prevent="onStart($event)"
-                                        @touchmove.prevent="onMove($event)"
-                                        @touchend.prevent="onEnd($event)"
-                                        class="w-full h-40 touch-none cursor-crosshair block bg-white"></canvas>
+                                        @pointerdown.prevent="onStart($event)"
+                                        @pointermove.prevent="onMove($event)"
+                                        @pointerup.prevent="onEnd($event)"
+                                        @pointercancel.prevent="onEnd($event)"
+                                        class="w-full h-auto touch-none cursor-crosshair block bg-white"></canvas>
                             </div>
                             
                             <input type="hidden" name="receipt_signature" :value="signatureBase64">
@@ -576,30 +573,15 @@
                 },
 
                 getPos(e) {
-                    const canvas = this.$refs.canvas;
-                    if (!canvas) return { x: 0, y: 0 };
-                    
-                    const rect = canvas.getBoundingClientRect();
-                    const scaleX = canvas.width / rect.width;
-                    const scaleY = canvas.height / rect.height;
-
-                    let clientX = e.clientX;
-                    let clientY = e.clientY;
-
-                    if (e.touches && e.touches.length > 0) {
-                        clientX = e.touches[0].clientX;
-                        clientY = e.touches[0].clientY;
-                    }
-
-                    return {
-                        x: (clientX - rect.left) * scaleX,
-                        y: (clientY - rect.top) * scaleY
-                    };
+                    return window.getSignaturePoint(e, this.$refs.canvas);
                 },
 
                 onStart(e) {
                     this.isDrawing = true;
                     if (!this.ctx) this.setupCanvas();
+                    try {
+                        this.$refs.canvas?.setPointerCapture?.(e.pointerId);
+                    } catch (err) {}
                     const pos = this.getPos(e);
                     this.ctx.beginPath();
                     this.ctx.moveTo(pos.x, pos.y);
@@ -616,6 +598,9 @@
                 onEnd(e) {
                     if (this.isDrawing) {
                         this.isDrawing = false;
+                        try {
+                            this.$refs.canvas?.releasePointerCapture?.(e.pointerId);
+                        } catch (err) {}
                         if (this.$refs.canvas) {
                             this.signatureBase64 = this.$refs.canvas.toDataURL('image/png');
                         }
