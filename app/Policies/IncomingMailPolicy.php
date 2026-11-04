@@ -69,7 +69,7 @@ class IncomingMailPolicy
      */
     public function delete(User $user, IncomingMail $incomingMail): bool
     {
-        return $user->hasRole(Roles::MASTER);
+        return $this->hasDocumentAccess($user) && ! $this->isFinal($incomingMail);
     }
 
     private function hasDocumentAccess(User $user): bool

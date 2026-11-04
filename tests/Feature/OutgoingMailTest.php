@@ -324,4 +324,30 @@ class OutgoingMailTest extends TestCase
             'note' => 'Perbaiki perihal dan lampiran kedua.',
         ]);
     }
+
+    public function test_user_can_edit_creation_date_on_outgoing_mail(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = OutgoingMail::create([
+            'mail_number' => 'SK-20261028-DATE-01',
+            'subject' => 'Surat Uji Tanggal Keluar',
+            'recipient' => 'PT Mitra Sejahtera',
+            'created_by' => $user->id,
+            'status' => 'READY_TO_DELIVERY',
+        ]);
+
+        $response = $this->actingAs($user)->put(route('outgoing-mails.update', $mail), [
+            'mail_number' => 'SK-20261028-DATE-01',
+            'subject' => 'Surat Uji Tanggal Keluar Updated',
+            'recipient' => 'PT Mitra Sejahtera',
+            'created_at' => '2026-11-02T13:30',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $mail->refresh();
+        $this->assertEquals('2026-11-02 13:30:00', $mail->created_at->format('Y-m-d H:i:s'));
+    }
 }

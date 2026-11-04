@@ -39,8 +39,8 @@ State machine:
    - `staff` = staf sekretariat
    - Role lama `Staf` / `Direksi` dinormalisasi lewat migrasi.
 2. **Matriks izin:**
-   - staff: view + create + update dokumen non-final, termasuk alur SOP pengembalian.
-   - master: semua, plus delete, tanda tangan digital, Audit/User/Broadcast.
+   - staff: view + create + update + delete dokumen non-final (untuk koreksi kesalahan input), termasuk alur SOP pengembalian.
+   - master: semua, plus tanda tangan digital, Audit/User/Broadcast.
 3. **`RETURN`/`WAITING_RETURN` tidak dapat diset manual oleh siapa pun** (termasuk master) — satu-satunya jalan adalah alur tanda tangan pengembalian, yang sekaligus menampung catatan disposisi. Lihat `IncomingMailStatus::manuallyAssignable()`.
 4. **Dokumen final dikunci total** (tidak bisa edit/ubah lampiran) — termasuk untuk master. Setelah penggabungan disposisi, yang final hanya nilai legacy `COMPLETED`.
 
@@ -92,10 +92,13 @@ State machine:
 
 1. Dokumen `RECEIVE` (keluar) terkunci: `update` = false → edit, tambah/hapus lampiran, ubah status ditolak. Di sisi surat masuk, hanya nilai legacy `COMPLETED` yang terkunci — `RETURN` tetap dapat diedit dan masih bisa dikirim ke `REVISI`.
 2. `RETURN` tidak bisa diset manual via bulk/create/edit oleh staff maupun master; harus lewat alur pengembalian (tanda tangan), yang juga mengumpulkan catatan disposisi opsional.
-3. Staff tidak melihat tombol Hapus (view memakai `@can('delete')`).
-4. Modul Audit/User/Broadcast mengembalikan **403** untuk staff.
-5. User tanpa role `staff`/`master` ditolak di halaman dokumen.
-6. Endpoint baca penerima disposisi/pengembalian tetap bisa diakses staff (pakai `view`), termasuk dokumen final.
+3. Staff kini dapat melihat dan menggunakan tombol Hapus untuk dokumen non-final (surat masuk dan surat keluar) jika terjadi kesalahan input dokumen. Tombol Hapus ditempatkan secara terpusat pada header atas halaman Edit dokumen (bukan pada kolom aksi tabel daftar dokumen maupun tombol aksi bawah). Bagian "Zona Bahaya" dihilangkan untuk tampilan yang lebih bersih, dan konfirmasi penghapusan menggunakan modal dialog interaktif Alpine.js dengan efek backdrop blur modern menggantikan `alert()`/`confirm()` browser.
+4. Canvas tanda tangan pada halaman Edit Surat Masuk telah dihilangkan dan digantikan dengan panel Pratinjau Dokumen / Foto berkas terunggah secara interaktif. Tanda tangan dokumen difokuskan pada alur pengembalian (return flow).
+5. Modul Audit/User/Broadcast mengembalikan **403** untuk staff.
+6. User tanpa role `staff`/`master` ditolak di halaman dokumen.
+7. Endpoint baca penerima disposisi/pengembalian tetap bisa diakses staff (pakai `view`), termasuk dokumen final.
+8. Semua tanggal pada seluruh halaman edit (Tanggal Masuk `received_date` dan Tanggal Surat Keluar `outgoing_date` pada Surat Masuk single & batch, serta Tanggal Surat Keluar `created_at` pada Surat Keluar) kini sepenuhnya dapat diedit dan diubah oleh admin/staff sesuai kebutuhan input riil, dengan penghapusan batasan `readonly` dan styling input interaktif penuh.
+9. Pada form pembuatan surat masuk (`incoming-mails/create.blade.php`) dan form edit batch (`incoming-mails/edit-batch.blade.php`), penambahan dokumen baru (`addDocument()`) menggunakan metode `unshift` dengan efek animasi transisi bertingkat (*stack on top* / `.animate-stack-in` keyframes dengan bayangan elevasi dan stacking `z-index`), auto-focus langsung ke field nomor surat, serta penomoran berurutan yang konsisten di mana dokumen awal tetap bernomor **#1**, dan dokumen yang baru ditumpuk di atasnya bernomor urut lanjutannya (**#2**, **#3**, dst.). Indeks form dan penyimpanan database diurutkan dari dokumen awal #1 ke dokumen berikutnya secara berurutan.
 
 ---
 

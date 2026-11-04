@@ -262,6 +262,14 @@ class OutgoingMailController extends Controller
             $data['mail_number'] = OutgoingMailNumber::next();
         }
 
+        if (array_key_exists('created_at', $data)) {
+            if (empty($data['created_at'])) {
+                unset($data['created_at']);
+            } else {
+                $data['created_at'] = \Carbon\Carbon::parse($data['created_at']);
+            }
+        }
+
         $outgoingMail->update($data);
 
         return redirect()

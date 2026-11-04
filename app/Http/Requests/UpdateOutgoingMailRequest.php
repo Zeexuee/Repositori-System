@@ -40,6 +40,7 @@ class UpdateOutgoingMailRequest extends FormRequest
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'files' => ['nullable', 'array'],
             'files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'created_at' => ['nullable', 'date'],
             'disposition_note' => ['nullable', 'string'],
         ];
     }

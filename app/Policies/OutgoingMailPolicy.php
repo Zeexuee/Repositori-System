@@ -49,7 +49,7 @@ class OutgoingMailPolicy
      */
     public function delete(User $user, OutgoingMail $outgoingMail): bool
     {
-        return $user->hasRole(Roles::MASTER);
+        return $this->hasDocumentAccess($user) && ! $this->isFinal($outgoingMail);
     }
 
     private function hasDocumentAccess(User $user): bool

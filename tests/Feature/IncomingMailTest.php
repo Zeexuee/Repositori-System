@@ -272,4 +272,74 @@ class IncomingMailTest extends TestCase
         $mail->refresh();
         $this->assertCount(0, $mail->attachments);
     }
+
+    public function test_user_can_edit_all_dates_on_incoming_mail(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $mail = IncomingMail::create([
+            'mail_number' => 'TEST/SURAT/DATE-01',
+            'received_date' => '2026-10-19 10:00:00',
+            'sender' => 'Biro Administrasi',
+            'recipient' => 'Direktur',
+            'status' => 'RECEIVE',
+            'subject' => 'Surat Uji Tanggal',
+            'outgoing_date' => '2026-10-19 12:00:00',
+        ]);
+
+        $response = $this->actingAs($user)->put(route('incoming-mails.update', $mail), [
+            'sender' => 'Biro Administrasi Updated',
+            'recipient' => 'Direktur',
+            'subject' => 'Surat Uji Tanggal',
+            'received_date' => '2026-11-01T08:30',
+            'outgoing_date' => '2026-11-02T14:45',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $mail->refresh();
+        $this->assertEquals('2026-11-01 08:30:00', $mail->received_date->format('Y-m-d H:i:s'));
+        $this->assertEquals('2026-11-02 14:45:00', $mail->outgoing_date->format('Y-m-d H:i:s'));
+    }
+
+    public function test_user_can_edit_all_dates_on_incoming_mail_batch_update(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $batchId = 'batch-test-dates-123';
+        $mail = IncomingMail::create([
+            'batch_id' => $batchId,
+            'receipt_number' => 'TT-2026-999',
+            'mail_number' => 'TEST/SURAT/BATCH-DATE-01',
+            'received_date' => '2026-10-10 10:00:00',
+            'sender' => 'Biro Umum',
+            'recipient' => 'Wakil Rektor',
+            'status' => 'RECEIVE',
+            'subject' => 'Surat Batch Awal',
+            'outgoing_date' => '2026-10-10 11:00:00',
+        ]);
+
+        $response = $this->actingAs($user)->put(route('incoming-mails.batch-update', $batchId), [
+            'sender' => 'Biro Umum',
+            'received_date' => '2026-11-03T09:15',
+            'is_draft' => '0',
+            'documents' => [
+                [
+                    'id' => $mail->id,
+                    'mail_number' => 'TEST/SURAT/BATCH-DATE-01',
+                    'recipient' => 'Wakil Rektor',
+                    'subject' => 'Surat Batch Tanggal Baru',
+                    'outgoing_date' => '2026-11-04T16:20',
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $mail->refresh();
+        $this->assertEquals('2026-11-03 09:15:00', $mail->received_date->format('Y-m-d H:i:s'));
+        $this->assertEquals('2026-11-04 16:20:00', $mail->outgoing_date->format('Y-m-d H:i:s'));
+    }
 }

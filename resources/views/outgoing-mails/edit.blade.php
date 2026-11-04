@@ -3,22 +3,35 @@
 @section('title', 'Edit Surat Keluar')
 
 @section('content')
-    <div class="pb-4 border-b border-slate-200/80 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Edit Surat Keluar</h1>
-            <p class="text-xs text-slate-500 mt-1">Perbarui rincian, berkas lampiran, atau status surat keluar.</p>
+    <div x-data="editOutgoingMailForm()" class="space-y-6">
+        <div class="pb-4 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Edit Surat Keluar</h1>
+                <p class="text-xs text-slate-500 mt-1">Perbarui rincian, berkas lampiran, atau status surat keluar.</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
+                    <span>Status: <strong class="text-slate-900 font-mono">{{ App\Support\OutgoingMailStatus::label($outgoingMail->status) }}</strong></span>
+                </div>
+                @can('delete', $outgoingMail)
+                    <button type="button" 
+                            @click="openDeleteModal()" 
+                            class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center space-x-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span>Hapus Dokumen</span>
+                    </button>
+                @endcan
+            </div>
         </div>
-        <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
-            <span>Status: <strong class="text-slate-900 font-mono">{{ App\Support\OutgoingMailStatus::label($outgoingMail->status) }}</strong></span>
-        </div>
-    </div>
 
-    <form action="{{ route('outgoing-mails.update', $outgoingMail) }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-6" x-data="{ loading: false }" @submit="loading = true">
+        <form action="{{ route('outgoing-mails.update', $outgoingMail) }}" method="POST" enctype="multipart/form-data" class="space-y-6" @submit="loading = true">
         @csrf
         @method('PUT')
 
         <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- Nomor Surat -->
                 <div>
                     <label for="mail_number" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Surat</label>
@@ -42,6 +55,15 @@
                     <label for="recipient" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Penerima Surat <span class="text-slate-900 font-bold">*</span></label>
                     <input type="text" name="recipient" id="recipient" value="{{ old('recipient', $outgoingMail->recipient) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                     @error('recipient')
+                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Tanggal Surat Keluar -->
+                <div>
+                    <label for="created_at" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Surat Keluar <span class="text-slate-400 font-normal normal-case">(Opsional)</span></label>
+                    <input type="datetime-local" name="created_at" id="created_at" value="{{ old('created_at', $outgoingMail->created_at?->format('Y-m-d\TH:i')) }}" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs font-mono">
+                    @error('created_at')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
                     @enderror
                 </div>
@@ -76,6 +98,13 @@
                                     <a href="{{ route('document.download', ['path' => $att->file_path]) }}" class="text-xs text-slate-900 hover:underline font-semibold">
                                         Unduh
                                     </a>
+                                    @can('update', $outgoingMail)
+                                        <button type="button" 
+                                                onclick="deleteOutgoingAttachment('{{ $att->id }}')" 
+                                                class="text-xs text-rose-600 hover:text-rose-800 font-semibold cursor-pointer">
+                                            Hapus
+                                        </button>
+                                    @endcan
                                 </div>
                             </div>
                         @endforeach
@@ -169,7 +198,7 @@
         </div>
 
         <div class="flex items-center justify-between pt-4 border-t border-slate-200/80">
-            <a href="{{ route('outgoing-mails.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs">
+            <a href="{{ route('outgoing-mails.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-all shadow-2xs">
                 Batal
             </a>
 
@@ -185,4 +214,125 @@
             </button>
         </div>
     </form>
+
+    @can('delete', $outgoingMail)
+        <!-- Modal Popup Konfirmasi Hapus Dokumen -->
+        <div x-show="showDeleteModal" 
+             x-cloak
+             class="fixed inset-0 z-[99999] flex items-center justify-center p-4"
+             style="margin: 0 !important;"
+             @keydown.escape.window="showDeleteModal = false">
+            
+            <!-- Backdrop Blur -->
+            <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" 
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 @click="showDeleteModal = false"></div>
+            
+            <!-- Modal Card Content -->
+            <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden z-10"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95">
+                
+                <div class="p-6">
+                    <div class="flex items-start space-x-4">
+                        <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center flex-shrink-0 shadow-xs">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+                        <div class="space-y-1">
+                            <h3 class="text-base font-bold text-slate-900">Konfirmasi Hapus Dokumen</h3>
+                            <p class="text-xs text-slate-500 leading-relaxed">
+                                Apakah Anda yakin ingin menghapus surat keluar ini? Dokumen dengan No: <strong class="text-slate-800 font-mono">{{ $outgoingMail->mail_number ?: '-' }}</strong> akan dipindahkan ke tempat sampah (soft delete).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end space-x-3">
+                    <button type="button" 
+                            @click="showDeleteModal = false"
+                            :disabled="isDeleting"
+                            class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-xl transition-all disabled:opacity-50 shadow-2xs cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="button" 
+                            @click="executeDelete()"
+                            :disabled="isDeleting"
+                            class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs disabled:opacity-50 cursor-pointer flex items-center space-x-2">
+                        <span x-show="!isDeleting">Ya, Hapus Dokumen</span>
+                        <span x-show="isDeleting" class="flex items-center space-x-1.5" x-cloak>
+                            <svg class="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Menghapus...</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <form id="delete-outgoing-mail-form" action="{{ route('outgoing-mails.destroy', $outgoingMail) }}" method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+    @endcan
+    </div>
+
+    <script>
+        function editOutgoingMailForm() {
+            return {
+                loading: false,
+                isDeleting: false,
+                showDeleteModal: false,
+
+                openDeleteModal() {
+                    this.showDeleteModal = true;
+                },
+
+                executeDelete() {
+                    this.isDeleting = true;
+                    const deleteForm = document.getElementById('delete-outgoing-mail-form');
+                    if (deleteForm) {
+                        deleteForm.submit();
+                    }
+                }
+            };
+        }
+
+        async function deleteOutgoingAttachment(attachmentId) {
+            if (!confirm('Apakah Anda yakin ingin menghapus berkas dokumen ini?')) {
+                return;
+            }
+            try {
+                const response = await fetch(`{{ route('outgoing-mails.index') }}/{{ $outgoingMail->id }}/attachments/${attachmentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || 'Gagal menghapus berkas dokumen.');
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan koneksi saat menghapus berkas.');
+            }
+        }
+    </script>
 @endsection

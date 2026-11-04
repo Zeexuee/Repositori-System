@@ -51,6 +51,7 @@ class IncomingMailController extends Controller
               }],
             'documents.*.subject' => ['required', 'string', 'max:255'],
             'documents.*.recipient' => ['nullable', 'string', 'max:255'],
+            'documents.*.outgoing_date' => ['nullable', 'date'],
             'documents.*.disposition_note' => ['nullable', 'string'],
             'documents.*.notes' => ['nullable', 'string'],
             'documents.*.file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
@@ -83,6 +84,7 @@ class IncomingMailController extends Controller
                 'status' => $globalStatus,
                 'mail_number' => $doc['mail_number'],
                 'subject' => $doc['subject'],
+                'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : $validated['received_date'],
                 'disposition_note' => $doc['disposition_note'] ?? null,
                 'notes' => $doc['notes'] ?? null,
             ];
@@ -460,7 +462,7 @@ class IncomingMailController extends Controller
     {
         Gate::authorize('update', $incomingMail);
 
-        $incomingMail->load('batchItems');
+        $incomingMail->load(['batchItems', 'attachments']);
         
         if (IncomingMailStatus::canonical($incomingMail->status) === IncomingMailStatus::DRAFT) {
             $senders = IncomingMail::whereNotNull('sender')->where('sender', '!=', '')->select('sender')->distinct()->pluck('sender');

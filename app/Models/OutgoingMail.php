@@ -36,6 +36,7 @@ class OutgoingMail extends Model
         'created_by',
         'status',
         'disposition_note',
+        'created_at',
     ];
 
     /**

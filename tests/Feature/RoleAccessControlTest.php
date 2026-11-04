@@ -59,16 +59,16 @@ class RoleAccessControlTest extends TestCase
         ]);
     }
 
-    public function test_staff_cannot_delete_incoming_mail(): void
+    public function test_staff_can_delete_incoming_mail(): void
     {
         $staff = $this->staff();
         $mail = $this->incomingMail();
 
         $this->actingAs($staff)
             ->delete(route('incoming-mails.destroy', $mail))
-            ->assertForbidden();
+            ->assertRedirect(route('incoming-mails.index'));
 
-        $this->assertNotSoftDeleted('incoming_mails', ['id' => $mail->id]);
+        $this->assertSoftDeleted('incoming_mails', ['id' => $mail->id]);
     }
 
     public function test_master_can_delete_incoming_mail(): void
@@ -83,16 +83,28 @@ class RoleAccessControlTest extends TestCase
         $this->assertSoftDeleted('incoming_mails', ['id' => $mail->id]);
     }
 
-    public function test_staff_cannot_delete_outgoing_mail(): void
+    public function test_staff_cannot_delete_completed_incoming_mail(): void
+    {
+        $staff = $this->staff();
+        $mail = $this->incomingMail('COMPLETED');
+
+        $this->actingAs($staff)
+            ->delete(route('incoming-mails.destroy', $mail))
+            ->assertForbidden();
+
+        $this->assertNotSoftDeleted('incoming_mails', ['id' => $mail->id]);
+    }
+
+    public function test_staff_can_delete_outgoing_mail(): void
     {
         $staff = $this->staff();
         $mail = $this->outgoingMail();
 
         $this->actingAs($staff)
             ->delete(route('outgoing-mails.destroy', $mail))
-            ->assertForbidden();
+            ->assertRedirect(route('outgoing-mails.index'));
 
-        $this->assertNotSoftDeleted('outgoing_mails', ['id' => $mail->id]);
+        $this->assertSoftDeleted('outgoing_mails', ['id' => $mail->id]);
     }
 
     public function test_master_can_delete_outgoing_mail(): void
@@ -105,6 +117,24 @@ class RoleAccessControlTest extends TestCase
             ->assertRedirect(route('outgoing-mails.index'));
 
         $this->assertSoftDeleted('outgoing_mails', ['id' => $mail->id]);
+    }
+
+    public function test_user_without_document_role_cannot_delete_mail(): void
+    {
+        $user = User::factory()->create();
+        $inMail = $this->incomingMail();
+        $outMail = $this->outgoingMail();
+
+        $this->actingAs($user)
+            ->delete(route('incoming-mails.destroy', $inMail))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->delete(route('outgoing-mails.destroy', $outMail))
+            ->assertForbidden();
+
+        $this->assertNotSoftDeleted('incoming_mails', ['id' => $inMail->id]);
+        $this->assertNotSoftDeleted('outgoing_mails', ['id' => $outMail->id]);
     }
 
     public function test_staff_cannot_set_return_manually(): void

@@ -142,21 +142,24 @@
                     </button>
                 </div>
 
-                <template x-for="(doc, index) in documents" :key="doc.id">
-                    <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-5 relative">
-                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <div class="flex items-center space-x-2">
-                                <span class="w-6 h-6 rounded-lg bg-slate-900 text-white text-xs font-bold flex items-center justify-center font-mono" x-text="index + 1"></span>
-                                <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider" x-text="'Dokumen Surat Masuk #' + (index + 1)"></h3>
-                            </div>
+                <div x-ref="docList" class="space-y-4">
+                    <template x-for="(doc, index) in documents" :key="doc.id">
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-5 relative transition-all duration-300"
+                             :class="{ 'animate-stack-in ring-2 ring-slate-900/10 border-slate-300': doc.isNew }"
+                             :style="'z-index: ' + (documents.length - index)">
+                            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-6 h-6 rounded-lg bg-slate-900 text-white text-xs font-bold flex items-center justify-center font-mono" x-text="getDocNumber(index)"></span>
+                                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider" x-text="'Dokumen Surat Masuk #' + getDocNumber(index)"></h3>
+                                </div>
 
-                            <button type="button" 
-                                    x-show="documents.length > 1" 
-                                    @click="removeDocument(index)" 
-                                    class="text-xs text-slate-600 hover:text-slate-900 font-semibold px-2 py-1 rounded-lg hover:bg-slate-100 transition-all flex items-center space-x-1 cursor-pointer">
-                                <span>Hapus Dokumen Ini</span>
-                            </button>
-                        </div>
+                                <button type="button" 
+                                        x-show="documents.length > 1" 
+                                        @click="removeDocument(index)" 
+                                        class="text-xs text-slate-600 hover:text-slate-900 font-semibold px-2 py-1 rounded-lg hover:bg-slate-100 transition-all flex items-center space-x-1 cursor-pointer">
+                                    <span>Hapus Dokumen Ini</span>
+                                </button>
+                            </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Nomor Surat -->
@@ -165,7 +168,7 @@
                                     Nomor Surat <span class="text-slate-400 font-normal normal-case">(Opsional)</span>
                                 </label>
                                 <input type="text" 
-                                       :name="'documents[' + index + '][mail_number]'" 
+                                       :name="'documents[' + getFormIndex(index) + '][mail_number]'" 
                                        x-model="doc.mail_number" 
                                        class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                             </div>
@@ -178,7 +181,7 @@
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                     Kepada / Penerima Dokumen <span class="text-slate-900 font-bold" x-show="!isDraft">*</span>
                                 </label>
-                                <input type="hidden" :name="'documents[' + index + '][recipient]'" :value="value">
+                                <input type="hidden" :name="'documents[' + getFormIndex(index) + '][recipient]'" :value="value">
 
                                 <!-- Trigger Button -->
                                 <button type="button" 
@@ -253,7 +256,7 @@
                                 Perihal <span class="text-slate-900 font-bold" x-show="!isDraft">*</span>
                             </label>
                             <input type="text" 
-                                   :name="'documents[' + index + '][subject]'" 
+                                   :name="'documents[' + getFormIndex(index) + '][subject]'" 
                                    x-model="doc.subject" 
                                    class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                         </div>
@@ -262,13 +265,13 @@
                             <!-- Disposisi -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Disposisi (Opsional)</label>
-                                <textarea :name="'documents[' + index + '][disposition_note]'" x-model="doc.disposition_note" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 shadow-2xs focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
+                                <textarea :name="'documents[' + getFormIndex(index) + '][disposition_note]'" x-model="doc.disposition_note" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 shadow-2xs focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
                             </div>
 
                             <!-- Keterangan -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Keterangan / Catatan Tambahan</label>
-                                <textarea :name="'documents[' + index + '][notes]'" x-model="doc.notes" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 shadow-2xs focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
+                                <textarea :name="'documents[' + getFormIndex(index) + '][notes]'" x-model="doc.notes" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 shadow-2xs focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
                             </div>
                         </div>
 
@@ -314,7 +317,7 @@
                                  @click="$refs.fileInput.click()">
                                 <input type="file" 
                                        x-ref="fileInput"
-                                       :name="'documents[' + index + '][files][]'" 
+                                       :name="'documents[' + getFormIndex(index) + '][files][]'" 
                                        multiple 
                                        accept="application/pdf,image/*" 
                                        capture="environment" 
@@ -362,6 +365,14 @@
                         </div>
                     </div>
                 </template>
+                </div>
+
+                <div x-show="documents.length > 1" class="flex justify-center pt-1" x-cloak>
+                    <button type="button" @click="addDocument()" class="inline-flex items-center space-x-1.5 px-4 py-2 bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-all shadow-2xs cursor-pointer">
+                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>Tambah Dokumen Lain dari Biro Ini</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Action Buttons: Simpan Sebagai Draft vs Finalisasi -->
@@ -424,14 +435,33 @@
                 documents: initialDocs,
                 errorMessageList: {{ json_encode($errors->all()) }},
 
+                getDocNumber(index) {
+                    return this.documents.length - index;
+                },
+                getFormIndex(index) {
+                    return this.documents.length - 1 - index;
+                },
                 addDocument() {
-                    this.documents.push({
+                    const newDoc = {
                         id: Date.now() + Math.random(),
                         mail_number: '',
                         recipient: '',
                         subject: '',
                         disposition_note: '',
-                        notes: ''
+                        notes: '',
+                        isNew: true
+                    };
+                    this.documents.unshift(newDoc);
+
+                    this.$nextTick(() => {
+                        const firstDoc = this.$refs.docList?.querySelector('.animate-stack-in') || this.$refs.docList?.querySelector('.bg-white');
+                        if (firstDoc) {
+                            firstDoc.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            const firstInput = firstDoc.querySelector('input[type="text"]');
+                            if (firstInput) {
+                                setTimeout(() => firstInput.focus(), 250);
+                            }
+                        }
                     });
                 },
                 removeDocument(index) {
@@ -460,7 +490,7 @@
                     // Jika bukan draft: Kepada dan Perihal di setiap dokumen wajib diisi
                     if (!this.isDraft) {
                         this.documents.forEach((doc, idx) => {
-                            const num = idx + 1;
+                            const num = this.getDocNumber(idx);
                             if (!doc.recipient || !String(doc.recipient).trim()) {
                                 errors.push(`Kepada / Penerima Dokumen pada Dokumen #${num} wajib diisi.`);
                             }
