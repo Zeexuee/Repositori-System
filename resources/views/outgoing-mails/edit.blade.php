@@ -220,7 +220,7 @@
                                     @php
                                         $isImg = str_starts_with($att->mime_type ?? '', 'image/');
                                     @endphp
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $isImg ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-rose-50 text-rose-700 border border-rose-200' }}">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
                                         {{ $isImg ? 'FOTO' : 'PDF' }}
                                     </span>
                                     <span class="truncate font-medium text-slate-800">{{ $att->file_name ?? basename($att->file_path) }}</span>
@@ -238,7 +238,7 @@
                                     @can('update', $outgoingMail)
                                         <button type="button" 
                                                 onclick="deleteOutgoingAttachment('{{ $att->id }}')" 
-                                                class="text-xs text-rose-600 hover:text-rose-800 font-semibold cursor-pointer">
+                                                class="text-xs text-slate-500 hover:text-slate-900 font-semibold cursor-pointer">
                                             Hapus
                                         </button>
                                     @endcan
@@ -270,11 +270,11 @@
                            @change="hasFile = $event.target.files.length > 0; fileName = hasFile ? ($event.target.files.length + ' file dipilih') : ''"
                            class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
 
-                    <div x-show="hasFile" x-cloak class="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
-                        <span class="text-xs font-medium text-emerald-800 truncate max-w-[220px]" x-text="'File baru: ' + fileName"></span>
+                    <div x-show="hasFile" x-cloak class="flex items-center justify-between p-2.5 bg-slate-100 border border-slate-300 rounded-lg">
+                        <span class="text-xs font-medium text-slate-800 truncate max-w-[220px]" x-text="'File baru: ' + fileName"></span>
                         <button type="button" 
                                 @click="$refs.fileInput.value = ''; hasFile = false; fileName = ''"
-                                class="px-2.5 py-1 text-xs font-bold text-rose-700 bg-white border border-rose-200 rounded-md hover:bg-rose-50 shadow-2xs transition-all flex-shrink-0 cursor-pointer">
+                                class="px-2.5 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 shadow-2xs transition-all flex-shrink-0 cursor-pointer">
                             Batal Upload
                         </button>
                     </div>

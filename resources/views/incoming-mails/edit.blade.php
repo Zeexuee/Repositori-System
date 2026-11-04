@@ -493,12 +493,9 @@
                             </label>
 
                             <div class="p-4 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl hover:border-slate-400 transition-all space-y-3">
-                                <div class="flex flex-col items-center justify-center py-2 text-center cursor-pointer" @click="$refs.photoInput.click()">
-                                    <svg class="w-8 h-8 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                    </svg>
-                                    <p class="text-xs font-semibold text-slate-800">Klik untuk memilih berkas atau foto dokumen</p>
-                                    <p class="text-[11px] text-slate-400 mt-0.5">Bisa pilih beberapa berkas sekaligus (PDF / Gambar)</p>
+                                <div class="flex flex-col items-center justify-center py-3 text-center cursor-pointer space-y-1" @click="$refs.photoInput.click()">
+                                    <p class="text-xs font-bold text-slate-800">Klik untuk memilih berkas atau foto dokumen</p>
+                                    <p class="text-[11px] text-slate-500">Bisa pilih beberapa berkas sekaligus (PDF / Gambar)</p>
                                 </div>
 
                                 <input type="file" 
@@ -511,25 +508,25 @@
                                        @change="handleFileChange($event)"
                                        class="hidden">
 
-                                <div x-show="selectedFiles.length > 0" x-cloak class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+                                <div x-show="selectedFiles.length > 0" x-cloak class="p-3 bg-slate-100 border border-slate-300 rounded-xl space-y-2">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-xs font-bold text-emerald-900" x-text="selectedFiles.length + ' Berkas Baru Dipilih:'"></span>
+                                        <span class="text-xs font-bold text-slate-900" x-text="selectedFiles.length + ' Berkas Baru Dipilih:'"></span>
                                         <button type="button" 
                                                 @click="clearSelectedFiles()"
-                                                class="px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 shadow-2xs transition-all cursor-pointer">
+                                                class="px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-2xs transition-all cursor-pointer">
                                             Batal Pilihan
                                         </button>
                                     </div>
-                                    <ul class="text-[11px] text-emerald-800 space-y-1 divide-y divide-emerald-100 max-h-36 overflow-y-auto">
+                                    <ul class="text-[11px] text-slate-700 space-y-1 divide-y divide-slate-200 max-h-36 overflow-y-auto">
                                         <template x-for="(file, idx) in selectedFiles" :key="idx">
                                             <li class="pt-1 flex items-center justify-between">
                                                 <div class="flex items-center space-x-1.5 truncate pr-2">
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                                    <span class="truncate font-medium font-mono" x-text="file.name"></span>
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                                                    <span class="truncate font-medium font-mono text-slate-800" x-text="file.name"></span>
                                                 </div>
                                                 <button type="button" 
                                                         @click="previewSelectedFile(idx)" 
-                                                        class="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 underline flex-shrink-0 cursor-pointer">
+                                                        class="text-[10px] font-semibold text-slate-700 hover:text-slate-900 underline flex-shrink-0 cursor-pointer">
                                                     Pratinjau
                                                 </button>
                                             </li>
@@ -538,10 +535,10 @@
                                 </div>
                             </div>
                             @error('files')
-                                <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                                <p class="text-xs text-slate-700 mt-1.5 font-medium">{{ $message }}</p>
                             @enderror
                             @error('file')
-                                <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                                <p class="text-xs text-slate-700 mt-1.5 font-medium">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -567,7 +564,7 @@
                                         @endphp
                                         <div id="incoming-att-{{ $att->id }}" class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100/60 transition-colors">
                                             <div class="flex items-center space-x-2.5 min-w-0 pr-2">
-                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $isImg ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-rose-100 text-rose-800 border border-rose-200' }}">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
                                                     {{ $isImg ? 'FOTO' : 'PDF' }}
                                                 </span>
                                                 <span class="truncate font-medium text-slate-800" title="{{ $fileName }}">{{ $fileName }}</span>
@@ -578,16 +575,16 @@
                                             <div class="flex items-center space-x-2 flex-shrink-0">
                                                 <button type="button" 
                                                         @click="setPreview('{{ $previewUrl }}', '{{ $isImg ? 'image' : 'pdf' }}', '{{ $fileName }}')" 
-                                                        class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-200 text-slate-900 rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer">
+                                                        class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-900 rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer">
                                                     Pratinjau
                                                 </button>
-                                                <a href="{{ $downloadUrl }}" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-200 text-slate-900 rounded-lg text-xs font-semibold shadow-2xs transition-all">
+                                                <a href="{{ $downloadUrl }}" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-900 rounded-lg text-xs font-semibold shadow-2xs transition-all">
                                                     Unduh
                                                 </a>
                                                 @can('update', $incomingMail)
                                                     <button type="button" 
                                                             @click="deleteAttachment('{{ $att->id }}')" 
-                                                            class="px-2 py-1 text-xs text-rose-600 hover:text-rose-800 font-semibold cursor-pointer">
+                                                            class="px-2 py-1 text-xs text-slate-500 hover:text-slate-900 font-semibold cursor-pointer">
                                                         Hapus
                                                     </button>
                                                 @endcan
@@ -604,7 +601,7 @@
                                 @endphp
                                 <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
                                     <div class="flex items-center space-x-2.5 min-w-0 pr-2">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $isImg ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-rose-100 text-rose-800 border border-rose-200' }}">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
                                             {{ $isImg ? 'FOTO' : 'PDF' }}
                                         </span>
                                         <span class="truncate font-medium text-slate-800">{{ $fileName }}</span>
@@ -612,10 +609,10 @@
                                     <div class="flex items-center space-x-2 flex-shrink-0">
                                         <button type="button" 
                                                 @click="setPreview('{{ $previewUrl }}', '{{ $isImg ? 'image' : 'pdf' }}', '{{ $fileName }}')" 
-                                                class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-200 text-slate-900 rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer">
+                                                class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-900 rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer">
                                             Pratinjau
                                         </button>
-                                        <a href="{{ route('document.download', ['path' => $legacyPath]) }}" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-200 text-slate-900 rounded-lg text-xs font-semibold shadow-2xs transition-all">
+                                        <a href="{{ route('document.download', ['path' => $legacyPath]) }}" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-900 rounded-lg text-xs font-semibold shadow-2xs transition-all">
                                             Unduh
                                         </a>
                                     </div>
@@ -635,11 +632,8 @@
                                 Pratinjau Dokumen / Gambar
                             </label>
                             <template x-if="previewUrl">
-                                <a :href="previewUrl" target="_blank" class="text-xs text-slate-900 hover:underline font-semibold flex items-center space-x-1">
-                                    <span>Buka Ukuran Penuh</span>
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
+                                <a :href="previewUrl" target="_blank" class="text-xs text-slate-900 hover:underline font-semibold">
+                                    Buka Ukuran Penuh
                                 </a>
                             </template>
                         </div>
@@ -659,35 +653,25 @@
                             <!-- State 2: Pratinjau PDF -->
                             <template x-if="previewType === 'pdf' && previewUrl">
                                 <div class="w-full flex flex-col items-center space-y-3 py-8 text-center">
-                                    <div class="w-16 h-16 rounded-2xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 shadow-xs">
-                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
+                                    <div class="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-800 shadow-xs">
+                                        <span class="text-sm font-bold font-mono">PDF</span>
                                     </div>
                                     <div class="space-y-1">
                                         <span class="text-xs font-bold text-slate-900 block font-mono" x-text="previewName"></span>
                                         <span class="text-[11px] text-slate-500 block">Dokumen Berkas PDF</span>
                                     </div>
-                                    <a :href="previewUrl" target="_blank" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all inline-flex items-center space-x-1.5">
-                                        <span>Buka & Baca Dokumen PDF</span>
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                        </svg>
+                                    <a :href="previewUrl" target="_blank" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all">
+                                        Buka & Baca Dokumen PDF
                                     </a>
                                 </div>
                             </template>
 
                             <!-- State 3: Kosong / Belum ada preview -->
                             <template x-if="!previewUrl">
-                                <div class="text-center py-12 px-4 space-y-3">
-                                    <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-200 flex items-center justify-center text-slate-400">
-                                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
+                                <div class="text-center py-12 px-4 space-y-2">
                                     <div class="space-y-1">
                                         <p class="text-xs font-bold text-slate-700">Area Pratinjau Dokumen / Gambar</p>
-                                        <p class="text-[11px] text-slate-500 max-w-xs">Pilih atau unggah berkas di kolom sebelah kiri, atau klik tombol "Pratinjau" pada berkas terdaftar untuk menampilkannya di sini.</p>
+                                        <p class="text-[11px] text-slate-500 max-w-xs mx-auto">Pilih atau unggah berkas di kolom sebelah kiri, atau klik tombol "Pratinjau" pada berkas terdaftar untuk menampilkannya di sini.</p>
                                     </div>
                                 </div>
                             </template>

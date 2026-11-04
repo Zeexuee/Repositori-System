@@ -411,12 +411,7 @@
                                        @change="handleFiles($event)"
                                        class="hidden">
                                 
-                                <div class="flex flex-col items-center justify-center space-y-1.5 py-1">
-                                    <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
-                                        <svg class="w-5 h-5 text-slate-600 group-hover:text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                        </svg>
-                                    </div>
+                                <div class="flex flex-col items-center justify-center space-y-1 py-2">
                                     <p class="text-xs font-bold text-slate-800">
                                         <span class="underline decoration-slate-400 group-hover:decoration-slate-900">+ Pilih / Tambah Dokumen</span>
                                     </p>
@@ -431,8 +426,7 @@
                                 <template x-for="(file, fIdx) in selectedFiles" :key="fIdx">
                                     <div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl text-xs shadow-2xs">
                                         <div class="flex items-center space-x-2.5 min-w-0 pr-2">
-                                            <span class="flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-bold"
-                                                  :class="file.type.includes('pdf') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-blue-50 text-blue-700 border border-blue-200'"
+                                            <span class="flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300"
                                                   x-text="file.type.includes('pdf') ? 'PDF' : 'FOTO'">
                                             </span>
                                             <span class="font-medium text-slate-800 truncate" x-text="file.name"></span>
@@ -440,7 +434,7 @@
                                         </div>
                                         <button type="button" 
                                                 @click.stop="removeFile(fIdx)" 
-                                                class="flex-shrink-0 p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                                class="flex-shrink-0 p-1 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                                                 title="Hapus berkas ini">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
