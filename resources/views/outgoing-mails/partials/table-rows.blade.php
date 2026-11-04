@@ -27,17 +27,9 @@
             @php
                 $recipientsList = $mail->recipients_list;
             @endphp
-            @if(count($recipientsList) > 1)
-                <div class="flex flex-wrap gap-1 max-w-[280px] max-h-14 overflow-hidden" title="{{ implode(', ', $recipientsList) }}">
-                    @foreach($recipientsList as $rec)
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 break-words leading-tight max-w-[260px] truncate" title="{{ $rec }}">
-                            {{ $rec }}
-                        </span>
-                    @endforeach
-                </div>
-            @elseif(count($recipientsList) === 1)
-                <div class="line-clamp-2 break-words leading-snug" title="{{ $recipientsList[0] }}">
-                    {{ $recipientsList[0] }}
+            @if(count($recipientsList) > 0)
+                <div class="line-clamp-2 break-words leading-snug" title="{{ implode(', ', $recipientsList) }}">
+                    {{ implode(', ', $recipientsList) }}
                 </div>
             @else
                 <span class="text-slate-400">-</span>
