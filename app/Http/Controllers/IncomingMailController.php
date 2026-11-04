@@ -103,7 +103,7 @@ class IncomingMailController extends Controller
                 'status' => ! empty($doc['status']) ? trim((string) $doc['status']) : null,
                 'mail_number' => $doc['mail_number'],
                 'subject' => $doc['subject'],
-                'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : $validated['received_date'],
+                'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : null,
                 'disposition_note' => $doc['disposition_note'] ?? null,
                 'notes' => $doc['notes'] ?? null,
             ];
@@ -427,7 +427,7 @@ class IncomingMailController extends Controller
                     'recipient' => $docRecipient,
                     'progress' => $docProgress,
                     'status' => $docStatus,
-                    'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : $validated['received_date'],
+                    'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : null,
                     'disposition_note' => ! empty($doc['disposition_note']) ? $doc['disposition_note'] : null,
                     'notes' => ! empty($doc['notes']) ? $doc['notes'] : null,
                 ]));
@@ -447,7 +447,7 @@ class IncomingMailController extends Controller
             $incomingMail = IncomingMail::create(array_merge($commonAttributes, [
                 'mail_number' => $mailNumber,
                 'subject' => $subject,
-                'outgoing_date' => ! empty($validated['outgoing_date']) ? $validated['outgoing_date'] : $validated['received_date'],
+                'outgoing_date' => ! empty($validated['outgoing_date']) ? $validated['outgoing_date'] : null,
                 'disposition_note' => $validated['disposition_note'] ?? null,
                 'notes' => $validated['notes'] ?? null,
             ]));

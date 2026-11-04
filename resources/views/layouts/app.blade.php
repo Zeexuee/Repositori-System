@@ -203,17 +203,89 @@
 
         <!-- Main Content Container (Responsive Mobile Bounds) -->
         <main class="flex-1 px-2 sm:px-4 lg:px-6 py-3 sm:py-6 {{ View::hasSection('container_width') ? View::yieldContent('container_width') : 'max-w-[98vw] w-full' }} mx-auto">
+            <!-- Flash Message: Berhasil Disimpan (Success) -->
             @if (session('success'))
-                <div
-                    class="mb-4 sm:mb-6 p-3.5 sm:p-4 glass-card border-l-4 border-l-slate-900 text-slate-900 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-xs">
-                    <span>{{ session('success') }}</span>
+                <div x-data="{ show: true }" x-show="show"
+                    x-transition:enter="transition ease-out duration-300 transform"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200 transform"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 -translate-y-2"
+                    class="mb-4 sm:mb-6 p-4 sm:p-5 bg-emerald-50 border border-emerald-300 text-emerald-950 rounded-2xl flex items-start justify-between gap-3 shadow-xs">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <div class="space-y-0.5">
+                            <h3 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-950">Berhasil Disimpan</h3>
+                            <p class="text-xs sm:text-sm text-emerald-800 font-medium leading-relaxed">{{ session('success') }}</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="show = false" class="text-emerald-700 hover:text-emerald-950 p-1.5 rounded-lg hover:bg-emerald-100/60 transition-colors cursor-pointer" title="Tutup pemberitahuan">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
             @endif
 
+            <!-- Flash Message: Gagal / Error -->
             @if (session('error'))
-                <div
-                    class="mb-4 sm:mb-6 p-3.5 sm:p-4 glass-card border-l-4 border-l-slate-500 text-slate-900 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-xs">
-                    <span>{{ session('error') }}</span>
+                <div x-data="{ show: true }" x-show="show"
+                    x-transition:enter="transition ease-out duration-300 transform"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200 transform"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 -translate-y-2"
+                    class="mb-4 sm:mb-6 p-4 sm:p-5 bg-rose-50 border border-rose-300 text-rose-950 rounded-2xl flex items-start justify-between gap-3 shadow-xs">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div class="space-y-0.5">
+                            <h3 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-rose-950">Gagal Memproses Data</h3>
+                            <p class="text-xs sm:text-sm text-rose-800 font-medium leading-relaxed">{{ session('error') }}</p>
+                        </div>
+                    </div>
+                    <button type="button" @click="show = false" class="text-rose-700 hover:text-rose-950 p-1.5 rounded-lg hover:bg-rose-100/60 transition-colors cursor-pointer" title="Tutup pemberitahuan">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            @endif
+
+            <!-- Global Fallback Validation Errors -->
+            @if ($errors->any() && !View::hasSection('has_custom_error_box'))
+                <div x-data="{ show: true }" x-show="show"
+                    x-transition:enter="transition ease-out duration-300 transform"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200 transform"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 -translate-y-2"
+                    class="mb-4 sm:mb-6 p-4 sm:p-5 bg-rose-50 border border-rose-300 text-rose-950 rounded-2xl flex items-start justify-between gap-3 shadow-xs">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div class="space-y-1">
+                            <h3 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-rose-950">Gagal Menyimpan Perubahan</h3>
+                            <p class="text-xs sm:text-sm text-rose-800 font-medium">Silakan periksa dan perbaiki input berikut:</p>
+                            <ul class="list-disc list-inside space-y-0.5 text-xs sm:text-sm text-rose-700 font-medium pt-1">
+                                @foreach ($errors->all() as $err)
+                                    <li>{{ $err }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                    <button type="button" @click="show = false" class="text-rose-700 hover:text-rose-950 p-1.5 rounded-lg hover:bg-rose-100/60 transition-colors cursor-pointer" title="Tutup pemberitahuan">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
             @endif
 

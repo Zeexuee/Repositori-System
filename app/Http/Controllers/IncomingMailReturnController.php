@@ -169,10 +169,19 @@ class IncomingMailReturnController extends Controller
 
                     $isFinalizing = in_array($action, ['complete', 'skip_remaining'], true);
 
+                    $latestSignedAt = null;
+                    foreach ($mail->returnRecipients()->get() as $r) {
+                        if ($r->signed_at && ($latestSignedAt === null || $r->signed_at->gt($latestSignedAt))) {
+                            $latestSignedAt = $r->signed_at;
+                        }
+                    }
+                    $activityDate = $latestSignedAt ?? now();
+
                     $attributes = [
                         'progress' => $isFinalizing
                             ? IncomingMailStatus::RETURN
                             : IncomingMailStatus::WAITING_RETURN,
+                        'outgoing_date' => $activityDate,
                     ];
 
                     if ($hasDispositionNote) {

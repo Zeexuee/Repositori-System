@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Edit Surat Keluar')
+@section('has_custom_error_box', true)
 
 @section('content')
     <div x-data="editOutgoingMailForm()" class="space-y-6">
@@ -26,7 +27,34 @@
             </div>
         </div>
 
-        <form action="{{ route('outgoing-mails.update', $outgoingMail) }}" method="POST" enctype="multipart/form-data" class="space-y-6" @submit="loading = true">
+        <!-- Alert Gagal / Kesalahan Validasi Input -->
+        <div x-show="errorMessageList.length > 0" x-cloak
+            x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="opacity-0 -translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            class="p-4 sm:p-5 bg-rose-50 border border-rose-300 text-rose-950 rounded-2xl flex items-start justify-between gap-3 shadow-xs">
+            <div class="flex items-start gap-3.5">
+                <div class="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div class="space-y-1">
+                    <h3 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-rose-950">Gagal Menyimpan Perubahan</h3>
+                    <p class="text-xs sm:text-sm text-rose-800 font-medium">Silakan periksa dan lengkapi input berikut sebelum menyimpan:</p>
+                    <ul class="list-disc list-inside space-y-0.5 text-xs sm:text-sm text-rose-700 font-medium pt-1">
+                        <template x-for="(err, idx) in errorMessageList" :key="idx">
+                            <li x-text="err"></li>
+                        </template>
+                    </ul>
+                </div>
+            </div>
+            <button type="button" @click="errorMessageList = []" class="text-rose-700 hover:text-rose-950 p-1.5 rounded-lg hover:bg-rose-100/60 transition-colors cursor-pointer" title="Tutup pemberitahuan">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <form action="{{ route('outgoing-mails.update', $outgoingMail) }}" method="POST" enctype="multipart/form-data" class="space-y-6" @submit="onSubmit($event)">
         @csrf
         @method('PUT')
 
@@ -516,6 +544,7 @@
                 loading: false,
                 isDeleting: false,
                 showDeleteModal: false,
+                errorMessageList: {{ json_encode($errors->all()) }},
 
                 openDeleteModal() {
                     this.showDeleteModal = true;
@@ -527,6 +556,31 @@
                     if (deleteForm) {
                         deleteForm.submit();
                     }
+                },
+
+                onSubmit(e) {
+                    this.errorMessageList = [];
+                    const errors = [];
+
+                    const subjectInput = document.getElementById('subject');
+                    if (!subjectInput || !subjectInput.value.trim()) {
+                        errors.push('Subjek / Perihal surat wajib diisi.');
+                    }
+
+                    const recipientInput = document.querySelector('input[name="recipient"]');
+                    if (!recipientInput || !recipientInput.value.trim()) {
+                        errors.push('Penerima Surat wajib diisi.');
+                    }
+
+                    if (errors.length > 0) {
+                        e.preventDefault();
+                        this.errorMessageList = errors;
+                        this.loading = false;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        return false;
+                    }
+
+                    this.loading = true;
                 }
             };
         }
