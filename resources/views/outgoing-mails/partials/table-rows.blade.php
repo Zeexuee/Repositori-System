@@ -18,32 +18,34 @@
         <td class="py-4 px-4 sm:px-5 text-slate-700 font-mono whitespace-nowrap">
             {{ $mail->created_at?->format('d/m/Y H:i') ?? '-' }}
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-800 font-medium min-w-[320px] max-w-2xl break-words leading-relaxed" title="{{ $mail->subject }}">
+        <td class="py-4 px-4 sm:px-5 text-slate-800 font-medium min-w-[260px] max-w-lg break-words leading-relaxed" title="{{ $mail->subject }}">
             {{ $mail->subject }}
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-700 font-medium">
+        <td class="py-4 px-4 sm:px-5 text-slate-700 font-medium max-w-[280px]">
             @php
                 $recipientsList = $mail->recipients_list;
             @endphp
             @if(count($recipientsList) > 1)
-                <div class="flex flex-wrap gap-1 min-w-[160px] max-w-xs">
+                <div class="flex flex-wrap gap-1 max-w-[280px]">
                     @foreach($recipientsList as $rec)
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 break-words leading-tight">
                             {{ $rec }}
                         </span>
                     @endforeach
                 </div>
             @elseif(count($recipientsList) === 1)
-                <span class="whitespace-nowrap">{{ $recipientsList[0] }}</span>
+                <span class="break-words leading-relaxed block">{{ $recipientsList[0] }}</span>
             @else
                 <span class="text-slate-400">-</span>
             @endif
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-600 font-medium whitespace-nowrap">{{ $mail->creator?->name ?? 'System' }}</td>
+        <td class="py-4 px-4 sm:px-5 text-slate-600 font-medium max-w-[180px] break-words leading-relaxed">
+            {{ $mail->creator?->name ?? 'System' }}
+        </td>
         <!-- Kolom Status (Input Admin) -->
-        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+        <td class="py-4 px-4 sm:px-5 text-center min-w-[120px] max-w-[180px]">
             @if (filled($mail->status))
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                <span class="inline-block max-w-[160px] px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 break-words [overflow-wrap:anywhere] leading-tight text-center" title="{{ $mail->status }}">
                     {{ $mail->status }}
                 </span>
             @else
@@ -51,7 +53,7 @@
             @endif
         </td>
         <!-- Kolom Progres (SOP Workflow) -->
-        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap min-w-[160px]">
             @php
                 $canonicalStatus = App\Support\OutgoingMailStatus::canonical($mail->progress) ?? $mail->progress;
                 $hasReturnProgress = $mail->returnRecipients && $mail->returnRecipients->isNotEmpty();

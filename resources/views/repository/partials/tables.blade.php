@@ -36,13 +36,13 @@
                                     <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap w-14">No.</th>
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Nomor Surat</th>
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Tanggal Masuk</th>
-                                    <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Dari</th>
-                                    <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Kepada</th>
-                                    <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Status</th>
-                                    <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Progres</th>
-                                    <th class="py-4 px-4 sm:px-5 min-w-[280px]">Perihal</th>
+                                    <th class="py-4 px-4 sm:px-5 max-w-[280px]">Dari</th>
+                                    <th class="py-4 px-4 sm:px-5 max-w-[280px]">Kepada</th>
+                                    <th class="py-4 px-4 sm:px-5 text-center min-w-[120px] max-w-[180px]">Status</th>
+                                    <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap min-w-[160px]">Progres</th>
+                                    <th class="py-4 px-4 sm:px-5 min-w-[260px] max-w-lg">Perihal</th>
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Tanggal Keluar</th>
-                                    <th class="py-4 px-4 sm:px-5 min-w-[200px]">Disposisi</th>
+                                    <th class="py-4 px-4 sm:px-5 max-w-[240px]">Disposisi</th>
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Nama Penerima</th>
                                     <th class="py-4 px-4 sm:px-5 text-right whitespace-nowrap">Aksi</th>
                                 </tr>
@@ -59,7 +59,7 @@
                                         <td class="py-4 px-4 sm:px-5 text-slate-700 font-mono whitespace-nowrap">
                                             {{ $mail->received_date?->format('d/m/Y') ?? '-' }}
                                         </td>
-                                        <td class="py-4 px-4 sm:px-5 font-medium text-slate-800 whitespace-nowrap">
+                                        <td class="py-4 px-4 sm:px-5 font-medium text-slate-800 max-w-[280px] break-words leading-relaxed">
                                             {{ $mail->sender }}
                                         </td>
                                         <td class="py-4 px-4 sm:px-5 text-slate-700">
@@ -81,9 +81,9 @@
                                             @endif
                                         </td>
                                         <!-- Kolom Status (Input Admin) -->
-                                        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+                                        <td class="py-4 px-4 sm:px-5 text-center min-w-[120px] max-w-[180px]">
                                             @if (filled($mail->status))
-                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                                <span class="inline-block max-w-[160px] px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 break-words [overflow-wrap:anywhere] leading-tight text-center" title="{{ $mail->status }}">
                                                     {{ $mail->status }}
                                                 </span>
                                             @else
@@ -154,11 +154,11 @@
                                     <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap w-14">No.</th>
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Nomor Surat</th>
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Tanggal Dibuat</th>
-                                    <th class="py-4 px-4 sm:px-5 min-w-[320px]">Subjek / Perihal</th>
-                                    <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Penerima</th>
-                                    <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Pembuat</th>
-                                    <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Status</th>
-                                    <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Progres</th>
+                                    <th class="py-4 px-4 sm:px-5 min-w-[260px] max-w-lg">Subjek / Perihal</th>
+                                    <th class="py-4 px-4 sm:px-5 max-w-[280px]">Penerima</th>
+                                    <th class="py-4 px-4 sm:px-5 max-w-[180px]">Pembuat</th>
+                                    <th class="py-4 px-4 sm:px-5 text-center min-w-[120px] max-w-[180px]">Status</th>
+                                    <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap min-w-[160px]">Progres</th>
                                     <th class="py-4 px-4 sm:px-5 text-right whitespace-nowrap">Aksi</th>
                                 </tr>
                             </thead>
@@ -197,9 +197,9 @@
                                         </td>
                                         <td class="py-4 px-4 sm:px-5 text-slate-600 font-medium whitespace-nowrap">{{ $mail->creator?->name ?? 'System' }}</td>
                                         <!-- Kolom Status (Input Admin) -->
-                                        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+                                        <td class="py-4 px-4 sm:px-5 text-center min-w-[120px] max-w-[180px]">
                                             @if (filled($mail->status))
-                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                                <span class="inline-block max-w-[160px] px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 break-words [overflow-wrap:anywhere] leading-tight text-center" title="{{ $mail->status }}">
                                                     {{ $mail->status }}
                                                 </span>
                                             @else

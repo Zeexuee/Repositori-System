@@ -714,13 +714,13 @@
                             <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap w-14">No.</th>
                             <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Nomor Surat</th>
                             <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Tanggal Masuk</th>
-                            <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Dari</th>
-                            <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Kepada</th>
-                            <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Status</th>
-                            <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Progres</th>
-                            <th class="py-4 px-4 sm:px-5 min-w-[280px]">Perihal</th>
+                            <th class="py-4 px-4 sm:px-5 max-w-[280px]">Dari</th>
+                            <th class="py-4 px-4 sm:px-5 max-w-[280px]">Kepada</th>
+                            <th class="py-4 px-4 sm:px-5 text-center min-w-[120px] max-w-[180px]">Status</th>
+                            <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap min-w-[160px]">Progres</th>
+                            <th class="py-4 px-4 sm:px-5 min-w-[260px] max-w-lg">Perihal</th>
                             <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Tanggal Keluar</th>
-                            <th class="py-4 px-4 sm:px-5 min-w-[200px]">Disposisi</th>
+                            <th class="py-4 px-4 sm:px-5 max-w-[240px]">Disposisi</th>
                             <th class="py-4 px-4 sm:px-5 text-right whitespace-nowrap">Aksi</th>
                         </tr>
                     </thead>

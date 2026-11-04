@@ -24,37 +24,37 @@
         <td class="py-4 px-4 sm:px-5 text-slate-700 font-mono whitespace-nowrap">
             {{ $mail->received_date?->format('d/m/Y H:i') ?? '-' }}
         </td>
-        <td class="py-4 px-4 sm:px-5 font-medium text-slate-800 whitespace-nowrap">
+        <td class="py-4 px-4 sm:px-5 font-medium text-slate-800 max-w-[280px] break-words leading-relaxed">
             {{ $mail->sender }}
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-700">
+        <td class="py-4 px-4 sm:px-5 text-slate-700 max-w-[280px]">
             @php
                 $recipientsList = $mail->recipients_list;
             @endphp
             @if(count($recipientsList) > 1)
-                <div class="flex flex-wrap gap-1 min-w-[160px] max-w-xs">
+                <div class="flex flex-wrap gap-1 max-w-[280px]">
                     @foreach($recipientsList as $rec)
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 break-words leading-tight">
                             {{ $rec }}
                         </span>
                     @endforeach
                 </div>
             @elseif(count($recipientsList) === 1)
-                <span class="whitespace-nowrap">{{ $recipientsList[0] }}</span>
+                <span class="break-words leading-relaxed block">{{ $recipientsList[0] }}</span>
             @else
                 <span class="text-slate-400">-</span>
             @endif
         </td>
-        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+        <td class="py-4 px-4 sm:px-5 text-center min-w-[120px] max-w-[180px]">
             @if(!empty($mail->status))
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                <span class="inline-block max-w-[160px] px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 break-words [overflow-wrap:anywhere] leading-tight text-center" title="{{ $mail->status }}">
                     {{ $mail->status }}
                 </span>
             @else
-                <span class="text-slate-400">-</span>
+                <span class="text-slate-400 text-xs">-</span>
             @endif
         </td>
-        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap min-w-[160px]">
             @php
                 $canonicalProgress = App\Support\IncomingMailStatus::canonical($mail->progress);
                 $displayProgress = App\Support\IncomingMailStatus::label($mail->progress);
@@ -118,13 +118,13 @@
                 @endif
             </div>
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-800 min-w-[280px] max-w-xl break-words leading-relaxed" title="{{ $mail->subject }}">
+        <td class="py-4 px-4 sm:px-5 text-slate-800 min-w-[260px] max-w-lg break-words leading-relaxed" title="{{ $mail->subject }}">
             {{ $mail->subject }}
         </td>
         <td class="py-4 px-4 sm:px-5 text-slate-600 font-mono whitespace-nowrap">
             {{ $mail->outgoing_date?->format('d/m/Y H:i') ?? '-' }}
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-600 min-w-[200px] max-w-md break-words leading-relaxed" title="{{ $mail->disposition_note }}">
+        <td class="py-4 px-4 sm:px-5 text-slate-600 max-w-[240px] break-words leading-relaxed" title="{{ $mail->disposition_note }}">
             {{ $mail->disposition_note ?? '-' }}
         </td>
         <td class="py-4 px-4 sm:px-5 text-right space-x-1.5 whitespace-nowrap">
