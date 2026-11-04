@@ -73,6 +73,7 @@ class RepositoryController extends Controller
                         ->orWhere('received_date', 'like', "%{$search}%")
                         ->orWhere('sender', 'like', "%{$search}%")
                         ->orWhere('recipient', 'like', "%{$search}%")
+                        ->orWhere('progress', 'like', "%{$search}%")
                         ->orWhere('status', 'like', "%{$search}%")
                         ->orWhere('subject', 'like', "%{$search}%")
                         ->orWhere('outgoing_date', 'like', "%{$search}%")
@@ -103,6 +104,7 @@ class RepositoryController extends Controller
                         ->orWhere('subject', 'like', "%{$search}%")
                         ->orWhere('disposition_note', 'like', "%{$search}%")
                         ->orWhere('recipient', 'like', "%{$search}%")
+                        ->orWhere('progress', 'like', "%{$search}%")
                         ->orWhere('status', 'like', "%{$search}%")
                         ->orWhereHas('creator', function ($creatorQuery) use ($search) {
                             $creatorQuery->where('name', 'like', "%{$search}%");

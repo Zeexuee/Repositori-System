@@ -39,6 +39,7 @@
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Dari</th>
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Kepada</th>
                                     <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Status</th>
+                                    <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Progres</th>
                                     <th class="py-4 px-4 sm:px-5 min-w-[280px]">Perihal</th>
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Tanggal Keluar</th>
                                     <th class="py-4 px-4 sm:px-5 min-w-[200px]">Disposisi</th>
@@ -61,12 +62,38 @@
                                         <td class="py-4 px-4 sm:px-5 font-medium text-slate-800 whitespace-nowrap">
                                             {{ $mail->sender }}
                                         </td>
-                                        <td class="py-4 px-4 sm:px-5 text-slate-700 whitespace-nowrap">
-                                            {{ $mail->recipient ?? '-' }}
+                                        <td class="py-4 px-4 sm:px-5 text-slate-700">
+                                            @php
+                                                $recipientsList = $mail->recipients_list;
+                                            @endphp
+                                            @if(count($recipientsList) > 1)
+                                                <div class="flex flex-wrap gap-1 min-w-[160px] max-w-xs">
+                                                    @foreach($recipientsList as $rec)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 whitespace-nowrap">
+                                                            {{ $rec }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @elseif(count($recipientsList) === 1)
+                                                <span class="whitespace-nowrap">{{ $recipientsList[0] }}</span>
+                                            @else
+                                                <span class="text-slate-400">-</span>
+                                            @endif
                                         </td>
+                                        <!-- Kolom Status (Input Admin) -->
+                                        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+                                            @if (filled($mail->status))
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                                    {{ $mail->status }}
+                                                </span>
+                                            @else
+                                                <span class="text-slate-400 text-xs">-</span>
+                                            @endif
+                                        </td>
+                                        <!-- Kolom Progres (SOP Workflow) -->
                                         <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
                                             @php
-                                                $badgeClasses = match (App\Support\IncomingMailStatus::canonical($mail->status)) {
+                                                $badgeClasses = match (App\Support\IncomingMailStatus::canonical($mail->progress)) {
                                                     App\Support\IncomingMailStatus::RECEIVE => 'bg-slate-900 text-white border-slate-900 font-bold',
                                                     App\Support\IncomingMailStatus::RETURN => 'bg-white text-slate-800 border-slate-300 font-bold',
                                                     App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300 font-bold',
@@ -74,7 +101,7 @@
                                                     App\Support\IncomingMailStatus::DRAFT => 'bg-indigo-50 text-indigo-800 border-indigo-300 font-bold',
                                                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                                                 };
-                                                $displayStatus = App\Support\IncomingMailStatus::label($mail->status);
+                                                $displayStatus = App\Support\IncomingMailStatus::label($mail->progress);
                                             @endphp
                                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border {{ $badgeClasses }}">
                                                 {{ $displayStatus }}
@@ -101,7 +128,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="11" class="p-8 text-center text-slate-500 italic text-sm">
+                                        <td colspan="12" class="p-8 text-center text-slate-500 italic text-sm">
                                             Tidak ada data surat masuk yang cocok.
                                         </td>
                                     </tr>
@@ -131,6 +158,7 @@
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Penerima</th>
                                     <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Pembuat</th>
                                     <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Status</th>
+                                    <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Progres</th>
                                     <th class="py-4 px-4 sm:px-5 text-right whitespace-nowrap">Aksi</th>
                                 </tr>
                             </thead>
@@ -149,11 +177,39 @@
                                         <td class="py-4 px-4 sm:px-5 text-slate-800 font-medium min-w-[320px] max-w-2xl break-words leading-relaxed" title="{{ $mail->subject }}">
                                             {{ $mail->subject }}
                                         </td>
-                                        <td class="py-4 px-4 sm:px-5 text-slate-700 font-medium whitespace-nowrap">{{ $mail->recipient }}</td>
+                                        <td class="py-4 px-4 sm:px-5 text-slate-700 font-medium">
+                                            @php
+                                                $recipientsList = $mail->recipients_list;
+                                            @endphp
+                                            @if(count($recipientsList) > 1)
+                                                <div class="flex flex-wrap gap-1 min-w-[160px] max-w-xs">
+                                                    @foreach($recipientsList as $rec)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 whitespace-nowrap">
+                                                            {{ $rec }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @elseif(count($recipientsList) === 1)
+                                                <span class="whitespace-nowrap">{{ $recipientsList[0] }}</span>
+                                            @else
+                                                <span class="text-slate-400">-</span>
+                                            @endif
+                                        </td>
                                         <td class="py-4 px-4 sm:px-5 text-slate-600 font-medium whitespace-nowrap">{{ $mail->creator?->name ?? 'System' }}</td>
+                                        <!-- Kolom Status (Input Admin) -->
+                                        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+                                            @if (filled($mail->status))
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                                    {{ $mail->status }}
+                                                </span>
+                                            @else
+                                                <span class="text-slate-400 text-xs">-</span>
+                                            @endif
+                                        </td>
+                                        <!-- Kolom Progres (SOP Workflow) -->
                                         <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
                                             @php
-                                                $canonicalStatus = App\Support\OutgoingMailStatus::canonical($mail->status) ?? $mail->status;
+                                                $canonicalStatus = App\Support\OutgoingMailStatus::canonical($mail->progress) ?? $mail->progress;
                                                 $hasReturnProgress = $mail->returnRecipients && $mail->returnRecipients->isNotEmpty();
                                                 if ($canonicalStatus === App\Support\OutgoingMailStatus::WAITING_RECEIVE && ! $hasReturnProgress) {
                                                     $canonicalStatus = App\Support\OutgoingMailStatus::READY_TO_DELIVERY;
@@ -181,7 +237,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="p-8 text-center text-slate-500 italic text-sm">
+                                        <td colspan="9" class="p-8 text-center text-slate-500 italic text-sm">
                                             Tidak ada data surat keluar yang cocok.
                                         </td>
                                     </tr>

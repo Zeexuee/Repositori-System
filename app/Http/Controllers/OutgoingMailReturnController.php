@@ -28,6 +28,7 @@ class OutgoingMailReturnController extends Controller
             'mail' => [
                 'id' => $outgoingMail->id,
                 'mail_number' => $outgoingMail->mail_number,
+                'progress' => $outgoingMail->progress,
                 'status' => $outgoingMail->status,
                 'disposition_note' => $outgoingMail->disposition_note,
             ],
@@ -70,19 +71,19 @@ class OutgoingMailReturnController extends Controller
         foreach ($mails as $mail) {
             Gate::authorize('update', $mail);
 
-            if (OutgoingMailStatus::canonical($mail->status) === OutgoingMailStatus::RECEIVE) {
-                abort(403, 'Dokumen sudah berstatus RECEIVE dan tidak dapat diproses penerimaan ulang.');
+            if (OutgoingMailStatus::canonical($mail->progress) === OutgoingMailStatus::RECEIVE) {
+                abort(403, 'Dokumen sudah berprogres RECEIVE dan tidak dapat diproses penerimaan ulang.');
             }
 
-            if (! OutgoingMailStatus::canProcessReceive($mail->status)) {
-                $label = OutgoingMailStatus::label($mail->status);
+            if (! OutgoingMailStatus::canProcessReceive($mail->progress)) {
+                $label = OutgoingMailStatus::label($mail->progress);
 
                 throw ValidationException::withMessages([
-                    'mail_ids' => "Dokumen {$mail->mail_number} berstatus {$label} sehingga tidak dapat diproses untuk penerimaan.",
+                    'mail_ids' => "Dokumen {$mail->mail_number} berprogres {$label} sehingga tidak dapat diproses untuk penerimaan.",
                 ]);
             }
 
-            if (count($mailIds) > 1 && OutgoingMailStatus::canonical($mail->status) === OutgoingMailStatus::WAITING_RECEIVE) {
+            if (count($mailIds) > 1 && OutgoingMailStatus::canonical($mail->progress) === OutgoingMailStatus::WAITING_RECEIVE) {
                 throw ValidationException::withMessages([
                     'mail_ids' => "Dokumen {$mail->mail_number} sedang menunggu penerimaan dan harus dilanjutkan secara terpisah.",
                 ]);
@@ -173,7 +174,7 @@ class OutgoingMailReturnController extends Controller
                     $isFinalizing = in_array($action, ['complete', 'skip_remaining'], true);
 
                     $attributes = [
-                        'status' => $isFinalizing
+                        'progress' => $isFinalizing
                             ? OutgoingMailStatus::RECEIVE
                             : OutgoingMailStatus::WAITING_RECEIVE,
                     ];
@@ -193,14 +194,16 @@ class OutgoingMailReturnController extends Controller
         Storage::disk('local')->delete(array_values(array_unique($obsoleteSignaturePaths)));
 
         $isFinalized = in_array($action, ['complete', 'skip_remaining'], true);
+        $resultProgress = $isFinalized ? OutgoingMailStatus::RECEIVE : OutgoingMailStatus::WAITING_RECEIVE;
 
         return response()->json([
             'success' => true,
-            'status' => $isFinalized ? OutgoingMailStatus::RECEIVE : OutgoingMailStatus::WAITING_RECEIVE,
+            'progress' => $resultProgress,
+            'status' => $resultProgress,
             'message' => match ($action) {
                 'complete' => 'Penerimaan selesai. Semua tanda tangan telah disimpan.',
                 'skip_remaining' => 'Penerimaan ditutup. Tanda tangan yang tersisa dilewati dan tercatat sebagai belum ditandatangani.',
-                default => 'Progres disimpan. Penerimaan dapat dilanjutkan melalui status WAITING RECEIVE.',
+                default => 'Progres disimpan. Penerimaan dapat dilanjutkan melalui progres WAITING RECEIVE.',
             },
             'updated_ids' => $mailIds,
         ]);

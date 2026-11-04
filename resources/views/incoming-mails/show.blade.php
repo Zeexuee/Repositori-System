@@ -43,7 +43,7 @@
                 <span>Data Utama Surat Masuk</span>
             </h2>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nomor Surat</span>
                     <span class="font-bold text-slate-900 text-sm block font-mono">{{ $incomingMail->mail_number }}</span>
@@ -56,9 +56,20 @@
 
                 <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status Surat</span>
+                    @if(!empty($incomingMail->status))
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300">
+                            {{ $incomingMail->status }}
+                        </span>
+                    @else
+                        <span class="font-semibold text-slate-400 text-sm block">-</span>
+                    @endif
+                </div>
+
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                    <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progres Surat</span>
                     @php
-                        $canonicalStatus = App\Support\IncomingMailStatus::canonical($incomingMail->status);
-                        $statusBadge = match ($canonicalStatus) {
+                        $canonicalProgress = App\Support\IncomingMailStatus::canonical($incomingMail->progress);
+                        $progressBadge = match ($canonicalProgress) {
                             App\Support\IncomingMailStatus::REVISI => 'bg-amber-50 text-amber-800 border-amber-300',
                             App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300',
                             App\Support\IncomingMailStatus::RETURN => 'bg-white text-slate-800 border-slate-300',
@@ -66,8 +77,8 @@
                             default => 'bg-slate-900 text-white border-slate-900',
                         };
                     @endphp
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
-                        {{ App\Support\IncomingMailStatus::label($incomingMail->status) }}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border {{ $progressBadge }}">
+                        {{ App\Support\IncomingMailStatus::label($incomingMail->progress) }}
                     </span>
                 </div>
             </div>
@@ -78,9 +89,24 @@
                     <span class="font-bold text-slate-900 text-sm block break-words">{{ $incomingMail->sender }}</span>
                 </div>
 
-                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1.5">
                     <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kepada</span>
-                    <span class="font-semibold text-slate-800 text-sm block break-words">{{ $incomingMail->recipient ?? '-' }}</span>
+                    @php
+                        $recipientsList = $incomingMail->recipients_list;
+                    @endphp
+                    @if(count($recipientsList) > 1)
+                        <div class="flex flex-wrap gap-1.5 pt-0.5">
+                            @foreach($recipientsList as $rec)
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs">
+                                    {{ $rec }}
+                                </span>
+                            @endforeach
+                        </div>
+                    @elseif(count($recipientsList) === 1)
+                        <span class="font-semibold text-slate-800 text-sm block break-words">{{ $recipientsList[0] }}</span>
+                    @else
+                        <span class="font-semibold text-slate-400 text-sm block">-</span>
+                    @endif
                 </div>
             </div>
 
@@ -149,7 +175,7 @@
             $signedDispositionRecipients = $dispositionRecipients->filter(fn ($recipient) => $recipient->signed_at !== null)->count();
             $totalDispositionRecipients = $dispositionRecipients->count();
         @endphp
-        @if ($incomingMail->disposition_note || $totalDispositionRecipients > 0 || in_array($canonicalStatus, [App\Support\IncomingMailStatus::RETURN, App\Support\IncomingMailStatus::WAITING_RETURN], true))
+        @if ($incomingMail->disposition_note || $totalDispositionRecipients > 0 || in_array($canonicalProgress, [App\Support\IncomingMailStatus::RETURN, App\Support\IncomingMailStatus::WAITING_RETURN], true))
             <section class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-5" aria-labelledby="disposition-heading">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
                     <div>
@@ -163,8 +189,8 @@
                             </p>
                         @endif
                     </div>
-                    <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
-                        {{ App\Support\IncomingMailStatus::label($incomingMail->status) }}
+                    <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold border {{ $progressBadge }}">
+                        {{ App\Support\IncomingMailStatus::label($incomingMail->progress) }}
                     </span>
                 </div>
 
@@ -250,7 +276,7 @@
                             {{ $incomingMail->revisionNotes->count() }} catatan tercatat, terbaru di atas.
                         </p>
                     </div>
-                    @if ($canonicalStatus === App\Support\IncomingMailStatus::REVISI)
+                    @if ($canonicalProgress === App\Support\IncomingMailStatus::REVISI)
                         <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
                             Sedang dalam revisi
                         </span>
@@ -293,8 +319,8 @@
                             {{ $signedReturnRecipients }} dari {{ $totalReturnRecipients }} penerima telah menandatangani.
                         </p>
                     </div>
-                    <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold border {{ $statusBadge }}">
-                        {{ App\Support\IncomingMailStatus::label($incomingMail->status) }}
+                    <span class="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-bold border {{ $progressBadge }}">
+                        {{ App\Support\IncomingMailStatus::label($incomingMail->progress) }}
                     </span>
                 </div>
 
@@ -335,10 +361,10 @@
                     </table>
                 </div>
 
-                @if ($canonicalStatus === App\Support\IncomingMailStatus::WAITING_RETURN && auth()->user()?->can('update', $incomingMail))
+                @if ($canonicalProgress === App\Support\IncomingMailStatus::WAITING_RETURN && auth()->user()?->can('update', $incomingMail))
                     <div class="flex justify-end">
                         <a href="{{ route('incoming-mails.index') }}" class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl text-xs font-bold">
-                            Kembali dan Lanjutkan melalui Status
+                            Kembali dan Lanjutkan melalui Progres
                         </a>
                     </div>
                 @endif

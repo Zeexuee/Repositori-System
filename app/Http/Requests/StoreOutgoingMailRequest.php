@@ -4,11 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Support\MailRecipient;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreOutgoingMailRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (is_array($this->input('documents'))) {
+            $documents = $this->input('documents');
+            foreach ($documents as $index => $doc) {
+                if (is_array($doc) && array_key_exists('recipient', $doc)) {
+                    $documents[$index]['recipient'] = MailRecipient::format($doc['recipient']) ?? '';
+                }
+            }
+            $this->merge(['documents' => $documents]);
+        }
+    }
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -28,7 +41,8 @@ class StoreOutgoingMailRequest extends FormRequest
             'documents' => ['required', 'array', 'min:1'],
             'documents.*.mail_number' => ['nullable', 'string', 'max:255', 'distinct:ignore_case', 'unique:outgoing_mails,mail_number'],
             'documents.*.subject' => ['required', 'string', 'max:255'],
-            'documents.*.recipient' => ['required', 'string', 'max:255'],
+            'documents.*.recipient' => ['required', 'string', 'max:2000'],
+            'documents.*.status' => ['nullable', 'string', 'max:255'],
             'documents.*.file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'documents.*.files' => ['nullable', 'array'],
             'documents.*.files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],

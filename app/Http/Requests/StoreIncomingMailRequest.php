@@ -4,11 +4,33 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Support\MailRecipient;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreIncomingMailRequest extends FormRequest
 {
+    /**
+     * Normalize recipient inputs (array or comma-separated string) prior to validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('recipient')) {
+            $this->merge([
+                'recipient' => MailRecipient::format($this->input('recipient')),
+            ]);
+        }
+
+        if (is_array($this->input('documents'))) {
+            $documents = $this->input('documents');
+            foreach ($documents as $index => $doc) {
+                if (is_array($doc) && array_key_exists('recipient', $doc)) {
+                    $documents[$index]['recipient'] = MailRecipient::format($doc['recipient']) ?? '';
+                }
+            }
+            $this->merge(['documents' => $documents]);
+        }
+    }
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -27,7 +49,7 @@ class StoreIncomingMailRequest extends FormRequest
         $isDraft = filter_var($this->input('is_draft'), FILTER_VALIDATE_BOOLEAN);
         $hasDocuments = is_array($this->input('documents')) && count($this->input('documents')) > 0;
 
-        $docRecipientRule = $isDraft ? ['nullable', 'string', 'max:255'] : ['required', 'string', 'max:255'];
+        $docRecipientRule = $isDraft ? ['nullable', 'string', 'max:2000'] : ['required', 'string', 'max:2000'];
         $docSubjectRule = $isDraft ? ['nullable', 'string', 'max:255'] : ['required', 'string', 'max:255'];
 
         $topSubjectRule = ($hasDocuments || $isDraft) ? ['nullable', 'string', 'max:255'] : ['required', 'string', 'max:255'];
@@ -36,7 +58,7 @@ class StoreIncomingMailRequest extends FormRequest
             'sender' => ['required', 'string', 'max:255'],
             'received_date' => ['required', 'date'],
 
-            'recipient' => ['nullable', 'string', 'max:255'],
+            'recipient' => ['nullable', 'string', 'max:2000'],
             'is_draft' => ['nullable'],
             'receipt_signature' => ['nullable', 'string'],
             'receipt_signature_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -44,7 +66,8 @@ class StoreIncomingMailRequest extends FormRequest
             // Single document input fields
             'mail_number' => ['nullable', 'string', 'max:255', 'unique:incoming_mails,mail_number'],
             'subject' => $topSubjectRule,
-            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,REVISI,DRAFT'],
+            'progress' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,REVISI,DRAFT'],
+            'status' => ['nullable', 'string', 'max:255'],
             'outgoing_date' => ['nullable', 'date'],
             'disposition_note' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
@@ -59,7 +82,8 @@ class StoreIncomingMailRequest extends FormRequest
             'documents.*.outgoing_date' => ['nullable', 'date'],
             'documents.*.disposition_note' => ['nullable', 'string'],
             'documents.*.notes' => ['nullable', 'string'],
-            'documents.*.status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,REVISI,DRAFT'],
+            'documents.*.progress' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,REVISI,DRAFT'],
+            'documents.*.status' => ['nullable', 'string', 'max:255'],
             'documents.*.file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'documents.*.document_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
             'documents.*.files' => ['nullable', 'array'],

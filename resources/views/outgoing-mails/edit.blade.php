@@ -7,11 +7,11 @@
         <div class="pb-4 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Edit Surat Keluar</h1>
-                <p class="text-xs text-slate-500 mt-1">Perbarui rincian, berkas lampiran, atau status surat keluar.</p>
+                <p class="text-xs text-slate-500 mt-1">Perbarui rincian, berkas lampiran, status, atau progres surat keluar.</p>
             </div>
             <div class="flex items-center space-x-2">
                 <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
-                    <span>Status: <strong class="text-slate-900 font-mono">{{ App\Support\OutgoingMailStatus::label($outgoingMail->status) }}</strong></span>
+                    <span>Progres: <strong class="text-slate-900 font-mono">{{ App\Support\OutgoingMailStatus::label($outgoingMail->progress) }}</strong></span>
                 </div>
                 @can('delete', $outgoingMail)
                     <button type="button" 
@@ -31,7 +31,7 @@
         @method('PUT')
 
         <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                 <!-- Nomor Surat -->
                 <div>
                     <label for="mail_number" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Surat</label>
@@ -50,11 +50,106 @@
                     @enderror
                 </div>
 
-                <!-- Penerima Surat -->
-                <div>
-                    <label for="recipient" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Penerima Surat <span class="text-slate-900 font-bold">*</span></label>
-                    <input type="text" name="recipient" id="recipient" value="{{ old('recipient', $outgoingMail->recipient) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                <!-- Penerima Surat (Multi-Recipient Chip Combobox) -->
+                <div x-data="multiRecipientSelect({ listType: 'recipients', initialValue: @js(old('recipient', $outgoingMail->recipient)), defaultOptions: @js($recipients ?? []) })" class="relative" @click.away="closeDropdown()">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Penerima Surat <span class="text-slate-900 font-bold">*</span>
+                    </label>
+                    <input type="hidden" name="recipient" :value="value">
+
+                    <!-- Trigger Box with Chips -->
+                    <div @click="toggle()"
+                         class="w-full min-h-[42px] px-3 py-1.5 bg-slate-50/50 border border-slate-200 rounded-xl text-left text-sm text-slate-900 focus-within:ring-2 focus-within:ring-slate-900 flex items-center justify-between gap-2 shadow-2xs transition-all cursor-pointer">
+                        <div class="flex flex-wrap items-center gap-1.5 flex-1">
+                            <template x-for="(tag, tIdx) in tags" :key="tag + '_' + tIdx">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs">
+                                    <span x-text="tag"></span>
+                                    <button type="button" @click.stop="removeTag(tIdx)" class="text-slate-300 hover:text-white leading-none cursor-pointer" title="Hapus penerima ini">&times;</button>
+                                </span>
+                            </template>
+                            <span x-show="tags.length === 0" class="text-slate-400 text-sm py-0.5 px-1">Pilih / Tambah Penerima...</span>
+                        </div>
+                        <svg class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+
+                    <!-- Dropdown List -->
+                    <div x-show="open" x-cloak
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="absolute z-50 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden p-2 space-y-2">
+                        <div class="relative">
+                            <input x-ref="searchInput"
+                                   type="text"
+                                   x-model="search"
+                                   @keydown.enter.prevent.stop="commitSearch()"
+                                   @keydown.comma.prevent.stop="commitSearch()"
+                                   @keydown.escape.prevent.stop="closeDropdown()"
+                                   placeholder="Ketik penerima lalu tekan Enter..."
+                                   class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                            <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">&times;</span>
+                        </div>
+
+                        <div class="max-h-44 overflow-y-auto space-y-1">
+                            <div class="pb-1 border-b border-slate-100">
+                                <button type="button"
+                                        @click="search.trim() !== '' ? addNewOption(search.trim()) : $refs.searchInput.focus()"
+                                        class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
+                                    <span x-show="search.trim() === ''">+ Ketik untuk Tambah Penerima Baru</span>
+                                    <span x-show="search.trim() !== ''">+ Tambahkan "<span x-text="search.trim()"></span>"</span>
+                                </button>
+                            </div>
+
+                            <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar penerima</p>
+                            <template x-for="item in filteredOptions" :key="item">
+                                <div class="flex items-center space-x-1">
+                                    <button type="button"
+                                            @click="toggleOption(item)"
+                                            class="flex-1 text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
+                                            :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': isSelected(item) }">
+                                        <span x-text="item" class="truncate pr-2"></span>
+                                        <span x-show="isSelected(item)" class="text-xs">&#10003;</span>
+                                    </button>
+                                    <button type="button"
+                                            @click.stop="removeOption(item)"
+                                            class="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                            title="Hapus dari daftar saran">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
                     @error('recipient')
+                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Status (Opsional) -->
+                <div x-data="searchableSelect({ listType: 'statuses', initialValue: @js(old('status', $outgoingMail->status)), defaultOptions: @js($statuses ?? \App\Support\MailCustomStatus::DEFAULTS) })" class="relative" @click.away="open = false">
+                    <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status <span class="text-slate-400 font-normal normal-case">(Opsional)</span></label>
+                    <div class="relative">
+                        <input type="text" name="status" id="status" x-model="value" @focus="open = true" @input="open = true" autocomplete="off" placeholder="Ketik atau pilih status..." class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs pr-8">
+                        <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600">
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                    </div>
+                    <div x-show="open && filteredOptions.length > 0" x-transition class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto py-1">
+                        <template x-for="opt in filteredOptions" :key="opt">
+                            <div @click="select(opt)" class="flex items-center justify-between px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer group">
+                                <span x-text="opt" class="truncate pr-2"></span>
+                                <button type="button" @click.stop="remove(opt)" title="Hapus dari daftar saran" class="text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                    @error('status')
                         <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
                     @enderror
                 </div>
@@ -291,6 +386,131 @@
     </div>
 
     <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('searchableSelect', ({ listType, initialValue, defaultOptions }) => ({
+                open: false,
+                value: initialValue || '',
+                rawOptions: defaultOptions || [],
+                deleted: JSON.parse(localStorage.getItem('deleted_outgoing_' + listType) || '[]'),
+                get options() {
+                    return this.rawOptions.filter(item => !this.deleted.includes(item));
+                },
+                get filteredOptions() {
+                    if (!this.value) return this.options;
+                    return this.options.filter(opt => opt.toLowerCase().includes(this.value.toLowerCase()));
+                },
+                select(opt) {
+                    this.value = opt;
+                    this.open = false;
+                },
+                remove(opt) {
+                    if (!this.deleted.includes(opt)) {
+                        this.deleted.push(opt);
+                        localStorage.setItem('deleted_outgoing_' + listType, JSON.stringify(this.deleted));
+                    }
+                }
+            }));
+
+            Alpine.data('multiRecipientSelect', ({ listType, initialValue, defaultOptions }) => {
+                const parseTags = (raw) => {
+                    if (!raw) return [];
+                    if (Array.isArray(raw)) return raw.map(s => String(s).trim()).filter(Boolean);
+                    return String(raw).split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+                };
+                const initialTags = parseTags(initialValue);
+                const rawOpts = Array.isArray(defaultOptions) ? [...defaultOptions] : [];
+                initialTags.forEach(tag => {
+                    if (!rawOpts.some(o => String(o).toLowerCase() === tag.toLowerCase())) {
+                        rawOpts.unshift(tag);
+                    }
+                });
+
+                return {
+                    open: false,
+                    search: '',
+                    tags: initialTags,
+                    rawOptions: rawOpts,
+                    deleted: JSON.parse(localStorage.getItem('deleted_outgoing_' + (listType || 'recipients')) || '[]'),
+                    get value() {
+                        return this.tags.join(', ');
+                    },
+                    get options() {
+                        return this.rawOptions.filter(item => !this.deleted.includes(item));
+                    },
+                    get filteredOptions() {
+                        const kw = this.search.trim().toLowerCase();
+                        if (!kw) return this.options;
+                        return this.options.filter(opt => String(opt).toLowerCase().includes(kw));
+                    },
+                    isSelected(opt) {
+                        const target = String(opt).toLowerCase();
+                        return this.tags.some(t => t.toLowerCase() === target);
+                    },
+                    toggle() {
+                        this.open = !this.open;
+                        if (this.open) {
+                            this.$nextTick(() => this.$refs.searchInput?.focus());
+                        }
+                    },
+                    closeDropdown() {
+                        if (this.search.trim() !== '') {
+                            this.commitSearch();
+                        }
+                        this.open = false;
+                    },
+                    addTag(opt) {
+                        const clean = String(opt || '').trim();
+                        if (!clean) return;
+                        if (!this.isSelected(clean)) {
+                            this.tags.push(clean);
+                        }
+                    },
+                    removeTag(index) {
+                        this.tags.splice(index, 1);
+                    },
+                    toggleOption(opt) {
+                        const target = String(opt).toLowerCase();
+                        const idx = this.tags.findIndex(t => t.toLowerCase() === target);
+                        if (idx !== -1) {
+                            this.tags.splice(idx, 1);
+                        } else {
+                            this.tags.push(opt);
+                        }
+                        this.search = '';
+                        this.$nextTick(() => this.$refs.searchInput?.focus());
+                    },
+                    addNewOption(newOpt) {
+                        const parts = String(newOpt || '').split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+                        parts.forEach(part => {
+                            if (!this.rawOptions.some(o => String(o).toLowerCase() === part.toLowerCase())) {
+                                this.rawOptions.unshift(part);
+                            }
+                            if (this.deleted.includes(part)) {
+                                this.deleted = this.deleted.filter(d => d !== part);
+                                localStorage.setItem('deleted_outgoing_' + (listType || 'recipients'), JSON.stringify(this.deleted));
+                            }
+                            this.addTag(part);
+                        });
+                        this.search = '';
+                        this.$nextTick(() => this.$refs.searchInput?.focus());
+                    },
+                    removeOption(opt) {
+                        if (!this.deleted.includes(opt)) {
+                            this.deleted.push(opt);
+                            localStorage.setItem('deleted_outgoing_' + (listType || 'recipients'), JSON.stringify(this.deleted));
+                        }
+                        const target = String(opt).toLowerCase();
+                        this.tags = this.tags.filter(t => t.toLowerCase() !== target);
+                    },
+                    commitSearch() {
+                        const kw = this.search.trim();
+                        if (!kw) return;
+                        this.addNewOption(kw);
+                    }
+                };
+            }));
+        });
+
         function editOutgoingMailForm() {
             return {
                 loading: false,

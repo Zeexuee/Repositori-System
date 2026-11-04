@@ -38,7 +38,7 @@ class IncomingMailReturnDispositionNoteTest extends TestCase
             'received_date' => '2026-10-19',
             'sender' => 'Kementerian Sekretariat Negara',
             'recipient' => 'Direktur Utama',
-            'status' => $status,
+            'progress' => $status,
             'subject' => 'Disposisi Dokumen Uji Coba',
         ]);
     }
@@ -81,7 +81,7 @@ class IncomingMailReturnDispositionNoteTest extends TestCase
         ]);
 
         $mail->refresh();
-        $this->assertSame(IncomingMailStatus::WAITING_RETURN, $mail->status);
+        $this->assertSame(IncomingMailStatus::WAITING_RETURN, $mail->progress);
         $this->assertSame('Mohon dipelajari dan disiapkan draft tanggapan.', $mail->disposition_note);
         $this->assertCount(2, $mail->returnRecipients);
 
@@ -119,7 +119,7 @@ class IncomingMailReturnDispositionNoteTest extends TestCase
         ]);
 
         $mail->refresh();
-        $this->assertSame(IncomingMailStatus::RETURN, $mail->status);
+        $this->assertSame(IncomingMailStatus::RETURN, $mail->progress);
         $this->assertSame('Disposisi telah selesai diparaf seluruh unit.', $mail->disposition_note);
         $this->assertCount(1, $mail->returnRecipients);
         $this->assertNotNull($mail->returnRecipients->first()->signature_path);
@@ -137,7 +137,7 @@ class IncomingMailReturnDispositionNoteTest extends TestCase
         ])->assertStatus(200);
 
         $mail->refresh();
-        $this->assertSame(IncomingMailStatus::RETURN, $mail->status);
+        $this->assertSame(IncomingMailStatus::RETURN, $mail->progress);
         $this->assertNull($mail->disposition_note);
     }
 

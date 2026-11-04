@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\MailRecipient;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -38,11 +39,40 @@ class IncomingMail extends Model
         'file_path',
         'document_photo_path',
         'receipt_signature_path',
+        'progress',
         'status',
         'disposition_note',
         'notes',
         'recipient_name',
     ];
+
+    /**
+     * Boot model event listeners.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (IncomingMail $mail): void {
+            if (empty($mail->progress)) {
+                $mail->progress = 'RECEIVE';
+            }
+        });
+
+        static::saving(function (IncomingMail $mail): void {
+            if ($mail->recipient !== null) {
+                $mail->recipient = MailRecipient::format($mail->recipient);
+            }
+        });
+    }
+
+    /**
+     * Get the parsed list of individual recipients.
+     *
+     * @return list<string>
+     */
+    public function getRecipientsListAttribute(): array
+    {
+        return MailRecipient::parse($this->recipient);
+    }
 
     /**
      * Get the attributes that should be cast.

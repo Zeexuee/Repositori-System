@@ -10,6 +10,7 @@ use App\Models\OutgoingMail;
 use App\Models\OutgoingMailAttachment;
 use App\Models\OutgoingMailFileHistory;
 use App\Services\OutgoingMailStatusTransitionService;
+use App\Support\MailRecipient;
 use App\Support\OutgoingMailNumber;
 use App\Support\OutgoingMailStatus;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,12 @@ use Illuminate\View\View;
 
 class OutgoingMailController extends Controller
 {
+    /** Jumlah baris yang dimuat per blok lazy load pada daftar surat keluar. */
+    private const LAZY_LOAD_CHUNK = 20;
+
+    /** Batas maksimal dokumen yang dimuat pada halaman lazy load. */
+    public const LAZY_LOAD_MAX_ROWS = 200;
+
     public function __construct(
         private readonly OutgoingMailStatusTransitionService $statusTransitionService
     ) {}
@@ -41,21 +48,50 @@ class OutgoingMailController extends Controller
                 $q->where('mail_number', 'like', "%{$search}%")
                     ->orWhere('subject', 'like', "%{$search}%")
                     ->orWhere('recipient', 'like', "%{$search}%")
+                    ->orWhere('progress', 'like', "%{$search}%")
                     ->orWhere('status', 'like', "%{$search}%");
             });
         }
 
-        $outgoingMails = $query->with(['creator', 'returnRecipients'])->latest()->paginate(15)->withQueryString();
+        if ($request->filled('progress')) {
+            $progress = OutgoingMailStatus::canonical($request->input('progress'))
+                ?? strtoupper(trim((string) $request->input('progress')));
+            $query->where('progress', $progress);
+        }
 
-        if ($request->ajax() || $request->wantsJson()) {
+        if ($request->filled('status')) {
+            $query->where('status', 'like', '%'.trim((string) $request->input('status')).'%');
+        }
+
+        // Lazy load (infinite scroll): halaman penuh selalu dimulai dari blok pertama,
+        // blok berikutnya diambil lewat AJAX dengan parameter `page`. `per_page` dipakai
+        // saat memuat ulang tabel agar seluruh baris yang sudah tampil tetap dipertahankan.
+        $isAjax = $request->ajax() || $request->wantsJson();
+        $perPage = min(max($request->integer('per_page', self::LAZY_LOAD_CHUNK), 1), self::LAZY_LOAD_MAX_ROWS);
+
+        $outgoingMails = $query->with(['creator', 'returnRecipients'])
+            ->latest()
+            ->orderByDesc('id') // urutan stabil antar blok lazy load
+            ->paginate($perPage, ['*'], 'page', $isAjax ? null : 1)
+            ->withQueryString();
+
+        if ($isAjax) {
+            $progressMap = $outgoingMails->mapWithKeys(fn (OutgoingMail $mail) => [
+                (string) $mail->id => OutgoingMailStatus::canonical($mail->progress) ?? (string) $mail->progress,
+            ]);
+
+            $hasMore = $outgoingMails->hasMorePages() && ($outgoingMails->currentPage() * $perPage < self::LAZY_LOAD_MAX_ROWS);
+
             return response()->json([
                 'html' => view('outgoing-mails.partials.table-rows', compact('outgoingMails'))->render(),
                 'pagination' => view('outgoing-mails.partials.pagination', compact('outgoingMails'))->render(),
+                'current_page' => $outgoingMails->currentPage(),
+                'has_more' => $hasMore,
                 'total' => $outgoingMails->total(),
+                'max_limit' => self::LAZY_LOAD_MAX_ROWS,
                 'allIds' => $outgoingMails->pluck('id')->map(fn ($id) => (string) $id)->values(),
-                'statuses' => $outgoingMails->mapWithKeys(fn (OutgoingMail $mail) => [
-                    (string) $mail->id => OutgoingMailStatus::canonical($mail->status) ?? (string) $mail->status,
-                ]),
+                'progresses' => $progressMap,
+                'statuses' => $progressMap,
             ]);
         }
 
@@ -63,22 +99,26 @@ class OutgoingMailController extends Controller
     }
 
     /**
-     * Bulk update status for selected outgoing mails.
+     * Bulk update progress for selected outgoing mails.
      */
     public function bulkUpdateStatus(Request $request)
     {
+        if (! $request->filled('progress') && $request->filled('status')) {
+            $request->merge(['progress' => $request->input('status')]);
+        }
+
         $validated = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['required', 'string', 'exists:outgoing_mails,id'],
-            'status' => ['required', 'string', 'in:REVISI,WAITING_RECEIVE,READY_TO_DELIVERY'],
+            'progress' => ['required', 'string', 'in:REVISI,WAITING_RECEIVE,READY_TO_DELIVERY'],
             'revision_note' => ['nullable', 'string', 'max:2000'],
         ], [
             'ids.required' => 'Pilih minimal satu dokumen.',
-            'status.in' => 'Status tujuan tidak tersedia. Status RECEIVE hanya dapat dicapai melalui proses tanda tangan penerimaan.',
+            'progress.in' => 'Progres tujuan tidak tersedia. Progres RECEIVE hanya dapat dicapai melalui proses tanda tangan penerimaan.',
             'revision_note.max' => 'Catatan revisi maksimal 2000 karakter.',
         ]);
 
-        $targetStatus = OutgoingMailStatus::canonical($validated['status']);
+        $targetStatus = OutgoingMailStatus::canonical($validated['progress']);
         $targetLabel = OutgoingMailStatus::label($targetStatus);
         $revisionNote = $validated['revision_note'] ?? null;
         $actorId = auth()->id();
@@ -120,11 +160,11 @@ class OutgoingMailController extends Controller
         }
 
         $message = $updatedCount > 0
-            ? "Status berhasil diperbarui menjadi {$targetLabel} untuk {$updatedCount} dokumen."
-            : 'Tidak ada dokumen yang dapat diubah statusnya.';
+            ? "Progres berhasil diperbarui menjadi {$targetLabel} untuk {$updatedCount} dokumen."
+            : 'Tidak ada dokumen yang dapat diubah progresnya.';
 
         if ($rejected !== []) {
-            $message .= ' '.count($rejected).' dokumen dilewati karena alur status tidak sesuai.';
+            $message .= ' '.count($rejected).' dokumen dilewati karena alur progres tidak sesuai.';
         }
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -148,7 +188,10 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('create', OutgoingMail::class);
 
-        return view('outgoing-mails.create');
+        $recipients = $this->getDistinctRecipients();
+        $statuses = $this->getDistinctStatuses();
+
+        return view('outgoing-mails.create', compact('recipients', 'statuses'));
     }
 
     /**
@@ -163,7 +206,8 @@ class OutgoingMailController extends Controller
         $createdCount = 0;
 
         foreach ($documents as $index => $doc) {
-            $status = OutgoingMailStatus::READY_TO_DELIVERY;
+            $progress = OutgoingMailStatus::READY_TO_DELIVERY;
+            $status = ! empty($doc['status']) ? trim((string) $doc['status']) : null;
 
             $mailNumber = ! empty($doc['mail_number'])
                 ? $doc['mail_number']
@@ -175,6 +219,7 @@ class OutgoingMailController extends Controller
                 'recipient' => $doc['recipient'],
                 'file_path' => null,
                 'created_by' => auth()->id(),
+                'progress' => $progress,
                 'status' => $status,
                 'disposition_note' => $doc['disposition_note'] ?? null,
             ]);
@@ -187,7 +232,7 @@ class OutgoingMailController extends Controller
 
         return redirect()
             ->route('outgoing-mails.index')
-            ->with('success', "{$createdCount} Surat Keluar berhasil dicatat (Status: READY TO DELIVERY).");
+            ->with('success', "{$createdCount} Surat Keluar berhasil dicatat (Progres: READY TO DELIVERY).");
     }
 
     /**
@@ -216,8 +261,10 @@ class OutgoingMailController extends Controller
         Gate::authorize('update', $outgoingMail);
 
         $outgoingMail->load(['fileHistories.uploader', 'attachments']);
+        $recipients = $this->getDistinctRecipients();
+        $statuses = $this->getDistinctStatuses();
 
-        return view('outgoing-mails.edit', compact('outgoingMail'));
+        return view('outgoing-mails.edit', compact('outgoingMail', 'recipients', 'statuses'));
     }
 
     /**
@@ -229,8 +276,12 @@ class OutgoingMailController extends Controller
 
         $data = $request->validated();
 
-        // Status changes are handled via bulk-update-status or return workflow
-        unset($data['status']);
+        // Progress changes are handled via bulk-update-status or return workflow
+        unset($data['progress']);
+
+        if (array_key_exists('status', $data)) {
+            $data['status'] = ! empty($data['status']) ? trim((string) $data['status']) : null;
+        }
 
         $updateFiles = [];
         if ($request->hasFile('files')) {
@@ -289,6 +340,32 @@ class OutgoingMailController extends Controller
         return redirect()
             ->route('outgoing-mails.index')
             ->with('success', 'Surat Keluar berhasil dihapus.');
+    }
+
+    /**
+     * Get distinct individual recipients across OutgoingMail and IncomingMail.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    private function getDistinctRecipients(): \Illuminate\Support\Collection
+    {
+        $raw = OutgoingMail::whereNotNull('recipient')->where('recipient', '!=', '')->distinct()->pluck('recipient')
+            ->merge(\App\Models\IncomingMail::whereNotNull('recipient')->where('recipient', '!=', '')->distinct()->pluck('recipient'));
+
+        return collect(MailRecipient::extractDistinct($raw));
+    }
+
+    /**
+     * Get distinct admin-inputted statuses across IncomingMail and OutgoingMail.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    private function getDistinctStatuses(): \Illuminate\Support\Collection
+    {
+        $raw = \App\Models\IncomingMail::whereNotNull('status')->where('status', '!=', '')->distinct()->pluck('status')
+            ->merge(OutgoingMail::whereNotNull('status')->where('status', '!=', '')->distinct()->pluck('status'));
+
+        return collect(\App\Support\MailCustomStatus::extractDistinct($raw));
     }
 
     /**

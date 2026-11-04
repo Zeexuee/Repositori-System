@@ -12,6 +12,7 @@ use App\Models\IncomingMailAttachment;
 use App\Models\User;
 use App\Services\IncomingMailStatusTransitionService;
 use App\Support\IncomingMailStatus;
+use App\Support\MailRecipient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,12 @@ use Illuminate\View\View;
 
 class IncomingMailController extends Controller
 {
+    /** Jumlah baris yang dimuat per blok lazy load pada daftar surat masuk. */
+    private const LAZY_LOAD_CHUNK = 20;
+
+    /** Batas maksimal dokumen yang dimuat pada halaman lazy load. */
+    public const LAZY_LOAD_MAX_ROWS = 200;
+
     public function __construct(
         private readonly IncomingMailStatusTransitionService $statusTransitionService
     ) {}
@@ -35,6 +42,16 @@ class IncomingMailController extends Controller
         }
 
         Gate::authorize('update', $existingMails->first());
+
+        if (is_array($request->input('documents'))) {
+            $docsInput = $request->input('documents');
+            foreach ($docsInput as $idx => $docItem) {
+                if (is_array($docItem) && array_key_exists('recipient', $docItem)) {
+                    $docsInput[$idx]['recipient'] = MailRecipient::format($docItem['recipient']);
+                }
+            }
+            $request->merge(['documents' => $docsInput]);
+        }
 
         $validated = $request->validate([
             'sender' => ['required', 'string', 'max:255'],
@@ -50,7 +67,8 @@ class IncomingMailController extends Controller
                   if ($query->exists()) { $fail('Nomor Surat pada dokumen ini sudah ada di sistem.'); }
               }],
             'documents.*.subject' => ['required', 'string', 'max:255'],
-            'documents.*.recipient' => ['nullable', 'string', 'max:255'],
+            'documents.*.recipient' => ['nullable', 'string', 'max:2000'],
+            'documents.*.status' => ['nullable', 'string', 'max:255'],
             'documents.*.outgoing_date' => ['nullable', 'date'],
             'documents.*.disposition_note' => ['nullable', 'string'],
             'documents.*.notes' => ['nullable', 'string'],
@@ -58,7 +76,7 @@ class IncomingMailController extends Controller
             'documents.*.document_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
         ]);
 
-        $globalStatus = $request->input('is_draft') == '1' ? 'DRAFT' : 'RECEIVE';
+        $globalProgress = $request->input('is_draft') == '1' ? 'DRAFT' : 'RECEIVE';
         $documents = $request->input('documents');
         
         $submittedIds = array_column($documents, 'id');
@@ -81,7 +99,8 @@ class IncomingMailController extends Controller
                 'sender' => $validated['sender'],
                 'received_date' => $validated['received_date'],
                 'recipient' => $doc['recipient'] ?? null,
-                'status' => $globalStatus,
+                'progress' => $globalProgress,
+                'status' => ! empty($doc['status']) ? trim((string) $doc['status']) : null,
                 'mail_number' => $doc['mail_number'],
                 'subject' => $doc['subject'],
                 'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : $validated['received_date'],
@@ -121,7 +140,7 @@ class IncomingMailController extends Controller
 
         $query = IncomingMail::query();
 
-        // Pencarian Cepat Global (mencakup semua 9 kolom)
+        // Pencarian Cepat Global (mencakup semua kolom)
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
             $query->where(function ($q) use ($search) {
@@ -129,6 +148,7 @@ class IncomingMailController extends Controller
                     ->orWhere('received_date', 'like', "%{$search}%")
                     ->orWhere('sender', 'like', "%{$search}%")
                     ->orWhere('recipient', 'like', "%{$search}%")
+                    ->orWhere('progress', 'like', "%{$search}%")
                     ->orWhere('status', 'like', "%{$search}%")
                     ->orWhere('subject', 'like', "%{$search}%")
                     ->orWhere('outgoing_date', 'like', "%{$search}%")
@@ -159,23 +179,28 @@ class IncomingMailController extends Controller
             $query->where('recipient', 'like', '%'.trim((string) $request->input('recipient')).'%');
         }
 
-        // 5. Status
-        if ($request->filled('status')) {
-            $status = IncomingMailStatus::canonical($request->input('status'))
-                ?? strtoupper(trim((string) $request->input('status')));
-            $query->where('status', $status);
-            
-            if ($status === IncomingMailStatus::DRAFT) {
-                $query->whereIn('id', function($q) {
+        // 5. Progres (SOP Workflow)
+        if ($request->filled('progress')) {
+            $progress = IncomingMailStatus::canonical($request->input('progress'))
+                ?? strtoupper(trim((string) $request->input('progress')));
+            $query->where('progress', $progress);
+
+            if ($progress === IncomingMailStatus::DRAFT) {
+                $query->whereIn('id', function ($q) {
                     $q->selectRaw('MIN(id)')
-                      ->from('incoming_mails')
-                      ->where('status', IncomingMailStatus::DRAFT)
-                      ->groupBy('batch_id');
+                        ->from('incoming_mails')
+                        ->where('progress', IncomingMailStatus::DRAFT)
+                        ->groupBy('batch_id');
                 });
-                $query->with('batchItems'); // Load batch items so we can display the count in UI
+                $query->with('batchItems');
             }
         } else {
-            $query->where('status', '!=', IncomingMailStatus::DRAFT);
+            $query->where('progress', '!=', IncomingMailStatus::DRAFT);
+        }
+
+        // 5b. Status (Inputan Admin)
+        if ($request->filled('status')) {
+            $query->where('status', 'like', '%'.trim((string) $request->input('status')).'%');
         }
 
         // 6. Perihal
@@ -198,18 +223,35 @@ class IncomingMailController extends Controller
             $query->where('recipient_name', 'like', '%'.trim((string) $request->input('recipient_name')).'%');
         }
 
-        $incomingMails = $query->latest()->paginate(15)->withQueryString();
+        // Lazy load (infinite scroll): halaman penuh selalu dimulai dari blok pertama,
+        // blok berikutnya diambil lewat AJAX dengan parameter `page`. `per_page` dipakai
+        // saat memuat ulang tabel agar seluruh baris yang sudah tampil tetap dipertahankan.
+        $isAjax = $request->ajax() || $request->wantsJson();
+        $perPage = min(max($request->integer('per_page', self::LAZY_LOAD_CHUNK), 1), self::LAZY_LOAD_MAX_ROWS);
+
+        $incomingMails = $query->latest()
+            ->orderByDesc('id') // urutan stabil antar blok lazy load
+            ->paginate($perPage, ['*'], 'page', $isAjax ? null : 1)
+            ->withQueryString();
 
         // Return JSON untuk AJAX request
-        if ($request->ajax() || $request->wantsJson()) {
+        if ($isAjax) {
+            $progressMap = $incomingMails->mapWithKeys(fn (IncomingMail $mail) => [
+                (string) $mail->id => IncomingMailStatus::canonical($mail->progress) ?? (string) $mail->progress,
+            ]);
+
+            $hasMore = $incomingMails->hasMorePages() && ($incomingMails->currentPage() * $perPage < self::LAZY_LOAD_MAX_ROWS);
+
             return response()->json([
                 'html' => view('incoming-mails.partials.table-rows', compact('incomingMails'))->render(),
                 'pagination' => view('incoming-mails.partials.pagination', compact('incomingMails'))->render(),
+                'current_page' => $incomingMails->currentPage(),
+                'has_more' => $hasMore,
                 'total' => $incomingMails->total(),
+                'max_limit' => self::LAZY_LOAD_MAX_ROWS,
                 'allIds' => $incomingMails->pluck('id')->map(fn ($id) => (string) $id)->values(),
-                'statuses' => $incomingMails->mapWithKeys(fn (IncomingMail $mail) => [
-                    (string) $mail->id => IncomingMailStatus::canonical($mail->status) ?? (string) $mail->status,
-                ]),
+                'progresses' => $progressMap,
+                'statuses' => $progressMap,
             ]);
         }
 
@@ -217,10 +259,14 @@ class IncomingMailController extends Controller
     }
 
     /**
-     * Bulk update status for selected incoming mails.
+     * Bulk update progress for selected incoming mails.
      */
     public function bulkUpdateStatus(Request $request)
     {
+        if (! $request->filled('progress') && $request->filled('status')) {
+            $request->merge(['progress' => $request->input('status')]);
+        }
+
         // RETURN dan WAITING_RETURN hanya dapat dicapai melalui alur tanda tangan
         // pengembalian, yang sekaligus menampung catatan disposisi.
         $assignableStatuses = implode(',', IncomingMailStatus::manuallyAssignable());
@@ -228,15 +274,15 @@ class IncomingMailController extends Controller
         $validated = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['required', 'string', 'exists:incoming_mails,id'],
-            'status' => ['required', 'string', 'in:'.$assignableStatuses.',RECEIVED'],
+            'progress' => ['required', 'string', 'in:'.$assignableStatuses.',RECEIVED'],
             'revision_note' => ['nullable', 'string', 'max:2000'],
         ], [
             'ids.required' => 'Pilih minimal satu dokumen.',
-            'status.in' => 'Status tujuan tidak tersedia. Status RETURN hanya dapat dicapai melalui proses tanda tangan pengembalian.',
+            'progress.in' => 'Progres tujuan tidak tersedia. Progres RETURN hanya dapat dicapai melalui proses tanda tangan pengembalian.',
             'revision_note.max' => 'Catatan revisi maksimal 2000 karakter.',
         ]);
 
-        $targetStatus = IncomingMailStatus::canonical($validated['status']);
+        $targetStatus = IncomingMailStatus::canonical($validated['progress']);
         $targetLabel = IncomingMailStatus::label($targetStatus);
         $revisionNote = $validated['revision_note'] ?? null;
         $actorId = auth()->id();
@@ -278,11 +324,11 @@ class IncomingMailController extends Controller
         }
 
         $message = $updatedCount > 0
-            ? "Status berhasil diperbarui menjadi {$targetLabel} untuk {$updatedCount} dokumen."
-            : 'Tidak ada dokumen yang dapat diubah statusnya.';
+            ? "Progres berhasil diperbarui menjadi {$targetLabel} untuk {$updatedCount} dokumen."
+            : 'Tidak ada dokumen yang dapat diubah progresnya.';
 
         if ($rejected !== []) {
-            $message .= ' '.count($rejected).' dokumen dilewati karena alur status tidak sesuai.';
+            $message .= ' '.count($rejected).' dokumen dilewati karena alur progres tidak sesuai.';
         }
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -309,9 +355,10 @@ class IncomingMailController extends Controller
         $nextSequenceNumber = IncomingMail::count() + 1;
 
         $senders = IncomingMail::whereNotNull('sender')->where('sender', '!=', '')->select('sender')->distinct()->pluck('sender');
-        $recipients = IncomingMail::whereNotNull('recipient')->where('recipient', '!=', '')->select('recipient')->distinct()->pluck('recipient');
+        $recipients = $this->getDistinctRecipients();
+        $statuses = $this->getDistinctStatuses();
 
-        return view('incoming-mails.create', compact('nextSequenceNumber', 'senders', 'recipients'));
+        return view('incoming-mails.create', compact('nextSequenceNumber', 'senders', 'recipients', 'statuses'));
     }
 
     /**
@@ -322,10 +369,11 @@ class IncomingMailController extends Controller
         Gate::authorize('create', IncomingMail::class);
 
         $validated = $request->validated();
-        $globalStatus = $request->input('status') ?: 'RECEIVE';
+        $globalProgress = $request->input('progress') ?: 'RECEIVE';
         if ($request->input('is_draft') == '1') {
-            $globalStatus = 'DRAFT';
+            $globalProgress = 'DRAFT';
         }
+        $globalStatus = ! empty($validated['status']) ? trim((string) $validated['status']) : null;
 
         // Shared Batch metadata & signature
         $batchId = (string) Str::uuid();
@@ -356,6 +404,7 @@ class IncomingMailController extends Controller
             'recipient' => $validated['recipient'] ?? null,
 
             'receipt_signature_path' => $receiptSignaturePath,
+            'progress' => $globalProgress,
             'status' => $globalStatus,
         ];
 
@@ -365,16 +414,18 @@ class IncomingMailController extends Controller
             foreach ($documents as $index => $doc) {
                 $mailNumber = ! empty($doc['mail_number']) ? $doc['mail_number'] : $receiptNumber;
                 $subject = ! empty($doc['subject']) ? $doc['subject'] : '(Tanpa Perihal)';
-                $docStatus = ! empty($doc['status']) ? $doc['status'] : $globalStatus;
+                $docProgress = ! empty($doc['progress']) ? $doc['progress'] : $globalProgress;
                 if ($request->input('is_draft') == '1') {
-                    $docStatus = 'DRAFT';
+                    $docProgress = 'DRAFT';
                 }
+                $docStatus = ! empty($doc['status']) ? trim((string) $doc['status']) : $globalStatus;
                 $docRecipient = ! empty($doc['recipient']) ? $doc['recipient'] : ($validated['recipient'] ?? null);
 
                 $incomingMail = IncomingMail::create(array_merge($commonAttributes, [
                     'mail_number' => $mailNumber,
                     'subject' => $subject,
                     'recipient' => $docRecipient,
+                    'progress' => $docProgress,
                     'status' => $docStatus,
                     'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : $validated['received_date'],
                     'disposition_note' => ! empty($doc['disposition_note']) ? $doc['disposition_note'] : null,
@@ -463,14 +514,16 @@ class IncomingMailController extends Controller
         Gate::authorize('update', $incomingMail);
 
         $incomingMail->load(['batchItems', 'attachments']);
-        
-        if (IncomingMailStatus::canonical($incomingMail->status) === IncomingMailStatus::DRAFT) {
-            $senders = IncomingMail::whereNotNull('sender')->where('sender', '!=', '')->select('sender')->distinct()->pluck('sender');
-            $recipients = IncomingMail::whereNotNull('recipient')->where('recipient', '!=', '')->select('recipient')->distinct()->pluck('recipient');
-            return view('incoming-mails.edit-batch', compact('incomingMail', 'senders', 'recipients'));
+
+        $senders = IncomingMail::whereNotNull('sender')->where('sender', '!=', '')->select('sender')->distinct()->pluck('sender');
+        $recipients = $this->getDistinctRecipients();
+        $statuses = $this->getDistinctStatuses();
+
+        if (IncomingMailStatus::canonical($incomingMail->progress) === IncomingMailStatus::DRAFT) {
+            return view('incoming-mails.edit-batch', compact('incomingMail', 'senders', 'recipients', 'statuses'));
         }
 
-        return view('incoming-mails.edit', compact('incomingMail'));
+        return view('incoming-mails.edit', compact('incomingMail', 'senders', 'recipients', 'statuses'));
     }
 
     /**
@@ -482,26 +535,29 @@ class IncomingMailController extends Controller
 
         $data = $request->validated();
 
-        // Status changes follow the standard operating procedure, never a plain field update.
-        $requestedStatus = IncomingMailStatus::canonical($data['status'] ?? null);
-        $currentStatus = IncomingMailStatus::canonical($incomingMail->status);
-        unset($data['status']);
+        // Progress changes follow the standard operating procedure, never a plain field update.
+        $requestedProgress = IncomingMailStatus::canonical($data['progress'] ?? null);
+        $currentProgress = IncomingMailStatus::canonical($incomingMail->progress);
+        unset($data['progress']);
 
-        $isContinuingRevisi = $requestedStatus === IncomingMailStatus::REVISI
-            && $currentStatus === IncomingMailStatus::REVISI
+        if (array_key_exists('status', $data)) {
+            $data['status'] = ! empty($data['status']) ? trim((string) $data['status']) : null;
+        }
+
+        $isContinuingRevisi = $requestedProgress === IncomingMailStatus::REVISI
+            && $currentProgress === IncomingMailStatus::REVISI
             && filled($request->input('revision_note'));
 
-        $statusChange = ($requestedStatus !== null && ($requestedStatus !== $currentStatus || $isContinuingRevisi))
-            ? $requestedStatus
+        $progressChange = ($requestedProgress !== null && ($requestedProgress !== $currentProgress || $isContinuingRevisi))
+            ? $requestedProgress
             : null;
 
-        if ($statusChange !== null) {
-            $reason = $this->statusTransitionService->rejectionReason($incomingMail, $statusChange);
+        if ($progressChange !== null) {
+            $reason = $this->statusTransitionService->rejectionReason($incomingMail, $progressChange);
 
             if ($reason !== null) {
-                throw ValidationException::withMessages(['status' => $reason]);
+                throw ValidationException::withMessages(['progress' => $reason]);
             }
-
         }
 
         $updateFiles = [];
@@ -538,13 +594,12 @@ class IncomingMailController extends Controller
 
         $incomingMail->update($data);
 
-        if ($statusChange !== null) {
+        if ($progressChange !== null) {
             $this->statusTransitionService->apply(
                 $incomingMail,
-                $statusChange,
+                $progressChange,
                 auth()->id(),
-                $request->input('revision_note'),
-                $data['disposition_note'] ?? null
+                $request->input('revision_note')
             );
         }
 
@@ -592,6 +647,32 @@ class IncomingMailController extends Controller
         return redirect()
             ->route('incoming-mails.index')
             ->with('success', 'Surat Masuk berhasil dihapus.');
+    }
+
+    /**
+     * Get distinct individual recipients across IncomingMail and OutgoingMail.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    private function getDistinctRecipients(): \Illuminate\Support\Collection
+    {
+        $raw = IncomingMail::whereNotNull('recipient')->where('recipient', '!=', '')->distinct()->pluck('recipient')
+            ->merge(\App\Models\OutgoingMail::whereNotNull('recipient')->where('recipient', '!=', '')->distinct()->pluck('recipient'));
+
+        return collect(MailRecipient::extractDistinct($raw));
+    }
+
+    /**
+     * Get distinct admin-inputted statuses across IncomingMail and OutgoingMail.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    private function getDistinctStatuses(): \Illuminate\Support\Collection
+    {
+        $raw = IncomingMail::whereNotNull('status')->where('status', '!=', '')->distinct()->pluck('status')
+            ->merge(\App\Models\OutgoingMail::whereNotNull('status')->where('status', '!=', '')->distinct()->pluck('status'));
+
+        return collect(\App\Support\MailCustomStatus::extractDistinct($raw));
     }
 
     /**

@@ -28,7 +28,7 @@
                 
                 <!-- Header -->
                 <div class="px-6 py-5 border-b border-slate-200">
-                    <h3 class="text-lg font-bold text-slate-900">Konfirmasi Perubahan Status</h3>
+                    <h3 class="text-lg font-bold text-slate-900">Konfirmasi Perubahan Progres</h3>
                 </div>
                 
                 <!-- Body -->
@@ -48,7 +48,7 @@
                         @click="confirmBulkUpdate()"
                         :disabled="isSubmitting"
                         class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                        <span x-show="!isSubmitting">Ya, Ubah Status</span>
+                        <span x-show="!isSubmitting">Ya, Ubah Progres</span>
                         <span x-show="isSubmitting" class="flex items-center gap-2">
                             <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -106,7 +106,7 @@
                         <button type="button" @click="submitRevisionNote()" :disabled="isSubmitting"
                             class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl disabled:opacity-50 inline-flex items-center gap-2">
                             <svg x-show="isSubmitting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                            Simpan dan Ubah Status
+                            Simpan dan Ubah Progres
                         </button>
                     </div>
                 </div>
@@ -549,7 +549,7 @@
                 x-transition:leave-start="opacity-100 scale-100"
                 x-transition:leave-end="opacity-0 scale-95">
                 <div class="px-3.5 py-1 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Status Berikutnya
+                    Progres Berikutnya
                 </div>
                 <div class="py-1" role="menu">
                     <template x-for="option in availableStatusOptions" :key="option.value">
@@ -561,7 +561,7 @@
                     </template>
                     <p x-show="availableStatusOptions.length === 0"
                         class="px-3.5 py-2.5 text-[11px] text-slate-500 leading-relaxed">
-                        Status <span class="font-bold" x-text="statusDropdownCurrentStatus"></span> adalah status akhir dan tidak dapat diubah lagi.
+                        Progres <span class="font-bold" x-text="statusDropdownCurrentStatus"></span> adalah progres akhir dan tidak dapat diubah lagi.
                     </p>
                 </div>
             </div>
@@ -641,8 +641,8 @@
                     <!-- Info: Selection across pages -->
                     <div x-show="selectedIds.length > 0 && getSelectedInCurrentPage() < selectedIds.length" 
                         class="absolute top-full left-0 mt-1 text-[10px] text-slate-600 whitespace-nowrap">
-                        <span x-text="getSelectedInCurrentPage()"></span> di halaman ini, 
-                        <span x-text="selectedIds.length - getSelectedInCurrentPage()"></span> di halaman lain
+                        <span x-text="getSelectedInCurrentPage()"></span> ditampilkan, 
+                        <span x-text="selectedIds.length - getSelectedInCurrentPage()"></span> di luar hasil pencarian
                     </div>
                     
                     <!-- Dropdown Menu -->
@@ -677,13 +677,7 @@
                     <span x-text="isSelectionMode ? 'Batal Select' : 'Select'">Select</span>
                 </button>
 
-                <!-- FITUR DRAFT DI-HOLD SEMENTARA
-                <button type="button" @click="openDraftModal()"
-                    class="inline-flex items-center px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 shadow-2xs border border-indigo-200 text-xs font-bold rounded-xl transition-all cursor-pointer">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                    <span>Draft</span>
-                </button>
-                -->
+
 
                 @can('create', App\Models\OutgoingMail::class)
                     <a href="{{ route('outgoing-mails.create') }}"
@@ -697,7 +691,7 @@
         <!-- Hidden Bulk Form for Submission -->
         <form x-ref="bulkForm" action="{{ route('outgoing-mails.bulk-update-status') }}" method="POST" class="hidden">
             @csrf
-            <input type="hidden" name="status" x-ref="bulkStatusInput">
+            <input type="hidden" name="progress" x-ref="bulkStatusInput">
             <template x-for="id in selectedIds" :key="id">
                 <input type="hidden" name="ids[]" :value="id">
             </template>
@@ -715,7 +709,7 @@
                                     @change="toggleSelectAll()"
                                     :checked="isAllSelected"
                                     :indeterminate.prop="isIndeterminate"
-                                    title="Pilih Semua Dokumen di Halaman Ini"
+                                    title="Pilih Semua Dokumen yang Ditampilkan"
                                     class="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer">
                             </th>
                             <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap w-14">No.</th>
@@ -725,6 +719,7 @@
                             <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Penerima</th>
                             <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Pembuat</th>
                             <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Status</th>
+                            <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">Progres</th>
                             <th class="py-4 px-4 sm:px-5 text-right whitespace-nowrap">Aksi</th>
                         </tr>
                     </thead>
@@ -735,8 +730,30 @@
             </div>
         </div>
 
-        <div class="mt-6" x-ref="paginationContainer">
-            @include('outgoing-mails.partials.pagination')
+        <!-- Lazy Load (Infinite Scroll): baris berikutnya dimuat otomatis saat menggulir ke bawah -->
+        <div class="mt-6 flex flex-col items-center justify-center gap-3 min-h-[48px]">
+            <div x-ref="loadMoreSentinel" class="w-full h-px" aria-hidden="true"></div>
+
+            <div x-show="isLoadingMore" x-cloak role="status" class="inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
+                <svg class="animate-spin h-4 w-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Memuat dokumen berikutnya...</span>
+            </div>
+
+            <button type="button" x-show="hasMorePages && !isLoadingMore && !hasReachedMaxLimit" x-cloak @click="loadMore(true)"
+                class="px-5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl shadow-2xs transition-all cursor-pointer">
+                <span x-text="loadMoreError ? 'Gagal memuat, coba lagi' : 'Muat lebih banyak'"></span>
+            </button>
+
+            <p x-show="hasReachedMaxLimit" x-cloak class="text-xs text-slate-500 text-center">
+                Maksimal load 200 dokumen, gunakan <a href="{{ route('repository.index') }}" class="underline font-semibold text-slate-700 hover:text-slate-900">halaman repositori</a> untuk pencarian lengkap
+            </p>
+
+            <p x-show="!hasMorePages && !hasReachedMaxLimit && totalResults > 0" x-cloak class="text-xs text-slate-400 text-center">
+                Menampilkan seluruh <span class="font-semibold text-slate-600" x-text="totalResults"></span> dokumen
+            </p>
         </div>
     </div>
 
@@ -749,8 +766,22 @@
                 totalResults: {{ $outgoingMails->total() }},
                 selectedIds: [],
                 allIds: @json($outgoingMails->pluck('id')->map(fn($id) => (string) $id)->values()),
+
+                // Lazy load (infinite scroll) state
+                currentPage: {{ $outgoingMails->currentPage() }},
+                perPage: {{ $outgoingMails->perPage() }},
+                maxLimit: 200,
+                hasMorePages: @json($outgoingMails->hasMorePages() && ($outgoingMails->currentPage() * $outgoingMails->perPage() < 200)),
+                isLoadingMore: false,
+                loadMoreError: false,
+                listRequestId: 0,
+                infiniteObserver: null,
+
+                get hasReachedMaxLimit() {
+                    return this.allIds.length >= this.maxLimit && this.totalResults >= this.maxLimit;
+                },
                 statusById: @js($outgoingMails->mapWithKeys(fn ($mail) => [
-                    (string) $mail->id => App\Support\OutgoingMailStatus::canonical($mail->status) ?? (string) $mail->status,
+                    (string) $mail->id => App\Support\OutgoingMailStatus::canonical($mail->progress) ?? (string) $mail->progress,
                 ])),
                 statusChangeError: '',
                 
@@ -857,9 +888,10 @@
                         if (this.showStatusDropdown) this.showStatusDropdown = false;
                     });
                     
-                    // Update checkbox states on initial load
+                    // Update checkbox states on initial load & aktifkan lazy load
                     this.$nextTick(() => {
                         this.updateCheckboxStates();
+                        this.setupInfiniteScroll();
                     });
                     
                     // Watch modal state untuk prevent body scroll
@@ -1259,17 +1291,21 @@
 
                 async performSearch() {
                     this.isSearching = true;
+                    // Batalkan hasil lazy load yang sedang berjalan untuk kata kunci lama
+                    const requestId = ++this.listRequestId;
                     
                     try {
-                        const url = new URL(window.location.href);
+                        const url = this.buildListUrl();
                         if (this.searchQuery.trim()) {
                             url.searchParams.set('search', this.searchQuery.trim());
                         } else {
                             url.searchParams.delete('search');
                         }
-                        url.searchParams.delete('page'); // Reset ke halaman 1
                         
-                        const response = await fetch(url.toString(), {
+                        const fetchUrl = new URL(url.toString());
+                        fetchUrl.searchParams.set('per_page', this.perPage);
+                        
+                        const response = await fetch(fetchUrl.toString(), {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
@@ -1279,13 +1315,14 @@
                         if (!response.ok) throw new Error('Network response was not ok');
                         
                         const data = await response.json();
+                        if (requestId !== this.listRequestId) return;
                         
                         // PENTING: Backup selectedIds SEBELUM update DOM
                         const preservedSelections = [...this.selectedIds];
                         
                         // Update allIds dan peta status untuk current page
                         this.allIds = data.allIds;
-                        this.statusById = { ...this.statusById, ...(data.statuses || {}) };
+                        this.statusById = { ...this.statusById, ...(data.progresses || data.statuses || {}) };
                         
                         // Update table content.
                         // Jangan panggil Alpine.destroyTree() pada element x-ref: itu juga
@@ -1294,8 +1331,10 @@
                         // Alpine mendeteksi node baru lewat MutationObserver.
                         this.$refs.tableBody.innerHTML = data.html;
                         
-                        // Update pagination
-                        this.$refs.paginationContainer.innerHTML = data.pagination;
+                        // Lazy load dimulai ulang dari blok pertama
+                        this.currentPage = data.current_page ?? 1;
+                        this.hasMorePages = Boolean(data.has_more) && (data.allIds || []).length < this.maxLimit;
+                        this.loadMoreError = false;
                         
                         // Update total results
                         this.totalResults = data.total;
@@ -1306,6 +1345,7 @@
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {
                             this.updateCheckboxStates();
+                            this.maybeLoadMore();
                         });
                         
                         // Update URL tanpa reload
@@ -1315,6 +1355,126 @@
                         console.error('Search error:', error);
                     } finally {
                         this.isSearching = false;
+                    }
+                },
+
+                /**
+                 * URL daftar berdasarkan filter aktif, tanpa parameter halaman.
+                 */
+                buildListUrl() {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('page');
+                    url.searchParams.delete('per_page');
+                    return url;
+                },
+
+                setupInfiniteScroll() {
+                    // Bersihkan parameter halaman lama dari URL (sisa sistem paginasi sebelumnya)
+                    const cleanUrl = this.buildListUrl();
+                    if (cleanUrl.toString() !== window.location.href) {
+                        window.history.replaceState({}, '', cleanUrl.toString());
+                    }
+
+                    const sentinel = this.$refs.loadMoreSentinel;
+                    if (!sentinel || !('IntersectionObserver' in window)) return;
+
+                    this.infiniteObserver = new IntersectionObserver((entries) => {
+                        if (entries.some(entry => entry.isIntersecting)) {
+                            this.loadMore();
+                        }
+                    }, { rootMargin: '0px 0px 400px 0px' });
+
+                    this.infiniteObserver.observe(sentinel);
+                    this.maybeLoadMore();
+                },
+
+                /**
+                 * Muat blok berikutnya bila penanda bawah masih terlihat
+                 * (mis. layar tinggi sehingga belum bisa digulir).
+                 */
+                maybeLoadMore() {
+                    const sentinel = this.$refs.loadMoreSentinel;
+                    if (!sentinel || !this.hasMorePages || this.isLoadingMore || this.loadMoreError || this.hasReachedMaxLimit) return;
+
+                    const rect = sentinel.getBoundingClientRect();
+                    if (rect.top <= window.innerHeight + 400) {
+                        this.loadMore();
+                    }
+                },
+
+                async loadMore(manual = false) {
+                    if (this.isLoadingMore || this.isSearching || !this.hasMorePages || this.hasReachedMaxLimit) return;
+                    if (this.loadMoreError && !manual) return;
+
+                    this.isLoadingMore = true;
+                    this.loadMoreError = false;
+                    const requestId = this.listRequestId;
+                    let succeeded = false;
+
+                    try {
+                        const url = this.buildListUrl();
+                        url.searchParams.set('page', this.currentPage + 1);
+                        url.searchParams.set('per_page', this.perPage);
+
+                        const response = await fetch(url.toString(), {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            }
+                        });
+
+                        if (!response.ok) throw new Error('Network response was not ok');
+
+                        const data = await response.json();
+
+                        // Daftar sudah di-reset (pencarian / refresh) selama permintaan berjalan
+                        if (requestId !== this.listRequestId) return;
+
+                        const existingIds = new Set(this.allIds);
+                        const remainingSlots = Math.max(0, this.maxLimit - existingIds.size);
+                        if (remainingSlots <= 0) {
+                            this.hasMorePages = false;
+                            return;
+                        }
+
+                        // Lewati baris yang sudah tampil atau melebihi kuota maksimal 200
+                        const template = document.createElement('template');
+                        template.innerHTML = data.html;
+                        let appendedCount = 0;
+                        template.content.querySelectorAll('tr').forEach(row => {
+                            const checkbox = row.querySelector('input[type="checkbox"]');
+                            if (!checkbox || existingIds.has(checkbox.value) || appendedCount >= remainingSlots) {
+                                row.remove();
+                            } else {
+                                appendedCount++;
+                            }
+                        });
+                        this.$refs.tableBody.appendChild(template.content);
+
+                        const newIds = [];
+                        (data.allIds || []).forEach(id => {
+                            if (!existingIds.has(id) && newIds.length < remainingSlots) {
+                                newIds.push(id);
+                            }
+                        });
+                        this.allIds = [...this.allIds, ...newIds];
+                        this.statusById = { ...this.statusById, ...(data.progresses || data.statuses || {}) };
+                        this.totalResults = data.total;
+                        this.currentPage = data.current_page ?? (this.currentPage + 1);
+                        this.hasMorePages = Boolean(data.has_more) && this.allIds.length < this.maxLimit;
+                        succeeded = true;
+                    } catch (error) {
+                        console.error('Lazy load error:', error);
+                        this.loadMoreError = true;
+                    } finally {
+                        this.isLoadingMore = false;
+                    }
+
+                    if (succeeded) {
+                        this.$nextTick(() => {
+                            this.updateCheckboxStates();
+                            this.maybeLoadMore();
+                        });
                     }
                 },
 
@@ -1475,7 +1635,7 @@
                         return;
                     }
 
-                    let message = `Apakah Anda yakin ingin mengubah status <strong>${label}</strong> menjadi <strong>${this.statusLabel(target)}</strong>?`;
+                    let message = `Apakah Anda yakin ingin mengubah progres <strong>${label}</strong> menjadi <strong>${this.statusLabel(target)}</strong>?`;
 
                     if (blockedCount > 0) {
                         message += `<br/><br/><span class="text-xs text-amber-700">${blockedCount} dokumen dilewati karena alur statusnya tidak mengizinkan perubahan ini.</span>`;
@@ -1508,6 +1668,7 @@
                     try {
                         const formData = new FormData();
                         formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.content ?? '');
+                        formData.append('progress', targetStatus);
                         formData.append('status', targetStatus);
                         if (revisionNote) {
                             formData.append('revision_note', revisionNote);
@@ -1563,8 +1724,13 @@
                 },
 
                 async refreshTableData() {
+                    // Muat ulang seluruh baris yang sudah tampil (maksimal 200)
+                    const requestId = ++this.listRequestId;
+                    
                     try {
-                        const url = new URL(window.location.href);
+                        const url = this.buildListUrl();
+                        const requestedRows = Math.min(Math.max(this.currentPage, 1) * this.perPage, this.maxLimit);
+                        url.searchParams.set('per_page', requestedRows);
                         
                         const response = await fetch(url.toString(), {
                             headers: {
@@ -1576,6 +1742,7 @@
                         if (!response.ok) throw new Error('Network response was not ok');
                         
                         const data = await response.json();
+                        if (requestId !== this.listRequestId) return;
                         
                         // Update table content.
                         // Jangan panggil Alpine.destroyTree() pada element x-ref: itu juga
@@ -1584,15 +1751,16 @@
                         // Alpine mendeteksi node baru lewat MutationObserver.
                         this.$refs.tableBody.innerHTML = data.html;
                         
-                        // Update pagination
-                        this.$refs.paginationContainer.innerHTML = data.pagination;
+                        // Status lazy load: jumlah baris tampil tetap, cek apakah masih ada sisa data
+                        this.hasMorePages = Boolean(data.has_more) && (data.allIds || []).length < this.maxLimit;
+                        this.loadMoreError = false;
                         
                         // Update total results
                         this.totalResults = data.total;
                         
                         // Update allIds dan peta status untuk validasi alur
                         this.allIds = data.allIds;
-                        this.statusById = { ...this.statusById, ...(data.statuses || {}) };
+                        this.statusById = { ...this.statusById, ...(data.progresses || data.statuses || {}) };
                         
                         // Re-check checkboxes and update row styling
                         this.$nextTick(() => {

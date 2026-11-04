@@ -171,24 +171,124 @@
                         @enderror
                     </div>
 
-                    <!-- Kepada (Penerima) Dokumen Ini -->
-                    <div x-data="searchableSelect({
+                    <!-- Kepada (Penerima) Dokumen Ini (Multi-Recipient Chip Combobox) -->
+                    <div x-data="multiRecipientSelect({
                         initialValue: {{ json_encode(old('recipient', $incomingMail->recipient)) }},
-                        defaultOptions: []
-                    })" class="relative" @click.away="open = false">
+                        defaultOptions: {{ json_encode($recipients ?? []) }}
+                    })" class="relative" @click.away="closeDropdown()">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             Kepada / Penerima Dokumen <span class="text-slate-900 font-bold">*</span>
                         </label>
                         <input type="hidden" name="recipient" :value="value">
 
+                        <!-- Trigger Box with Chips -->
+                        <div @click="toggle()"
+                             class="w-full min-h-[42px] px-3 py-1.5 bg-slate-50/50 border border-slate-200 rounded-xl text-left text-sm text-slate-900 focus-within:ring-2 focus-within:ring-slate-900 flex items-center justify-between gap-2 shadow-2xs transition-all cursor-pointer">
+                            <div class="flex flex-wrap items-center gap-1.5 flex-1">
+                                <template x-for="(tag, tIdx) in tags" :key="tag + '_' + tIdx">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs">
+                                        <span x-text="tag"></span>
+                                        <button type="button" @click.stop="removeTag(tIdx)" class="text-slate-300 hover:text-white leading-none cursor-pointer" title="Hapus penerima ini">×</button>
+                                    </span>
+                                </template>
+                                <span x-show="tags.length === 0" class="text-slate-400 text-sm py-0.5 px-1">Pilih / Tambah Penerima...</span>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </div>
+
+                        <!-- Dropdown List -->
+                        <div x-show="open" x-cloak 
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="transform opacity-0 scale-95"
+                             x-transition:enter-end="transform opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="transform opacity-100 scale-100"
+                             x-transition:leave-end="transform opacity-0 scale-95"
+                             class="absolute z-30 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden p-2 space-y-2">
+                            
+                            <div class="relative">
+                                <input x-ref="searchInput" 
+                                       type="text" 
+                                       x-model="search"
+                                       @keydown.enter.prevent.stop="commitSearch()"
+                                       @keydown.comma.prevent.stop="commitSearch()"
+                                       @keydown.escape.prevent.stop="closeDropdown()"
+                                       placeholder="Ketik nama penerima lalu tekan Enter..."
+                                       class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">×</span>
+                            </div>
+
+                            <div class="max-h-44 overflow-y-auto space-y-1">
+                                <div class="pb-1 border-b border-slate-100">
+                                    <button type="button"
+                                            @click="search.trim() !== '' ? addNewOption(search.trim()) : $refs.searchInput.focus()"
+                                            class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
+                                        <span x-show="search.trim() === ''">+ Ketik untuk Tambah Penerima Baru</span>
+                                        <span x-show="search.trim() !== ''">+ Tambahkan "<span x-text="search.trim()"></span>"</span>
+                                    </button>
+                                </div>
+
+                                <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar penerima yang ditambahkan</p>
+                                <template x-for="item in filteredOptions" :key="item">
+                                    <div class="flex items-center space-x-1">
+                                        <button type="button" 
+                                                @click="toggleOption(item)" 
+                                                class="flex-1 text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
+                                                :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': isSelected(item) }">
+                                            <span x-text="item"></span>
+                                            <span x-show="isSelected(item)" class="text-xs">✓</span>
+                                        </button>
+                                        <button type="button" 
+                                                @click.stop="removeOption(item)" 
+                                                class="p-2 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                                title="Hapus dari daftar saran">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        @error('recipient')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Perihal -->
+                    <div>
+                        <label for="subject" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Perihal <span class="text-slate-900 font-bold">*</span>
+                        </label>
+                        <input type="text" name="subject" id="subject" value="{{ old('subject', $incomingMail->subject) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                        @error('subject')
+                            <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Status (Inputan Admin - Opsional) -->
+                    <div x-data="searchableSelect({
+                        initialValue: {{ json_encode(old('status', $incomingMail->status)) }},
+                        defaultOptions: {{ json_encode($statuses ?? \App\Support\MailCustomStatus::DEFAULTS) }}
+                    })" class="relative" @click.away="open = false">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Status <span class="text-slate-400 font-normal normal-case">(Opsional)</span>
+                        </label>
+                        <input type="hidden" name="status" :value="value">
+
                         <!-- Trigger Button -->
                         <button type="button" 
                                 @click="open = !open; if(open) $nextTick(() => $refs.searchInput.focus())"
                                 class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 flex items-center justify-between shadow-2xs transition-all cursor-pointer">
-                            <span x-text="value ? value : 'Pilih / Cari Penerima...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-bold': value }"></span>
-                            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
+                            <span x-text="value ? value : 'Pilih / Ketik Status...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-bold': value }"></span>
+                            <div class="flex items-center space-x-1.5">
+                                <span x-show="value" @click.stop="value = ''" class="text-slate-400 hover:text-slate-700 text-xs font-bold px-1" title="Kosongkan status">×</span>
+                                <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
                         </button>
 
                         <!-- Dropdown List -->
@@ -205,46 +305,45 @@
                                 <input x-ref="searchInput" 
                                        type="text" 
                                        x-model="search" 
+                                       placeholder="Cari atau tulis status baru..."
                                        class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
                                 <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">×</span>
                             </div>
 
                             <div class="max-h-44 overflow-y-auto space-y-1">
-                                <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar list yang ditambahkan</p>
-                                <template x-for="item in filteredOptions" :key="item">
-                                    <button type="button" 
-                                            @click="selectOption(item)" 
-                                            class="w-full text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
-                                            :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
-                                        <span x-text="item"></span>
-                                        <span x-show="value === item" class="text-xs">✓</span>
-                                    </button>
-                                </template>
-
-                                <div x-show="search.trim() !== '' && !filteredOptions.map(o => o.toLowerCase()).includes(search.trim().toLowerCase())" class="pt-1 border-t border-slate-100">
-                                    <button type="button" 
-                                            @click="addNewOption(search.trim())" 
-                                            class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer">
-                                        <span>Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
+                                <div class="pb-1 border-b border-slate-100">
+                                    <button type="button"
+                                            @click="search.trim() !== '' ? addNewOption(search.trim()) : $refs.searchInput.focus()"
+                                            class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
+                                        <span x-show="search.trim() === ''">+ Tambah Baru</span>
+                                        <span x-show="search.trim() !== ''">+ Tambah "<span x-text="search.trim()"></span>" sebagai status baru</span>
                                     </button>
                                 </div>
+
+                                <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar status yang ditambahkan</p>
+                                <template x-for="item in filteredOptions" :key="item">
+                                    <div class="flex items-center space-x-1">
+                                        <button type="button" 
+                                                @click="selectOption(item)" 
+                                                class="flex-1 text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
+                                                :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': value === item }">
+                                            <span x-text="item"></span>
+                                            <span x-show="value === item" class="text-xs">✓</span>
+                                        </button>
+                                        <button type="button" 
+                                                @click.stop="removeOption(item)" 
+                                                class="p-2 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                                title="Hapus dari daftar">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </template>
                             </div>
                         </div>
-                        @error('recipient')
+                        @error('status')
                             <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
                         @enderror
                     </div>
-                </div>
-
-                <!-- Perihal -->
-                <div>
-                    <label for="subject" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Perihal <span class="text-slate-900 font-bold">*</span>
-                    </label>
-                    <input type="text" name="subject" id="subject" value="{{ old('subject', $incomingMail->subject) }}" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
-                    @error('subject')
-                        <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
-                    @enderror
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -257,50 +356,50 @@
                         @enderror
                     </div>
 
-                    <!-- Status Surat (mengikuti alur standar) -->
+                    <!-- Progres Surat (mengikuti alur standar SOP) -->
                     @php
-                        $currentStatus = App\Support\IncomingMailStatus::canonical($incomingMail->status);
-                        $currentStatusLabel = App\Support\IncomingMailStatus::label($incomingMail->status);
-                        $allowedStatuses = App\Support\IncomingMailStatus::allowedTransitions($currentStatus);
-                        $selectedStatus = App\Support\IncomingMailStatus::canonical(old('status', $incomingMail->status));
+                        $currentProgress = App\Support\IncomingMailStatus::canonical($incomingMail->progress);
+                        $currentProgressLabel = App\Support\IncomingMailStatus::label($incomingMail->progress);
+                        $allowedProgresses = App\Support\IncomingMailStatus::allowedTransitions($currentProgress);
+                        $selectedProgress = App\Support\IncomingMailStatus::canonical(old('progress', $incomingMail->progress));
                     @endphp
-                    <div x-data="{ status: @js($selectedStatus ?? $currentStatus) }">
-                        <label for="status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status Dokumen</label>
-                        <select name="status" id="status" x-model="status"
-                            @disabled($allowedStatuses === [])
+                    <div x-data="{ progress: @js($selectedProgress ?? $currentProgress) }">
+                        <label for="progress" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Progres Dokumen</label>
+                        <select name="progress" id="progress" x-model="progress"
+                            @disabled($allowedProgresses === [])
                             class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs disabled:opacity-60">
-                            <option value="{{ $currentStatus }}">
-                                {{ $currentStatusLabel }} (status saat ini)
+                            <option value="{{ $currentProgress }}">
+                                {{ $currentProgressLabel }} (progres saat ini)
                             </option>
-                            @foreach ($allowedStatuses as $allowedStatus)
-                                @continue($allowedStatus === App\Support\IncomingMailStatus::RETURN || $allowedStatus === $currentStatus)
-                                <option value="{{ $allowedStatus }}" {{ $selectedStatus === $allowedStatus ? 'selected' : '' }}>
-                                    {{ App\Support\IncomingMailStatus::label($allowedStatus) }}
+                            @foreach ($allowedProgresses as $allowedProgress)
+                                @continue($allowedProgress === App\Support\IncomingMailStatus::RETURN || $allowedProgress === $currentProgress)
+                                <option value="{{ $allowedProgress }}" {{ $selectedProgress === $allowedProgress ? 'selected' : '' }}>
+                                    {{ App\Support\IncomingMailStatus::label($allowedProgress) }}
                                 </option>
                             @endforeach
                         </select>
 
-                        @if ($allowedStatuses === [])
+                        @if ($allowedProgresses === [])
                             <p class="text-xs text-slate-500 mt-1.5">
-                                {{ $currentStatusLabel }} adalah status akhir dan tidak dapat diubah lagi.
+                                {{ $currentProgressLabel }} adalah progres akhir dan tidak dapat diubah lagi.
                             </p>
-                        @elseif (in_array(App\Support\IncomingMailStatus::RETURN, $allowedStatuses, true))
+                        @elseif (in_array(App\Support\IncomingMailStatus::RETURN, $allowedProgresses, true))
                             <p class="text-xs text-slate-500 mt-1.5">
-                                Status RETURN hanya dapat dipilih melalui proses tanda tangan pengembalian di halaman daftar surat masuk.
+                                Progres RETURN hanya dapat dipilih melalui proses tanda tangan pengembalian di halaman daftar surat masuk.
                             </p>
                         @endif
 
                         <!-- Catatan revisi: wajib saat mengajukan revisi, opsional saat menyelesaikannya -->
-                        <div x-show="status === 'REVISI' || @js($currentStatus === App\Support\IncomingMailStatus::REVISI)"
+                        <div x-show="progress === 'REVISI' || @js($currentProgress === App\Support\IncomingMailStatus::REVISI)"
                             x-cloak class="mt-3 space-y-1.5">
                             <label for="revision_note" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                <span x-text="status === 'REVISI' ? 'Catatan Kebutuhan Revisi' : 'Catatan Penyelesaian Revisi'"></span>
-                                <span x-show="status === 'REVISI'" class="text-rose-600">*</span>
-                                <span x-show="status !== 'REVISI'" class="text-slate-400 font-normal normal-case">(opsional)</span>
+                                <span x-text="progress === 'REVISI' ? 'Catatan Kebutuhan Revisi' : 'Catatan Penyelesaian Revisi'"></span>
+                                <span x-show="progress === 'REVISI'" class="text-rose-600">*</span>
+                                <span x-show="progress !== 'REVISI'" class="text-slate-400 font-normal normal-case">(opsional)</span>
                             </label>
                             <textarea name="revision_note" id="revision_note" rows="3" maxlength="2000"
-                                :required="status === 'REVISI'"
-                                :placeholder="status === 'REVISI'
+                                :required="progress === 'REVISI'"
+                                :placeholder="progress === 'REVISI'
                                     ? 'Jelaskan bagian mana yang perlu diperbaiki.'
                                     : 'Jelaskan bagaimana revisi diselesaikan (boleh dikosongkan).'"
                                 class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">{{ old('revision_note') }}</textarea>
@@ -309,7 +408,7 @@
                             @enderror
                         </div>
 
-                        @error('status')
+                        @error('progress')
                             <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p>
                         @enderror
                     </div>
@@ -805,11 +904,120 @@
                 addNewOption(newOpt) {
                     if (!newOpt) return;
                     if (!this.options.includes(newOpt)) {
-                        this.options.push(newOpt);
+                        this.options.unshift(newOpt);
                     }
                     this.value = newOpt;
                     this.search = '';
                     this.open = false;
+                },
+
+                removeOption(opt) {
+                    this.options = this.options.filter(item => item !== opt);
+                    if (this.value === opt) {
+                        this.value = '';
+                    }
+                }
+            };
+        }
+
+        function multiRecipientSelect(config) {
+            const parseTags = (raw) => {
+                if (!raw) return [];
+                if (Array.isArray(raw)) return raw.map(s => String(s).trim()).filter(Boolean);
+                return String(raw).split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+            };
+            const initialTags = parseTags(config.initialValue);
+            const defaultOpts = Array.isArray(config.defaultOptions) ? [...config.defaultOptions] : [];
+            initialTags.forEach(tag => {
+                if (!defaultOpts.some(o => String(o).toLowerCase() === tag.toLowerCase())) {
+                    defaultOpts.unshift(tag);
+                }
+            });
+
+            return {
+                open: false,
+                search: '',
+                tags: initialTags,
+                options: defaultOpts,
+
+                get value() {
+                    return this.tags.join(', ');
+                },
+
+                get filteredOptions() {
+                    if (!this.search.trim()) {
+                        return this.options;
+                    }
+                    return this.options.filter(opt =>
+                        String(opt).toLowerCase().includes(this.search.trim().toLowerCase())
+                    );
+                },
+
+                isSelected(opt) {
+                    const target = String(opt).toLowerCase();
+                    return this.tags.some(t => t.toLowerCase() === target);
+                },
+
+                toggle() {
+                    this.open = !this.open;
+                    if (this.open) {
+                        this.$nextTick(() => this.$refs.searchInput?.focus());
+                    }
+                },
+
+                closeDropdown() {
+                    if (this.search.trim() !== '') {
+                        this.commitSearch();
+                    }
+                    this.open = false;
+                },
+
+                addTag(opt) {
+                    const clean = String(opt || '').trim();
+                    if (!clean) return;
+                    if (!this.isSelected(clean)) {
+                        this.tags.push(clean);
+                    }
+                },
+
+                removeTag(index) {
+                    this.tags.splice(index, 1);
+                },
+
+                toggleOption(opt) {
+                    const target = String(opt).toLowerCase();
+                    const idx = this.tags.findIndex(t => t.toLowerCase() === target);
+                    if (idx !== -1) {
+                        this.tags.splice(idx, 1);
+                    } else {
+                        this.tags.push(opt);
+                    }
+                    this.search = '';
+                    this.$nextTick(() => this.$refs.searchInput?.focus());
+                },
+
+                addNewOption(newOpt) {
+                    const parts = String(newOpt || '').split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+                    parts.forEach(part => {
+                        if (!this.options.some(o => String(o).toLowerCase() === part.toLowerCase())) {
+                            this.options.unshift(part);
+                        }
+                        this.addTag(part);
+                    });
+                    this.search = '';
+                    this.$nextTick(() => this.$refs.searchInput?.focus());
+                },
+
+                removeOption(opt) {
+                    this.options = this.options.filter(item => item !== opt);
+                    const target = String(opt).toLowerCase();
+                    this.tags = this.tags.filter(t => t.toLowerCase() !== target);
+                },
+
+                commitSearch() {
+                    const keyword = this.search.trim();
+                    if (!keyword) return;
+                    this.addNewOption(keyword);
                 }
             };
         }

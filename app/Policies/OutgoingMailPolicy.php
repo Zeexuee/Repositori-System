@@ -62,6 +62,6 @@ class OutgoingMailPolicy
         // COMPLETED is a retired value that must stay locked for old records.
         // RECEIVE is intentionally not final: a received document may still be
         // sent back for revision (RECEIVE -> REVISI).
-        return strtoupper(trim((string) $outgoingMail->status)) === 'COMPLETED';
+        return strtoupper(trim((string) $outgoingMail->progress)) === 'COMPLETED';
     }
 }

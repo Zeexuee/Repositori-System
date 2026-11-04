@@ -173,24 +173,122 @@
                                        class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                             </div>
 
-                            <!-- Kepada (Penerima) Dokumen Ini -->
-                            <div x-data="searchableSelect({
+                            <!-- Kepada (Penerima) Dokumen Ini (Multi-Recipient Chip Combobox) -->
+                            <div x-data="multiRecipientSelect({
                                 initialValue: doc.recipient,
                                 listType: 'recipients'
-                            })" class="relative" @click.away="open = false" x-effect="doc.recipient = value">
+                            })" class="relative" @click.away="closeDropdown()" x-effect="doc.recipient = value">
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                     Kepada / Penerima Dokumen <span class="text-slate-900 font-bold" x-show="!isDraft">*</span>
                                 </label>
                                 <input type="hidden" :name="'documents[' + getFormIndex(index) + '][recipient]'" :value="value">
 
+                                <!-- Trigger Box with Chips -->
+                                <div @click="toggle()"
+                                     class="w-full min-h-[42px] px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-left text-sm text-slate-900 focus-within:ring-2 focus-within:ring-slate-900 flex items-center justify-between gap-2 shadow-2xs transition-all cursor-pointer">
+                                    <div class="flex flex-wrap items-center gap-1.5 flex-1">
+                                        <template x-for="(tag, tIdx) in tags" :key="tag + '_' + tIdx">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs">
+                                                <span x-text="tag"></span>
+                                                <button type="button" @click.stop="removeTag(tIdx)" class="text-slate-300 hover:text-white leading-none cursor-pointer" title="Hapus penerima ini">&#215;</button>
+                                            </span>
+                                        </template>
+                                        <span x-show="tags.length === 0" class="text-slate-400 text-sm py-0.5 px-1">Pilih / Tambah Penerima...</span>
+                                    </div>
+                                    <svg class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+
+                                <!-- Dropdown List -->
+                                <div x-show="open" x-cloak 
+                                     x-transition:enter="transition ease-out duration-100"
+                                     x-transition:enter-start="transform opacity-0 scale-95"
+                                     x-transition:enter-end="transform opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-75"
+                                     x-transition:leave-start="transform opacity-100 scale-100"
+                                     x-transition:leave-end="transform opacity-0 scale-95"
+                                     class="absolute z-30 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden p-2 space-y-2">
+                                    
+                                    <div class="relative">
+                                        <input x-ref="searchInput" 
+                                               type="text" 
+                                               x-model="search"
+                                               @keydown.enter.prevent.stop="commitSearch()"
+                                               @keydown.comma.prevent.stop="commitSearch()"
+                                               @keydown.escape.prevent.stop="closeDropdown()"
+                                               placeholder="Ketik nama penerima lalu tekan Enter..."
+                                               class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                        <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">&#215;</span>
+                                    </div>
+
+                                    <div class="max-h-44 overflow-y-auto space-y-1">
+                                        <!-- Registrasi on-the-fly: WAJIB berada di urutan paling atas -->
+                                        <div class="pb-1 border-b border-slate-100">
+                                            <button type="button"
+                                                    @click="search.trim() !== '' ? addNewOption(search.trim()) : $refs.searchInput.focus()"
+                                                    class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
+                                                <span x-show="search.trim() === ''">+ Ketik untuk Tambah Penerima Baru</span>
+                                                <span x-show="search.trim() !== ''">+ Tambahkan "<span x-text="search.trim()"></span>"</span>
+                                            </button>
+                                        </div>
+
+                                        <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar penerima yang ditambahkan</p>
+                                        <template x-for="item in filteredOptions" :key="item">
+                                            <div class="flex items-center space-x-1">
+                                                <button type="button" 
+                                                        @click="toggleOption(item)" 
+                                                        class="flex-1 text-left px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100 rounded-lg flex items-center justify-between transition-colors cursor-pointer"
+                                                        :class="{ 'bg-slate-900 text-white hover:bg-slate-800 font-bold': isSelected(item) }">
+                                                    <span x-text="item"></span>
+                                                    <span x-show="isSelected(item)" class="text-xs">&#10003;</span>
+                                                </button>
+                                                <button type="button" 
+                                                        @click.stop="removeOption(item)" 
+                                                        class="p-2 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                                        title="Hapus dari daftar saran">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Perihal -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Perihal <span class="text-slate-900 font-bold" x-show="!isDraft">*</span>
+                                </label>
+                                <input type="text" 
+                                       :name="'documents[' + getFormIndex(index) + '][subject]'" 
+                                       x-model="doc.subject" 
+                                       class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                            </div>
+
+                            <!-- Status (Inputan Admin - Opsional) -->
+                            <div x-data="searchableSelect({
+                                initialValue: doc.status,
+                                listType: 'statuses'
+                            })" class="relative" @click.away="open = false" x-effect="doc.status = value">
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Status <span class="text-slate-400 font-normal normal-case">(Opsional)</span>
+                                </label>
+                                <input type="hidden" :name="'documents[' + getFormIndex(index) + '][status]'" :value="value">
+
                                 <!-- Trigger Button -->
                                 <button type="button" 
                                         @click="toggle()"
                                         class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 flex items-center justify-between shadow-2xs transition-all cursor-pointer">
-                                    <span x-text="value ? value : 'Pilih / Cari Penerima...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-bold': value }"></span>
-                                    <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
+                                    <span x-text="value ? value : 'Pilih / Ketik Status...'" :class="{ 'text-slate-400': !value, 'text-slate-900 font-bold': value }"></span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <span x-show="value" @click.stop="value = ''" class="text-slate-400 hover:text-slate-700 text-xs font-bold px-1" title="Kosongkan status">&#215;</span>
+                                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </div>
                                 </button>
 
                                 <!-- Dropdown List -->
@@ -205,12 +303,12 @@
                                     
                                     <div class="relative">
                                         <input x-ref="searchInput" 
-                                       type="text" 
-                                       x-model="search"
-                                       @keydown.enter.prevent.stop="commitSearch()"
-                                       @keydown.escape.prevent.stop="open = false"
-                                       placeholder="Cari atau tulis nama baru..."
-                                       class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                                               type="text" 
+                                               x-model="search"
+                                               @keydown.enter.prevent.stop="commitSearch()"
+                                               @keydown.escape.prevent.stop="open = false"
+                                               placeholder="Cari atau tulis status baru..."
+                                               class="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
                                         <span x-show="search" @click="search = ''" class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold">&#215;</span>
                                     </div>
 
@@ -222,12 +320,12 @@
                                                     :disabled="search.trim() !== '' && hasExactMatch"
                                                     class="w-full text-left px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
                                                 <span x-show="search.trim() === ''">+ Tambah Baru</span>
-                                                <span x-show="search.trim() !== '' && !hasExactMatch">+ Tambah "<span x-text="search.trim()"></span>" sebagai opsi baru</span>
-                                                <span x-show="search.trim() !== '' && hasExactMatch">Opsi "<span x-text="search.trim()"></span>" sudah terdaftar</span>
+                                                <span x-show="search.trim() !== '' && !hasExactMatch">+ Tambah "<span x-text="search.trim()"></span>" sebagai status baru</span>
+                                                <span x-show="search.trim() !== '' && hasExactMatch">Status "<span x-text="search.trim()"></span>" sudah terdaftar</span>
                                             </button>
                                         </div>
 
-                                        <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar list yang ditambahkan</p>
+                                        <p x-show="options.length === 0" class="text-xs text-slate-500 text-center py-2">Belum ada daftar status yang ditambahkan</p>
                                         <template x-for="item in filteredOptions" :key="item">
                                             <div class="flex items-center space-x-1">
                                                 <button type="button" 
@@ -248,17 +346,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Perihal -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                Perihal <span class="text-slate-900 font-bold" x-show="!isDraft">*</span>
-                            </label>
-                            <input type="text" 
-                                   :name="'documents[' + getFormIndex(index) + '][subject]'" 
-                                   x-model="doc.subject" 
-                                   class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -416,7 +503,7 @@
             const rawOldDocs = {{ json_encode(array_values(old('documents', []))) }};
             const oldDocs = Array.isArray(rawOldDocs) ? rawOldDocs : Object.values(rawOldDocs || {});
             const defaultDoc = [
-                { id: Date.now(), mail_number: '', recipient: '', subject: '', disposition_note: '', notes: '' }
+                { id: Date.now(), mail_number: '', recipient: '', subject: '', status: '', disposition_note: '', notes: '' }
             ];
             const initialDocs = (oldDocs && oldDocs.length > 0) 
                 ? oldDocs.map((d, i) => ({ 
@@ -424,6 +511,7 @@
                     mail_number: (d && d.mail_number !== undefined && d.mail_number !== null) ? String(d.mail_number) : '', 
                     recipient: (d && d.recipient !== undefined && d.recipient !== null) ? String(d.recipient) : '', 
                     subject: (d && d.subject !== undefined && d.subject !== null) ? String(d.subject) : '', 
+                    status: (d && d.status !== undefined && d.status !== null) ? String(d.status) : '', 
                     disposition_note: (d && d.disposition_note !== undefined && d.disposition_note !== null) ? String(d.disposition_note) : '', 
                     notes: (d && d.notes !== undefined && d.notes !== null) ? String(d.notes) : '' 
                 }))
@@ -447,6 +535,7 @@
                         mail_number: '',
                         recipient: '',
                         subject: '',
+                        status: '',
                         disposition_note: '',
                         notes: '',
                         isNew: true
@@ -559,9 +648,12 @@
             Alpine.store('mailOptions', {
                 senders: @json(collect($senders ?? [])->filter()->unique()->values()),
                 recipients: @json(collect($recipients ?? [])->filter()->unique()->values()),
+                statuses: @json(collect($statuses ?? \App\Support\MailCustomStatus::DEFAULTS)->filter()->unique()->values()),
 
                 list(type) {
-                    return type === 'senders' ? this.senders : this.recipients;
+                    if (type === 'recipients') return this.recipients;
+                    if (type === 'statuses') return this.statuses;
+                    return this.senders;
                 },
 
                 add(type, option) {
@@ -584,8 +676,10 @@
                 remove(type, option) {
                     if (type === 'senders') {
                         this.senders = this.senders.filter(item => item !== option);
-                    } else {
+                    } else if (type === 'recipients') {
                         this.recipients = this.recipients.filter(item => item !== option);
+                    } else if (type === 'statuses') {
+                        this.statuses = this.statuses.filter(item => item !== option);
                     }
                 },
             });
@@ -598,7 +692,7 @@
                 open: false,
                 search: '',
                 value: settings.initialValue ? String(settings.initialValue) : '',
-                listType: settings.listType === 'recipients' ? 'recipients' : 'senders',
+                listType: ['recipients', 'statuses'].includes(settings.listType) ? settings.listType : 'senders',
 
                 init() {
                     // Pastikan nilai awal (misal hasil old() setelah validasi gagal) tetap tersedia di daftar.
@@ -673,6 +767,124 @@
 
                     this.addNewOption(keyword);
                 },
+            };
+        }
+
+        function multiRecipientSelect(config) {
+            const settings = config || {};
+            const parseTags = (raw) => {
+                if (!raw) return [];
+                if (Array.isArray(raw)) return raw.map(s => String(s).trim()).filter(Boolean);
+                return String(raw).split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+            };
+
+            return {
+                open: false,
+                search: '',
+                tags: parseTags(settings.initialValue),
+                listType: settings.listType || 'recipients',
+
+                init() {
+                    this.tags.forEach(tag => {
+                        this.$store.mailOptions.add(this.listType, tag);
+                    });
+                },
+
+                get value() {
+                    return this.tags.join(', ');
+                },
+
+                get options() {
+                    return this.$store.mailOptions.list(this.listType);
+                },
+
+                get filteredOptions() {
+                    const keyword = this.search.trim().toLowerCase();
+                    if (keyword === '') {
+                        return this.options;
+                    }
+                    return this.options.filter(option => String(option).toLowerCase().includes(keyword));
+                },
+
+                isSelected(option) {
+                    const target = String(option).toLowerCase();
+                    return this.tags.some(t => t.toLowerCase() === target);
+                },
+
+                toggle() {
+                    this.open = !this.open;
+                    if (this.open) {
+                        this.$nextTick(() => this.$refs.searchInput?.focus());
+                    }
+                },
+
+                closeDropdown() {
+                    if (this.search.trim() !== '') {
+                        this.commitSearch();
+                    }
+                    this.open = false;
+                },
+
+                addTag(option) {
+                    const clean = String(option || '').trim();
+                    if (!clean) return;
+                    if (!this.isSelected(clean)) {
+                        this.tags.push(clean);
+                    }
+                },
+
+                removeTag(index) {
+                    this.tags.splice(index, 1);
+                },
+
+                toggleOption(option) {
+                    const target = String(option).toLowerCase();
+                    const existingIdx = this.tags.findIndex(t => t.toLowerCase() === target);
+                    if (existingIdx !== -1) {
+                        this.tags.splice(existingIdx, 1);
+                    } else {
+                        this.tags.push(option);
+                    }
+                    this.search = '';
+                    this.$nextTick(() => this.$refs.searchInput?.focus());
+                },
+
+                addNewOption(newOption) {
+                    const parts = String(newOption || '').split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+                    parts.forEach(part => {
+                        const registered = this.$store.mailOptions.add(this.listType, part);
+                        if (registered !== '') {
+                            this.addTag(registered);
+                        }
+                    });
+                    this.search = '';
+                    this.$nextTick(() => this.$refs.searchInput?.focus());
+                },
+
+                removeOption(option) {
+                    this.$store.mailOptions.remove(this.listType, option);
+                    const target = String(option).toLowerCase();
+                    this.tags = this.tags.filter(t => t.toLowerCase() !== target);
+                },
+
+                commitSearch() {
+                    const keyword = this.search.trim();
+                    if (keyword === '') return;
+
+                    const parts = keyword.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+                    parts.forEach(part => {
+                        const match = this.options.find(option => String(option).toLowerCase() === part.toLowerCase());
+                        if (match !== undefined) {
+                            this.addTag(match);
+                        } else {
+                            const registered = this.$store.mailOptions.add(this.listType, part);
+                            if (registered !== '') {
+                                this.addTag(registered);
+                            }
+                        }
+                    });
+                    this.search = '';
+                }
             };
         }
     </script>

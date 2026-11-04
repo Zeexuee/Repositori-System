@@ -27,7 +27,8 @@ class IncomingMailTest extends TestCase
             'received_date' => '2026-09-10',
             'sender' => 'Biro Humas',
             'recipient' => 'Direktur Utama',
-            'status' => 'RECEIVE',
+            'status' => 'Penting',
+            'progress' => 'RECEIVE',
             'subject' => 'Undangan Rapat Koordinasi',
             'outgoing_date' => '2026-09-12',
             'disposition_note' => 'Mohon ditindaklanjuti',
@@ -39,7 +40,8 @@ class IncomingMailTest extends TestCase
             'received_date' => '2026-09-15',
             'sender' => 'Biro Keuangan',
             'recipient' => 'Kepala Divisi',
-            'status' => 'REVISI',
+            'status' => 'Rahasia',
+            'progress' => 'REVISI',
             'subject' => 'Laporan Anggaran Triwulan',
             'outgoing_date' => '2026-09-16',
             'disposition_note' => 'Arsipkan setelah review',
@@ -58,11 +60,17 @@ class IncomingMailTest extends TestCase
         $response->assertSee('TEST/SURAT/002');
         $response->assertDontSee('TEST/SURAT/001');
 
-        // Specific filter: status
-        $response = $this->actingAs($user)->get(route('incoming-mails.index', ['status' => 'REVISI']));
+        // Specific filter: progress
+        $response = $this->actingAs($user)->get(route('incoming-mails.index', ['progress' => 'REVISI']));
         $response->assertStatus(200);
         $response->assertSee('TEST/SURAT/002');
         $response->assertDontSee('TEST/SURAT/001');
+
+        // Specific filter: status (input admin)
+        $response = $this->actingAs($user)->get(route('incoming-mails.index', ['status' => 'Penting']));
+        $response->assertStatus(200);
+        $response->assertSee('TEST/SURAT/001');
+        $response->assertDontSee('TEST/SURAT/002');
 
         // Specific filter: disposition_note
         $response = $this->actingAs($user)->get(route('incoming-mails.index', ['disposition_note' => 'ditindaklanjuti']));
@@ -88,13 +96,13 @@ class IncomingMailTest extends TestCase
             'received_date' => '2026-09-18',
             'sender' => 'Kementerian Keuangan',
             'recipient' => 'Direktur Utama',
-            'status' => 'RECEIVE',
+            'progress' => 'RECEIVE',
             'subject' => 'Permintaan Data Operasional',
         ]);
 
         $response = $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
             'revision_note' => 'Data operasional belum lengkap.',
         ]);
 
@@ -105,7 +113,7 @@ class IncomingMailTest extends TestCase
         ]);
 
         $mail->refresh();
-        $this->assertSame('REVISI', $mail->status);
+        $this->assertSame('REVISI', $mail->progress);
 
         // Surat masuk dan surat keluar adalah dua register terpisah.
         $this->assertSame(0, OutgoingMail::count());
@@ -123,6 +131,51 @@ class IncomingMailTest extends TestCase
         $response->assertSee('Terima Kasih');
         $response->assertSee('Beta v2');
         $response->assertSee('Detail Pembaruan');
+    }
+
+    public function test_incoming_mail_index_uses_lazy_load_chunks_instead_of_pages(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        foreach (range(1, 25) as $i) {
+            IncomingMail::forceCreate([
+                'mail_number' => sprintf('LAZY/IN/%03d', $i),
+                'received_date' => '2026-11-05',
+                'sender' => 'Biro Umum',
+                'recipient' => 'Rektor',
+                'progress' => 'RECEIVE',
+                'subject' => "Surat Lazy Load {$i}",
+                'created_at' => now()->subMinutes($i),
+            ]);
+        }
+
+        // Halaman penuh: blok pertama + penanda lazy load, tanpa link paginasi, meski ada ?page lama
+        $this->actingAs($user)->get(route('incoming-mails.index', ['page' => 2]))
+            ->assertOk()
+            ->assertSee('loadMoreSentinel', false)
+            ->assertSee('LAZY/IN/001')
+            ->assertDontSee('LAZY/IN/025');
+
+        // Blok berikutnya lewat AJAX
+        $this->actingAs($user)->getJson(route('incoming-mails.index', ['page' => 2]))
+            ->assertOk()
+            ->assertJson(['current_page' => 2, 'has_more' => false, 'total' => 25])
+            ->assertJsonCount(5, 'allIds');
+
+        // Muat ulang seluruh baris yang sudah tampil sekaligus (dibatasi maksimal 200)
+        $this->actingAs($user)->getJson(route('incoming-mails.index', ['per_page' => 40]))
+            ->assertOk()
+            ->assertJson(['current_page' => 1, 'has_more' => false, 'max_limit' => 200])
+            ->assertJsonCount(25, 'allIds');
+
+        // Pastikan markup lazy load memuat teks maksimal 200 dokumen dan teks seluruh dokumen
+        $this->actingAs($user)->get(route('incoming-mails.index'))
+            ->assertOk()
+            ->assertSee('Maksimal load 200 dokumen, gunakan')
+            ->assertSee('halaman repositori')
+            ->assertSee('Menampilkan seluruh');
     }
 
     public function test_incoming_mail_create_page_has_editable_received_date_with_default_now(): void
@@ -341,5 +394,91 @@ class IncomingMailTest extends TestCase
         $mail->refresh();
         $this->assertEquals('2026-11-03 09:15:00', $mail->received_date->format('Y-m-d H:i:s'));
         $this->assertEquals('2026-11-04 16:20:00', $mail->outgoing_date->format('Y-m-d H:i:s'));
+    }
+
+    public function test_admin_can_create_and_edit_custom_status_on_incoming_mail(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        // Verify default statuses "Tembusan" and "Undangan" are included in create form
+        $this->actingAs($user)->get(route('incoming-mails.create'))
+            ->assertOk()
+            ->assertSee('Tembusan')
+            ->assertSee('Undangan');
+
+        $response = $this->actingAs($user)->post(route('incoming-mails.store'), [
+            'sender' => 'Biro Akademik',
+            'received_date' => '2026-11-05T09:00',
+            'documents' => [
+                [
+                    'mail_number' => 'AKD/2026/001',
+                    'recipient' => 'Rektor',
+                    'subject' => 'Permohonan Persetujuan Kurikulum',
+                    'status' => 'Segera Ditindaklanjuti',
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('incoming-mails.index'));
+
+        $mail = IncomingMail::where('mail_number', 'AKD/2026/001')->firstOrFail();
+        $this->assertSame('Segera Ditindaklanjuti', $mail->status);
+        $this->assertSame('RECEIVE', $mail->progress);
+
+        $this->actingAs($user)->put(route('incoming-mails.update', $mail), [
+            'sender' => 'Biro Akademik',
+            'recipient' => 'Rektor',
+            'subject' => 'Permohonan Persetujuan Kurikulum',
+            'status' => 'Sangat Rahasia',
+        ])->assertSessionHasNoErrors();
+
+        $mail->refresh();
+        $this->assertSame('Sangat Rahasia', $mail->status);
+        $this->assertSame('RECEIVE', $mail->progress);
+    }
+
+    public function test_incoming_mail_supports_multiple_recipients_per_document(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $response = $this->actingAs($user)->post(route('incoming-mails.store'), [
+            'sender' => 'Biro SDM',
+            'received_date' => '2026-11-05T10:00',
+            'documents' => [
+                [
+                    'mail_number' => 'SDM/2026/MULTI-01',
+                    'recipient' => 'Rektor, Wakil Rektor I, Biro Keuangan',
+                    'subject' => 'Undangan Rapat Koordinasi Pimpinan',
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('incoming-mails.index'));
+
+        $mail = IncomingMail::where('mail_number', 'SDM/2026/MULTI-01')->firstOrFail();
+        $this->assertSame('Rektor, Wakil Rektor I, Biro Keuangan', $mail->recipient);
+        $this->assertSame(['Rektor', 'Wakil Rektor I', 'Biro Keuangan'], $mail->recipients_list);
+
+        // Update using array input & verify deduplication + normalization
+        $this->actingAs($user)->put(route('incoming-mails.update', $mail), [
+            'sender' => 'Biro SDM',
+            'recipient' => ['Rektor', 'Dekan Fakultas Teknik', 'Biro Keuangan', 'rektor'],
+            'subject' => 'Undangan Rapat Koordinasi Pimpinan',
+        ])->assertSessionHasNoErrors();
+
+        $mail->refresh();
+        $this->assertSame('Rektor, Dekan Fakultas Teknik, Biro Keuangan', $mail->recipient);
+        $this->assertSame(['Rektor', 'Dekan Fakultas Teknik', 'Biro Keuangan'], $mail->recipients_list);
+
+        // Verify detail page renders all recipients
+        $this->actingAs($user)->get(route('incoming-mails.show', $mail))
+            ->assertOk()
+            ->assertSee('Rektor')
+            ->assertSee('Dekan Fakultas Teknik')
+            ->assertSee('Biro Keuangan');
     }
 }

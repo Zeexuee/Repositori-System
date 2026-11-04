@@ -27,8 +27,8 @@
     <!-- Structured Info Grid with Defined Card Boundaries -->
     <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
         
-        <!-- Row 1: Nomor Surat, Waktu Dibuat, Status Dokumen (3 Columns) -->
-        <div class="sm:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <!-- Row 1: Nomor Surat, Waktu Dibuat, Status Dokumen, Progres Dokumen (4 Columns) -->
+        <div class="sm:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
             <!-- Field 1: Nomor Surat -->
             <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                 <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nomor Surat</span>
@@ -41,11 +41,23 @@
                 <span class="font-bold text-slate-900 text-sm sm:text-base block font-mono">{{ $outgoingMail->created_at?->format('d F Y, H:i') ?? '-' }}</span>
             </div>
 
-            <!-- Field 3: Status -->
+            <!-- Field 3: Status (Input Admin) -->
             <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
                 <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status Dokumen</span>
+                @if (filled($outgoingMail->status))
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300">
+                        {{ $outgoingMail->status }}
+                    </span>
+                @else
+                    <span class="font-semibold text-slate-400 text-sm block">-</span>
+                @endif
+            </div>
+
+            <!-- Field 4: Progres (SOP Workflow) -->
+            <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+                <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Progres Dokumen</span>
                 @php
-                    $canonicalStatus = App\Support\OutgoingMailStatus::canonical($outgoingMail->status);
+                    $canonicalStatus = App\Support\OutgoingMailStatus::canonical($outgoingMail->progress);
                     $hasReturnProgress = $outgoingMail->returnRecipients && $outgoingMail->returnRecipients->isNotEmpty();
                     if ($canonicalStatus === App\Support\OutgoingMailStatus::WAITING_RECEIVE && ! $hasReturnProgress) {
                         $canonicalStatus = App\Support\OutgoingMailStatus::READY_TO_DELIVERY;
@@ -72,9 +84,24 @@
         </div>
 
         <!-- Field 5: Penerima -->
-        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
+        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1.5">
             <span class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Penerima Surat</span>
-            <span class="font-semibold text-slate-800 text-sm block break-words">{{ $outgoingMail->recipient }}</span>
+            @php
+                $recipientsList = $outgoingMail->recipients_list;
+            @endphp
+            @if(count($recipientsList) > 1)
+                <div class="flex flex-wrap gap-1.5 pt-0.5">
+                    @foreach($recipientsList as $rec)
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs">
+                            {{ $rec }}
+                        </span>
+                    @endforeach
+                </div>
+            @elseif(count($recipientsList) === 1)
+                <span class="font-semibold text-slate-800 text-sm block break-words">{{ $recipientsList[0] }}</span>
+            @else
+                <span class="font-semibold text-slate-400 text-sm block">-</span>
+            @endif
         </div>
 
         <!-- Field 5: Subjek (Full Width on Grid) -->

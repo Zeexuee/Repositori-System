@@ -82,6 +82,6 @@ class IncomingMailPolicy
         // COMPLETED is a retired value that must stay locked for old records.
         // RETURN is intentionally not final: a returned document may still be
         // sent back for revision (RETURN -> REVISI).
-        return strtoupper(trim((string) $incomingMail->status)) === 'COMPLETED';
+        return strtoupper(trim((string) $incomingMail->progress)) === 'COMPLETED';
     }
 }

@@ -27,10 +27,10 @@ class MailDispositionController extends Controller
             'deadline_date' => $request->validated('deadline_date'),
         ]);
 
-        $incomingMail->update(['status' => 'DISPATCHED']);
+        $incomingMail->update(['progress' => 'DISPATCHED']);
 
         return redirect()
             ->route('incoming-mails.show', $incomingMail)
-            ->with('success', 'Disposisi surat berhasil ditambahkan dan status surat diperbarui.');
+            ->with('success', 'Disposisi surat berhasil ditambahkan dan progres surat diperbarui.');
     }
 }

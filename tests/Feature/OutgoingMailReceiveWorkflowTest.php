@@ -43,7 +43,7 @@ class OutgoingMailReceiveWorkflowTest extends TestCase
             'subject' => 'Surat Uji Penerimaan',
             'recipient' => 'PT Mitra',
             'created_by' => $creator->id,
-            'status' => $status,
+            'progress' => $status,
         ]);
     }
 
@@ -114,7 +114,7 @@ class OutgoingMailReceiveWorkflowTest extends TestCase
 
         $mail->refresh();
 
-        $this->assertSame('RECEIVE', $mail->status);
+        $this->assertSame('RECEIVE', $mail->progress);
         $this->assertCount(1, $mail->returnRecipients);
         $this->assertNotNull($mail->returnRecipients->first()->signed_at);
         Storage::disk('local')->assertExists($mail->returnRecipients->first()->signature_path);
@@ -137,7 +137,7 @@ class OutgoingMailReceiveWorkflowTest extends TestCase
 
         $mail->refresh();
 
-        $this->assertSame('RECEIVE', $mail->status);
+        $this->assertSame('RECEIVE', $mail->progress);
         $this->assertNull($mail->returnRecipients->first()->signed_at);
     }
 
@@ -156,7 +156,7 @@ class OutgoingMailReceiveWorkflowTest extends TestCase
 
         $response->assertUnprocessable();
 
-        $this->assertSame('WAITING_RECEIVE', $mail->refresh()->status);
+        $this->assertSame('WAITING_RECEIVE', $mail->refresh()->progress);
         $this->assertCount(0, $mail->returnRecipients);
     }
 
@@ -185,6 +185,6 @@ class OutgoingMailReceiveWorkflowTest extends TestCase
             ],
         ])->assertForbidden();
 
-        $this->assertSame('RECEIVE', $mail->refresh()->status);
+        $this->assertSame('RECEIVE', $mail->refresh()->progress);
     }
 }

@@ -28,6 +28,7 @@ class IncomingMailReturnController extends Controller
             'mail' => [
                 'id' => $incomingMail->id,
                 'mail_number' => $incomingMail->mail_number,
+                'progress' => $incomingMail->progress,
                 'status' => $incomingMail->status,
                 'disposition_note' => $incomingMail->disposition_note,
             ],
@@ -70,15 +71,15 @@ class IncomingMailReturnController extends Controller
         foreach ($mails as $mail) {
             Gate::authorize('update', $mail);
 
-            if (! IncomingMailStatus::canProcessReturn($mail->status)) {
-                $label = IncomingMailStatus::label($mail->status);
+            if (! IncomingMailStatus::canProcessReturn($mail->progress)) {
+                $label = IncomingMailStatus::label($mail->progress);
 
                 throw ValidationException::withMessages([
-                    'mail_ids' => "Dokumen {$mail->mail_number} berstatus {$label} sehingga tidak dapat diproses untuk pengembalian.",
+                    'mail_ids' => "Dokumen {$mail->mail_number} berprogres {$label} sehingga tidak dapat diproses untuk pengembalian.",
                 ]);
             }
 
-            if (count($mailIds) > 1 && IncomingMailStatus::canonical($mail->status) === IncomingMailStatus::WAITING_RETURN) {
+            if (count($mailIds) > 1 && IncomingMailStatus::canonical($mail->progress) === IncomingMailStatus::WAITING_RETURN) {
                 throw ValidationException::withMessages([
                     'mail_ids' => "Dokumen {$mail->mail_number} sedang menunggu pengembalian dan harus dilanjutkan secara terpisah.",
                 ]);
@@ -169,7 +170,7 @@ class IncomingMailReturnController extends Controller
                     $isFinalizing = in_array($action, ['complete', 'skip_remaining'], true);
 
                     $attributes = [
-                        'status' => $isFinalizing
+                        'progress' => $isFinalizing
                             ? IncomingMailStatus::RETURN
                             : IncomingMailStatus::WAITING_RETURN,
                     ];
@@ -189,14 +190,16 @@ class IncomingMailReturnController extends Controller
         Storage::disk('local')->delete(array_values(array_unique($obsoleteSignaturePaths)));
 
         $isFinalized = in_array($action, ['complete', 'skip_remaining'], true);
+        $resultProgress = $isFinalized ? IncomingMailStatus::RETURN : IncomingMailStatus::WAITING_RETURN;
 
         return response()->json([
             'success' => true,
-            'status' => $isFinalized ? IncomingMailStatus::RETURN : IncomingMailStatus::WAITING_RETURN,
+            'progress' => $resultProgress,
+            'status' => $resultProgress,
             'message' => match ($action) {
                 'complete' => 'Pengembalian selesai. Semua tanda tangan telah disimpan.',
                 'skip_remaining' => 'Pengembalian ditutup. Tanda tangan yang tersisa dilewati dan tercatat sebagai belum ditandatangani.',
-                default => 'Progres disimpan. Pengembalian dapat dilanjutkan melalui status WAITING RETURN.',
+                default => 'Progres disimpan. Pengembalian dapat dilanjutkan melalui progres WAITING RETURN.',
             },
             'updated_ids' => $mailIds,
         ]);

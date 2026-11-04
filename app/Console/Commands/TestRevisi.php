@@ -19,12 +19,12 @@ class TestRevisi extends Command
         }
 
         $userId = \App\Models\User::first()->id ?? null;
-        $this->info("Initial status: " . $mail->status);
+        $this->info("Initial progress: " . $mail->progress);
 
-        // Current status could be anything, but we need it to be able to transition to REVISI
+        // Current progress could be anything, but we need it to be able to transition to REVISI
         // Let's force it to RECEIVE first so it can transition to REVISI
-        if (\App\Support\IncomingMailStatus::canonical($mail->status) !== 'RECEIVE') {
-            $mail->update(['status' => 'RECEIVE']);
+        if (\App\Support\IncomingMailStatus::canonical($mail->progress) !== 'RECEIVE') {
+            $mail->update(['progress' => 'RECEIVE']);
         }
 
         // 1. Move to REVISI

@@ -21,11 +21,39 @@
         <td class="py-4 px-4 sm:px-5 text-slate-800 font-medium min-w-[320px] max-w-2xl break-words leading-relaxed" title="{{ $mail->subject }}">
             {{ $mail->subject }}
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-700 font-medium whitespace-nowrap">{{ $mail->recipient }}</td>
+        <td class="py-4 px-4 sm:px-5 text-slate-700 font-medium">
+            @php
+                $recipientsList = $mail->recipients_list;
+            @endphp
+            @if(count($recipientsList) > 1)
+                <div class="flex flex-wrap gap-1 min-w-[160px] max-w-xs">
+                    @foreach($recipientsList as $rec)
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 whitespace-nowrap">
+                            {{ $rec }}
+                        </span>
+                    @endforeach
+                </div>
+            @elseif(count($recipientsList) === 1)
+                <span class="whitespace-nowrap">{{ $recipientsList[0] }}</span>
+            @else
+                <span class="text-slate-400">-</span>
+            @endif
+        </td>
         <td class="py-4 px-4 sm:px-5 text-slate-600 font-medium whitespace-nowrap">{{ $mail->creator?->name ?? 'System' }}</td>
+        <!-- Kolom Status (Input Admin) -->
+        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+            @if (filled($mail->status))
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                    {{ $mail->status }}
+                </span>
+            @else
+                <span class="text-slate-400 text-xs">-</span>
+            @endif
+        </td>
+        <!-- Kolom Progres (SOP Workflow) -->
         <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
             @php
-                $canonicalStatus = App\Support\OutgoingMailStatus::canonical($mail->status) ?? $mail->status;
+                $canonicalStatus = App\Support\OutgoingMailStatus::canonical($mail->progress) ?? $mail->progress;
                 $hasReturnProgress = $mail->returnRecipients && $mail->returnRecipients->isNotEmpty();
                 if ($canonicalStatus === App\Support\OutgoingMailStatus::WAITING_RECEIVE && ! $hasReturnProgress) {
                     $canonicalStatus = App\Support\OutgoingMailStatus::READY_TO_DELIVERY;
@@ -60,7 +88,7 @@
                         <button type="button"
                             onclick="window.openStatusDropdown(event, '{{ $mail->id }}', '{{ addslashes($mail->mail_number ?? '-') }}', '{{ $canonicalStatus }}')"
                             aria-haspopup="menu"
-                            title="Klik untuk mengubah status surat"
+                            title="Klik untuk mengubah progres surat"
                             class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
                             <span>{{ $displayStatus }}</span>
                             <svg class="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,7 +98,7 @@
                     @endif
                 @else
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border {{ $badgeClasses }}"
-                        @if ($isFinalStatus) title="{{ $displayStatus }} adalah status akhir dan tidak dapat diubah lagi" @endif>
+                        @if ($isFinalStatus) title="{{ $displayStatus }} adalah progres akhir dan tidak dapat diubah lagi" @endif>
                         {{ $displayStatus }}
                     </span>
                 @endif
@@ -109,7 +137,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="9" class="p-8 text-center text-slate-500 italic text-sm">
+        <td colspan="10" class="p-8 text-center text-slate-500 italic text-sm">
             Belum ada data surat keluar.
         </td>
     </tr>

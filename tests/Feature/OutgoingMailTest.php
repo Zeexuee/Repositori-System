@@ -27,12 +27,12 @@ class OutgoingMailTest extends TestCase
             'subject' => 'Surat Tanggapan Kerjasama',
             'recipient' => 'PT Mitra Sejahtera',
             'created_by' => $user->id,
-            'status' => 'WAITING_RECEIVE',
+            'progress' => 'WAITING_RECEIVE',
         ]);
 
         $response = $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
             'revision_note' => 'Halo tes',
         ]);
 
@@ -43,7 +43,7 @@ class OutgoingMailTest extends TestCase
         ]);
 
         $mail->refresh();
-        $this->assertSame('REVISI', $mail->status);
+        $this->assertSame('REVISI', $mail->progress);
     }
 
     public function test_outgoing_mail_show_displays_revision_history(): void
@@ -57,12 +57,12 @@ class OutgoingMailTest extends TestCase
             'subject' => 'Surat Undangan Evaluasi',
             'recipient' => 'PT Mitra Sejahtera',
             'created_by' => $user->id,
-            'status' => 'WAITING_RECEIVE',
+            'progress' => 'WAITING_RECEIVE',
         ]);
 
         $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
             'revision_note' => 'Halo tes catatan revisi',
         ]);
 
@@ -114,6 +114,48 @@ class OutgoingMailTest extends TestCase
         $response->assertOk();
         $response->assertSee('Upload Gambar');
         $response->assertSee('window.openUploadAttachmentModal');
+    }
+
+    public function test_outgoing_mail_index_uses_lazy_load_chunks_instead_of_pages(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        foreach (range(1, 25) as $i) {
+            OutgoingMail::forceCreate([
+                'mail_number' => sprintf('LAZY-OUT-%03d', $i),
+                'subject' => "Surat Keluar Lazy Load {$i}",
+                'recipient' => 'PT Mitra Sejahtera',
+                'created_by' => $user->id,
+                'progress' => 'READY_TO_DELIVERY',
+                'created_at' => now()->subMinutes($i),
+            ]);
+        }
+
+        $this->actingAs($user)->get(route('outgoing-mails.index', ['page' => 2]))
+            ->assertOk()
+            ->assertSee('loadMoreSentinel', false)
+            ->assertSee('LAZY-OUT-001')
+            ->assertDontSee('LAZY-OUT-025');
+
+        $this->actingAs($user)->getJson(route('outgoing-mails.index', ['page' => 2]))
+            ->assertOk()
+            ->assertJson(['current_page' => 2, 'has_more' => false, 'total' => 25])
+            ->assertJsonCount(5, 'allIds');
+
+        // Muat ulang seluruh baris yang sudah tampil sekaligus (dibatasi maksimal 200)
+        $this->actingAs($user)->getJson(route('outgoing-mails.index', ['per_page' => 40]))
+            ->assertOk()
+            ->assertJson(['current_page' => 1, 'has_more' => false, 'max_limit' => 200])
+            ->assertJsonCount(25, 'allIds');
+
+        // Pastikan markup lazy load memuat teks maksimal 200 dokumen dan teks seluruh dokumen
+        $this->actingAs($user)->get(route('outgoing-mails.index'))
+            ->assertOk()
+            ->assertSee('Maksimal load 200 dokumen, gunakan')
+            ->assertSee('halaman repositori')
+            ->assertSee('Menampilkan seluruh');
     }
 
     public function test_user_can_upload_and_manage_outgoing_mail_attachments(): void
@@ -181,11 +223,11 @@ class OutgoingMailTest extends TestCase
         ]);
 
         $response->assertRedirect(route('outgoing-mails.index'));
-        $response->assertSessionHas('success', '1 Surat Keluar berhasil dicatat (Status: READY TO DELIVERY).');
+        $response->assertSessionHas('success', '1 Surat Keluar berhasil dicatat (Progres: READY TO DELIVERY).');
 
         $mail = OutgoingMail::where('subject', 'Surat Pengantar Kerjasama Baru')->first();
         $this->assertNotNull($mail);
-        $this->assertSame('READY_TO_DELIVERY', $mail->status);
+        $this->assertSame('READY_TO_DELIVERY', $mail->progress);
     }
 
     public function test_outgoing_mail_index_displays_ready_to_delivery(): void
@@ -199,7 +241,7 @@ class OutgoingMailTest extends TestCase
             'subject' => 'Surat Siap Dikirim',
             'recipient' => 'Dinas Perhubungan',
             'created_by' => $user->id,
-            'status' => 'READY_TO_DELIVERY',
+            'progress' => 'READY_TO_DELIVERY',
         ]);
 
         $response = $this->actingAs($user)->get(route('outgoing-mails.index'));
@@ -219,12 +261,12 @@ class OutgoingMailTest extends TestCase
             'subject' => 'Surat Perbaikan',
             'recipient' => 'Dinas Lingkungan',
             'created_by' => $user->id,
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
         ]);
 
         $response = $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'READY_TO_DELIVERY',
+            'progress' => 'READY_TO_DELIVERY',
             'revision_note' => 'Revisi telah diperbaiki dan siap dikirim ulang',
         ]);
 
@@ -234,7 +276,7 @@ class OutgoingMailTest extends TestCase
             'updated_count' => 1,
         ]);
 
-        $this->assertSame('READY_TO_DELIVERY', $mail->fresh()->status);
+        $this->assertSame('READY_TO_DELIVERY', $mail->fresh()->progress);
     }
 
     public function test_outgoing_mail_with_receive_status_can_transition_to_revisi(): void
@@ -248,12 +290,12 @@ class OutgoingMailTest extends TestCase
             'subject' => 'Surat Selesai Terima',
             'recipient' => 'PT Sumber Makmur',
             'created_by' => $user->id,
-            'status' => 'RECEIVE',
+            'progress' => 'RECEIVE',
         ]);
 
         $response = $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
             'revision_note' => 'Ada lampiran yang perlu diperbaiki ulang',
         ]);
 
@@ -263,7 +305,7 @@ class OutgoingMailTest extends TestCase
             'updated_count' => 1,
         ]);
 
-        $this->assertSame('REVISI', $mail->fresh()->status);
+        $this->assertSame('REVISI', $mail->fresh()->progress);
         $this->assertDatabaseHas('outgoing_mail_revision_notes', [
             'outgoing_mail_id' => $mail->id,
             'note' => 'Ada lampiran yang perlu diperbaiki ulang',
@@ -281,7 +323,7 @@ class OutgoingMailTest extends TestCase
             'subject' => 'Surat Sudah Diterima',
             'recipient' => 'Dinas Pendidikan',
             'created_by' => $user->id,
-            'status' => 'RECEIVE',
+            'progress' => 'RECEIVE',
         ]);
 
         $response = $this->actingAs($user)->get(route('outgoing-mails.index'));
@@ -306,19 +348,19 @@ class OutgoingMailTest extends TestCase
             'subject' => 'Surat Sedang Revisi',
             'recipient' => 'PT Semen Padang',
             'created_by' => $user->id,
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
         ]);
 
         $this->assertTrue(OutgoingMailStatus::canTransition('REVISI', 'REVISI'));
 
         $response = $this->actingAs($user)->postJson(route('outgoing-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
             'revision_note' => 'Perbaiki perihal dan lampiran kedua.',
         ]);
 
         $response->assertOk();
-        $this->assertSame('REVISI', $mail->fresh()->status);
+        $this->assertSame('REVISI', $mail->fresh()->progress);
         $this->assertDatabaseHas('outgoing_mail_revision_notes', [
             'outgoing_mail_id' => $mail->id,
             'note' => 'Perbaiki perihal dan lampiran kedua.',
@@ -336,7 +378,7 @@ class OutgoingMailTest extends TestCase
             'subject' => 'Surat Uji Tanggal Keluar',
             'recipient' => 'PT Mitra Sejahtera',
             'created_by' => $user->id,
-            'status' => 'READY_TO_DELIVERY',
+            'progress' => 'READY_TO_DELIVERY',
         ]);
 
         $response = $this->actingAs($user)->put(route('outgoing-mails.update', $mail), [
@@ -349,5 +391,86 @@ class OutgoingMailTest extends TestCase
         $response->assertSessionHasNoErrors();
         $mail->refresh();
         $this->assertEquals('2026-11-02 13:30:00', $mail->created_at->format('Y-m-d H:i:s'));
+    }
+
+    public function test_admin_can_create_and_edit_custom_status_on_outgoing_mail(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        // Verify default statuses "Tembusan" and "Undangan" are included in create form
+        $this->actingAs($user)->get(route('outgoing-mails.create'))
+            ->assertOk()
+            ->assertSee('Tembusan')
+            ->assertSee('Undangan');
+
+        $response = $this->actingAs($user)->post(route('outgoing-mails.store'), [
+            'documents' => [
+                [
+                    'mail_number' => 'SK-20261105-STAT-01',
+                    'subject' => 'Surat Keputusan Direksi',
+                    'recipient' => 'Divisi Operasional',
+                    'status' => 'Prioritas Utama',
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('outgoing-mails.index'));
+
+        $mail = OutgoingMail::where('mail_number', 'SK-20261105-STAT-01')->firstOrFail();
+        $this->assertSame('Prioritas Utama', $mail->status);
+        $this->assertSame('READY_TO_DELIVERY', $mail->progress);
+
+        $this->actingAs($user)->put(route('outgoing-mails.update', $mail), [
+            'mail_number' => 'SK-20261105-STAT-01',
+            'subject' => 'Surat Keputusan Direksi',
+            'recipient' => 'Divisi Operasional',
+            'status' => 'Konfidensial',
+        ])->assertRedirect(route('outgoing-mails.index'));
+
+        $mail->refresh();
+        $this->assertSame('Konfidensial', $mail->status);
+        $this->assertSame('READY_TO_DELIVERY', $mail->progress);
+    }
+
+    public function test_outgoing_mail_supports_multiple_recipients_per_document(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $response = $this->actingAs($user)->post(route('outgoing-mails.store'), [
+            'documents' => [
+                [
+                    'mail_number' => 'SK-20261105-MULTI-01',
+                    'subject' => 'Edaran Bersama Antar Divisi',
+                    'recipient' => 'Divisi Keuangan, Divisi SDM, Divisi Operasional',
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('outgoing-mails.index'));
+
+        $mail = OutgoingMail::where('mail_number', 'SK-20261105-MULTI-01')->firstOrFail();
+        $this->assertSame('Divisi Keuangan, Divisi SDM, Divisi Operasional', $mail->recipient);
+        $this->assertSame(['Divisi Keuangan', 'Divisi SDM', 'Divisi Operasional'], $mail->recipients_list);
+
+        // Update with array of recipients
+        $this->actingAs($user)->put(route('outgoing-mails.update', $mail), [
+            'mail_number' => 'SK-20261105-MULTI-01',
+            'subject' => 'Edaran Bersama Antar Divisi',
+            'recipient' => ['Divisi Keuangan', 'Divisi Hukum', 'Divisi Operasional'],
+        ])->assertRedirect(route('outgoing-mails.index'));
+
+        $mail->refresh();
+        $this->assertSame('Divisi Keuangan, Divisi Hukum, Divisi Operasional', $mail->recipient);
+        $this->assertSame(['Divisi Keuangan', 'Divisi Hukum', 'Divisi Operasional'], $mail->recipients_list);
+
+        $this->actingAs($user)->get(route('outgoing-mails.show', $mail))
+            ->assertOk()
+            ->assertSee('Divisi Keuangan')
+            ->assertSee('Divisi Hukum')
+            ->assertSee('Divisi Operasional');
     }
 }

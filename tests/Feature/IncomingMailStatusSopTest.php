@@ -41,7 +41,7 @@ class IncomingMailStatusSopTest extends TestCase
             'received_date' => '2026-09-20',
             'sender' => 'Biro Umum',
             'recipient' => 'Direktur Utama',
-            'status' => $status,
+            'progress' => $status,
             'subject' => 'Perihal '.fake()->unique()->numerify('####'),
         ]);
     }
@@ -114,11 +114,11 @@ class IncomingMailStatusSopTest extends TestCase
 
         $response = $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'DRAFT',
+            'progress' => 'DRAFT',
         ]);
 
         $response->assertStatus(422);
-        $this->assertSame('RETURN', $mail->fresh()->status);
+        $this->assertSame('RETURN', $mail->fresh()->progress);
     }
 
     public function test_a_returned_document_can_still_be_sent_back_for_revision(): void
@@ -128,11 +128,11 @@ class IncomingMailStatusSopTest extends TestCase
 
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
             'revision_note' => 'Berkas yang dikembalikan kurang satu lampiran.',
         ])->assertStatus(200);
 
-        $this->assertSame('REVISI', $mail->fresh()->status);
+        $this->assertSame('REVISI', $mail->fresh()->progress);
     }
 
     public function test_legacy_disposition_status_is_treated_as_return(): void
@@ -144,16 +144,16 @@ class IncomingMailStatusSopTest extends TestCase
         // transitions are available.
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'RECEIVE',
+            'progress' => 'RECEIVE',
         ])->assertStatus(422);
 
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
             'revision_note' => 'Dokumen lama perlu diperbaiki.',
         ])->assertStatus(200);
 
-        $this->assertSame('REVISI', $mail->fresh()->status);
+        $this->assertSame('REVISI', $mail->fresh()->progress);
     }
 
     public function test_entering_revisi_requires_a_note_and_records_it(): void
@@ -163,20 +163,20 @@ class IncomingMailStatusSopTest extends TestCase
 
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
         ])->assertStatus(422);
 
-        $this->assertSame('RECEIVE', $mail->fresh()->status);
+        $this->assertSame('RECEIVE', $mail->fresh()->progress);
         $this->assertSame(0, $mail->revisionNotes()->count());
 
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
             'revision_note' => 'Tanda tangan pengirim belum ada.',
         ])->assertStatus(200);
 
         $mail->refresh();
-        $this->assertSame('REVISI', $mail->status);
+        $this->assertSame('REVISI', $mail->progress);
 
         $note = $mail->revisionNotes()->first();
         $this->assertSame(IncomingMailRevisionNote::TYPE_REQUESTED, $note->type);
@@ -190,12 +190,12 @@ class IncomingMailStatusSopTest extends TestCase
 
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'RECEIVE',
+            'progress' => 'RECEIVE',
             'revision_note' => 'Tanda tangan sudah dilengkapi.',
         ])->assertStatus(200);
 
         $mail->refresh();
-        $this->assertSame('RECEIVE', $mail->status);
+        $this->assertSame('RECEIVE', $mail->progress);
 
         $note = $mail->revisionNotes()->first();
         $this->assertSame(IncomingMailRevisionNote::TYPE_RESOLVED, $note->type);
@@ -209,10 +209,10 @@ class IncomingMailStatusSopTest extends TestCase
 
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'RECEIVE',
+            'progress' => 'RECEIVE',
         ])->assertStatus(200);
 
-        $this->assertSame('RECEIVE', $mail->fresh()->status);
+        $this->assertSame('RECEIVE', $mail->fresh()->progress);
         $this->assertSame(0, $mail->revisionNotes()->count());
     }
 
@@ -230,7 +230,7 @@ class IncomingMailStatusSopTest extends TestCase
         ])->assertStatus(422);
 
         $mail->refresh();
-        $this->assertSame('REVISI', $mail->status);
+        $this->assertSame('REVISI', $mail->progress);
         $this->assertSame(0, $mail->revisionNotes()->count());
     }
 
@@ -241,14 +241,14 @@ class IncomingMailStatusSopTest extends TestCase
 
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'RETURN',
+            'progress' => 'RETURN',
         ])->assertStatus(422);
 
         $this->actingAs($user)->put(route('incoming-mails.update', $mail), [
-            'status' => 'RETURN',
-        ])->assertSessionHasErrors('status');
+            'progress' => 'RETURN',
+        ])->assertSessionHasErrors('progress');
 
-        $this->assertSame('RECEIVE', $mail->fresh()->status);
+        $this->assertSame('RECEIVE', $mail->fresh()->progress);
     }
 
     public function test_skipping_remaining_signatures_finalizes_the_return(): void
@@ -263,10 +263,10 @@ class IncomingMailStatusSopTest extends TestCase
                 ['recipient_name' => 'Divisi Keuangan'],
                 ['recipient_name' => 'Divisi Hukum'],
             ],
-        ])->assertStatus(200)->assertJson(['status' => 'RETURN']);
+        ])->assertStatus(200)->assertJson(['progress' => 'RETURN', 'status' => 'RETURN']);
 
         $mail->refresh();
-        $this->assertSame('RETURN', $mail->status);
+        $this->assertSame('RETURN', $mail->progress);
         $this->assertSame(2, $mail->returnRecipients()->count());
         $this->assertSame(2, $mail->returnRecipients()->whereNull('signed_at')->count());
         $this->assertSame(0, OutgoingMail::count());
@@ -281,9 +281,9 @@ class IncomingMailStatusSopTest extends TestCase
             'mail_ids' => [$mail->id],
             'action' => 'save_later',
             'recipients' => [['recipient_name' => 'Divisi Keuangan']],
-        ])->assertStatus(200)->assertJson(['status' => 'WAITING_RETURN']);
+        ])->assertStatus(200)->assertJson(['progress' => 'WAITING_RETURN', 'status' => 'WAITING_RETURN']);
 
-        $this->assertSame('WAITING_RETURN', $mail->fresh()->status);
+        $this->assertSame('WAITING_RETURN', $mail->fresh()->progress);
     }
 
     public function test_completing_a_return_requires_every_signature(): void
@@ -297,7 +297,7 @@ class IncomingMailStatusSopTest extends TestCase
             'recipients' => [['recipient_name' => 'Divisi Keuangan']],
         ])->assertStatus(422);
 
-        $this->assertSame('RECEIVE', $mail->fresh()->status);
+        $this->assertSame('RECEIVE', $mail->fresh()->progress);
     }
 
     public function test_revisi_can_transition_directly_to_revisi_again_with_new_note(): void
@@ -316,18 +316,18 @@ class IncomingMailStatusSopTest extends TestCase
         // Transition without revision_note fails
         $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
         ])->assertStatus(422);
 
         // Transition with new revision note succeeds
         $response = $this->actingAs($user)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
             'revision_note' => 'Perbaiki juga tanda tangan pada halaman 2.',
         ]);
 
         $response->assertOk();
-        $this->assertSame('REVISI', $mail->fresh()->status);
+        $this->assertSame('REVISI', $mail->fresh()->progress);
         $this->assertSame(2, $mail->fresh()->revisionNotes()->count());
 
         $latestNote = $mail->fresh()->revisionNotes()->latest('id')->first();

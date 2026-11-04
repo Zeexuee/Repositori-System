@@ -12,7 +12,7 @@
             {{ ($incomingMails->firstItem() ?? 1) + $index }}
         </td>
         <td class="py-4 px-4 sm:px-5 font-bold text-slate-900 font-mono whitespace-nowrap">
-            @if(App\Support\IncomingMailStatus::canonical($mail->status) === App\Support\IncomingMailStatus::DRAFT && $mail->batchItems && $mail->batchItems->count() > 1)
+            @if(App\Support\IncomingMailStatus::canonical($mail->progress) === App\Support\IncomingMailStatus::DRAFT && $mail->batchItems && $mail->batchItems->count() > 1)
                 <span class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md text-xs border border-slate-200">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                     1 Draft ({{ $mail->batchItems->count() }} Dokumen)
@@ -27,15 +27,39 @@
         <td class="py-4 px-4 sm:px-5 font-medium text-slate-800 whitespace-nowrap">
             {{ $mail->sender }}
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-700 whitespace-nowrap">
-            {{ $mail->recipient ?? '-' }}
+        <td class="py-4 px-4 sm:px-5 text-slate-700">
+            @php
+                $recipientsList = $mail->recipients_list;
+            @endphp
+            @if(count($recipientsList) > 1)
+                <div class="flex flex-wrap gap-1 min-w-[160px] max-w-xs">
+                    @foreach($recipientsList as $rec)
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 whitespace-nowrap">
+                            {{ $rec }}
+                        </span>
+                    @endforeach
+                </div>
+            @elseif(count($recipientsList) === 1)
+                <span class="whitespace-nowrap">{{ $recipientsList[0] }}</span>
+            @else
+                <span class="text-slate-400">-</span>
+            @endif
+        </td>
+        <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
+            @if(!empty($mail->status))
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                    {{ $mail->status }}
+                </span>
+            @else
+                <span class="text-slate-400">-</span>
+            @endif
         </td>
         <td class="py-4 px-4 sm:px-5 text-center whitespace-nowrap">
             @php
-                $canonicalStatus = App\Support\IncomingMailStatus::canonical($mail->status);
-                $displayStatus = App\Support\IncomingMailStatus::label($mail->status);
-                $isFinalStatus = App\Support\IncomingMailStatus::allowedTransitions($canonicalStatus) === [];
-                $badgeClasses = match ($canonicalStatus) {
+                $canonicalProgress = App\Support\IncomingMailStatus::canonical($mail->progress);
+                $displayProgress = App\Support\IncomingMailStatus::label($mail->progress);
+                $isFinalProgress = App\Support\IncomingMailStatus::allowedTransitions($canonicalProgress) === [];
+                $badgeClasses = match ($canonicalProgress) {
                     App\Support\IncomingMailStatus::RECEIVE => 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800',
                     App\Support\IncomingMailStatus::REVISI => 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 font-bold',
                     App\Support\IncomingMailStatus::WAITING_RETURN => 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100 font-bold',
@@ -45,29 +69,29 @@
                 };
 
                 // Dokumen yang sudah dikembalikan dapat diintip catatan disposisi & penerimanya.
-                $canPeekDisposition = $canonicalStatus === App\Support\IncomingMailStatus::RETURN
+                $canPeekDisposition = $canonicalProgress === App\Support\IncomingMailStatus::RETURN
                     || filled($mail->disposition_note);
             @endphp
 
             <div class="inline-flex items-center gap-1.5">
-                @if (auth()->user()?->can('update', $mail) && ! $isFinalStatus)
-                    @if ($canonicalStatus === App\Support\IncomingMailStatus::WAITING_RETURN)
+                @if (auth()->user()?->can('update', $mail) && ! $isFinalProgress)
+                    @if ($canonicalProgress === App\Support\IncomingMailStatus::WAITING_RETURN)
                         <button type="button"
                             @click="window.resumeReturnWorkflow(@js((string) $mail->id), @js((string) $mail->mail_number))"
                             title="Lanjutkan pengisian catatan disposisi & tanda tangan pengembalian"
                             class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
-                            <span>{{ $displayStatus }}</span>
+                            <span>{{ $displayProgress }}</span>
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
                     @else
                         <button type="button"
-                            @click="window.openStatusDropdown($event, @js((string) $mail->id), @js((string) $mail->mail_number), @js((string) $displayStatus))"
+                            @click="window.openStatusDropdown($event, @js((string) $mail->id), @js((string) $mail->mail_number), @js((string) $displayProgress))"
                             aria-haspopup="menu"
-                            title="Klik untuk mengubah status dokumen"
+                            title="Klik untuk mengubah progres dokumen"
                             class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
-                            <span>{{ $displayStatus }}</span>
+                            <span>{{ $displayProgress }}</span>
                             <svg class="w-3 h-3 opacity-70 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
@@ -75,8 +99,8 @@
                     @endif
                 @else
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border {{ $badgeClasses }}"
-                        @if ($isFinalStatus) title="{{ $displayStatus }} adalah status akhir dan tidak dapat diubah lagi" @endif>
-                        {{ $displayStatus }}
+                        @if ($isFinalProgress) title="{{ $displayProgress }} adalah progres akhir dan tidak dapat diubah lagi" @endif>
+                        {{ $displayProgress }}
                     </span>
                 @endif
 
@@ -114,7 +138,7 @@
                     class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold rounded-lg text-xs transition-all border border-slate-200 cursor-pointer">
                     Upload Gambar
                 </button>
-                @if($mail->status === 'DRAFT')
+                @if($mail->progress === 'DRAFT')
                     <a href="{{ route('incoming-mails.edit', $mail) }}"
                         class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs transition-all shadow-xs border border-indigo-600">
                         Lanjutkan Draft
@@ -130,7 +154,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="12" class="p-8 text-center text-slate-500 italic text-sm">
+        <td colspan="13" class="p-8 text-center text-slate-500 italic text-sm">
             Tidak ada data surat masuk yang sesuai dengan pencarian.
         </td>
     </tr>

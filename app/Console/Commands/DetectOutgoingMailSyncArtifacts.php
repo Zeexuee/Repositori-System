@@ -46,13 +46,13 @@ class DetectOutgoingMailSyncArtifacts extends Command
         }
 
         $this->table(
-            ['Nomor', 'Subjek', 'Penerima', 'Surat Masuk', 'Status Masuk'],
+            ['Nomor', 'Subjek', 'Penerima', 'Surat Masuk', 'Progres Masuk'],
             $candidates->map(fn (array $candidate): array => [
                 $candidate['outgoing']->mail_number,
                 $candidate['outgoing']->subject,
                 $candidate['outgoing']->recipient,
                 $candidate['incoming']->mail_number,
-                IncomingMailStatus::label($candidate['incoming']->status),
+                IncomingMailStatus::label($candidate['incoming']->progress),
             ])->all()
         );
 
@@ -111,7 +111,7 @@ class DetectOutgoingMailSyncArtifacts extends Command
                 $incoming = IncomingMail::query()
                     ->where('subject', $cleanSubject)
                     ->where('sender', $outgoing->recipient)
-                    ->whereIn('status', [IncomingMailStatus::RETURN, IncomingMailStatus::REVISI])
+                    ->whereIn('progress', [IncomingMailStatus::RETURN, IncomingMailStatus::REVISI])
                     ->orderByDesc('created_at')
                     ->first();
 
@@ -138,7 +138,7 @@ class DetectOutgoingMailSyncArtifacts extends Command
 
                 return [
                     'outgoing_mail' => $outgoing->getAttributes(),
-                    'source_incoming_mail' => $incoming->only(['id', 'mail_number', 'subject', 'sender', 'status']),
+                    'source_incoming_mail' => $incoming->only(['id', 'mail_number', 'subject', 'sender', 'progress', 'status']),
                     'audit_logs' => AuditLog::query()
                         ->where('model_type', OutgoingMail::class)
                         ->where('model_id', $outgoing->id)

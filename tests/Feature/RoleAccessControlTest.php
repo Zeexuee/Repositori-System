@@ -41,7 +41,7 @@ class RoleAccessControlTest extends TestCase
             'received_date' => '2026-10-19 10:00:00',
             'sender' => 'Biro Umum',
             'recipient' => 'Direktur Utama',
-            'status' => $status,
+            'progress' => $status,
             'subject' => 'Dokumen Uji RBAC '.fake()->unique()->numerify('####'),
         ]);
     }
@@ -55,7 +55,7 @@ class RoleAccessControlTest extends TestCase
             'subject' => 'Dokumen Keluar Uji RBAC',
             'recipient' => 'PT Mitra',
             'created_by' => $creator->id,
-            'status' => $status,
+            'progress' => $status,
         ]);
     }
 
@@ -144,11 +144,11 @@ class RoleAccessControlTest extends TestCase
 
         $response = $this->actingAs($staff)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'RETURN',
+            'progress' => 'RETURN',
         ]);
 
         $response->assertStatus(422);
-        $this->assertSame('RECEIVE', $mail->fresh()->status);
+        $this->assertSame('RECEIVE', $mail->fresh()->progress);
     }
 
     public function test_master_cannot_set_return_manually_either(): void
@@ -160,10 +160,10 @@ class RoleAccessControlTest extends TestCase
         // is also where the optional disposition note is collected.
         $this->actingAs($master)->postJson(route('incoming-mails.bulk-update-status'), [
             'ids' => [$mail->id],
-            'status' => 'RETURN',
+            'progress' => 'RETURN',
         ])->assertStatus(422);
 
-        $this->assertSame('RECEIVE', $mail->fresh()->status);
+        $this->assertSame('RECEIVE', $mail->fresh()->progress);
     }
 
     public function test_master_can_finalize_a_return_through_the_workflow(): void
@@ -176,10 +176,10 @@ class RoleAccessControlTest extends TestCase
             'disposition_note' => 'Disposisi ditutup oleh Direksi.',
             'action' => 'skip_remaining',
             'recipients' => [['recipient_name' => 'Divisi Keuangan']],
-        ])->assertOk()->assertJson(['success' => true, 'status' => 'RETURN']);
+        ])->assertOk()->assertJson(['success' => true, 'progress' => 'RETURN', 'status' => 'RETURN']);
 
         $mail->refresh();
-        $this->assertSame('RETURN', $mail->status);
+        $this->assertSame('RETURN', $mail->progress);
         $this->assertSame('Disposisi ditutup oleh Direksi.', $mail->disposition_note);
     }
 
@@ -247,8 +247,8 @@ class RoleAccessControlTest extends TestCase
                 'received_date' => '2026-10-19T10:00',
                 'mail_number' => $mailNumber,
                 'subject' => 'Surat Langsung Dikembalikan',
-                'status' => 'RETURN',
-            ])->assertSessionHasErrors('status');
+                'progress' => 'RETURN',
+            ])->assertSessionHasErrors('progress');
 
             $this->assertDatabaseMissing('incoming_mails', ['mail_number' => $mailNumber]);
         }
@@ -260,11 +260,11 @@ class RoleAccessControlTest extends TestCase
         $mail = $this->incomingMail('RECEIVE');
 
         $this->actingAs($staff)->put(route('incoming-mails.update', $mail), [
-            'status' => 'RETURN',
+            'progress' => 'RETURN',
             'disposition_note' => 'Mencoba memaksa status pengembalian.',
-        ])->assertSessionHasErrors('status');
+        ])->assertSessionHasErrors('progress');
 
-        $this->assertSame('RECEIVE', $mail->fresh()->status);
+        $this->assertSame('RECEIVE', $mail->fresh()->progress);
     }
 
     public function test_incoming_mail_can_still_be_created_with_a_disposition_note(): void
@@ -276,13 +276,15 @@ class RoleAccessControlTest extends TestCase
             'received_date' => '2026-10-19T10:00',
             'mail_number' => 'RBAC/CREATE/003',
             'subject' => 'Surat dengan Catatan Disposisi',
-            'status' => 'RECEIVE',
+            'progress' => 'RECEIVE',
+            'status' => 'Penting',
             'disposition_note' => 'Mohon ditindaklanjuti Divisi Keuangan.',
         ])->assertRedirect(route('incoming-mails.index'));
 
         $this->assertDatabaseHas('incoming_mails', [
             'mail_number' => 'RBAC/CREATE/003',
-            'status' => 'RECEIVE',
+            'progress' => 'RECEIVE',
+            'status' => 'Penting',
             'disposition_note' => 'Mohon ditindaklanjuti Divisi Keuangan.',
         ]);
     }

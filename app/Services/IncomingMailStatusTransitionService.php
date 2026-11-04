@@ -27,19 +27,19 @@ class IncomingMailStatusTransitionService
 
         if ($target === null) {
             throw ValidationException::withMessages([
-                'status' => 'Status tujuan tidak dikenali.',
+                'progress' => 'Progres tujuan tidak dikenali.',
             ]);
         }
 
         if ($target === IncomingMailStatus::WAITING_RETURN || $target === IncomingMailStatus::RETURN) {
             throw ValidationException::withMessages([
-                'status' => 'Status pengembalian hanya dapat diubah melalui proses tanda tangan pengembalian.',
+                'progress' => 'Progres pengembalian hanya dapat diubah melalui proses tanda tangan pengembalian.',
             ]);
         }
 
         DB::transaction(function () use ($incomingMail, $target, $actorId, $revisionNote): void {
             $mail = IncomingMail::whereKey($incomingMail->getKey())->lockForUpdate()->firstOrFail();
-            $current = IncomingMailStatus::canonical($mail->status);
+            $current = IncomingMailStatus::canonical($mail->progress);
 
             $this->guardTransition($mail, $current, $target);
 
@@ -49,7 +49,7 @@ class IncomingMailStatusTransitionService
                 ]);
             }
 
-            $mail->update(['status' => $target]);
+            $mail->update(['progress' => $target]);
             $mail->touch();
 
             if ($target === IncomingMailStatus::REVISI) {
@@ -58,7 +58,7 @@ class IncomingMailStatusTransitionService
                 $this->recordNote($mail, IncomingMailRevisionNote::TYPE_RESOLVED, $revisionNote, $actorId);
             }
 
-            $incomingMail->setAttribute('status', $target);
+            $incomingMail->setAttribute('progress', $target);
         });
     }
 
@@ -67,11 +67,11 @@ class IncomingMailStatusTransitionService
      */
     public function rejectionReason(IncomingMail $incomingMail, string $targetStatus): ?string
     {
-        $current = IncomingMailStatus::canonical($incomingMail->status);
+        $current = IncomingMailStatus::canonical($incomingMail->progress);
         $target = IncomingMailStatus::canonical($targetStatus);
 
         if ($target === null) {
-            return 'Status tujuan tidak dikenali.';
+            return 'Progres tujuan tidak dikenali.';
         }
 
         if (IncomingMailStatus::canTransition($current, $target)) {
@@ -79,15 +79,15 @@ class IncomingMailStatusTransitionService
         }
 
         if ($current === $target) {
-            return 'Dokumen sudah berada pada status tersebut.';
+            return 'Dokumen sudah berada pada progres tersebut.';
         }
 
         $allowed = IncomingMailStatus::allowedTransitions($current);
-        $currentLabel = IncomingMailStatus::label($incomingMail->status);
+        $currentLabel = IncomingMailStatus::label($incomingMail->progress);
         $targetLabel = IncomingMailStatus::label($targetStatus);
 
         if ($allowed === []) {
-            return "Status {$currentLabel} adalah status akhir dan tidak dapat diubah lagi.";
+            return "Progres {$currentLabel} adalah progres akhir dan tidak dapat diubah lagi.";
         }
 
         $allowedLabels = implode(', ', array_map(
@@ -95,14 +95,14 @@ class IncomingMailStatusTransitionService
             $allowed
         ));
 
-        return "Status {$currentLabel} tidak dapat diubah menjadi {$targetLabel}. Pilihan yang tersedia: {$allowedLabels}.";
+        return "Progres {$currentLabel} tidak dapat diubah menjadi {$targetLabel}. Pilihan yang tersedia: {$allowedLabels}.";
     }
 
     private function guardTransition(IncomingMail $mail, ?string $current, string $target): void
     {
         if (! IncomingMailStatus::canTransition($current, $target)) {
             throw ValidationException::withMessages([
-                'status' => $this->rejectionReason($mail, $target) ?? 'Perubahan status tidak diizinkan.',
+                'progress' => $this->rejectionReason($mail, $target) ?? 'Perubahan progres tidak diizinkan.',
             ]);
         }
     }

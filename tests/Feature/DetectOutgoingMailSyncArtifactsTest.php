@@ -33,7 +33,7 @@ class DetectOutgoingMailSyncArtifactsTest extends TestCase
             'sender' => $sender,
             'recipient' => 'Rektor 3',
             'subject' => $subject,
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
         ]);
     }
 
@@ -44,7 +44,7 @@ class DetectOutgoingMailSyncArtifactsTest extends TestCase
             'subject' => $subject,
             'recipient' => $recipient,
             'created_by' => $creator->id,
-            'status' => 'REVISI',
+            'progress' => 'REVISI',
         ]);
     }
 

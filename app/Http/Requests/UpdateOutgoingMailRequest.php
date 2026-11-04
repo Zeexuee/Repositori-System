@@ -4,12 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Support\MailRecipient;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateOutgoingMailRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('recipient')) {
+            $this->merge([
+                'recipient' => MailRecipient::format($this->input('recipient')) ?? '',
+            ]);
+        }
+    }
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -35,8 +44,9 @@ class UpdateOutgoingMailRequest extends FormRequest
                 Rule::unique('outgoing_mails', 'mail_number')->ignore($outgoingMailId),
             ],
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
-            'recipient' => ['sometimes', 'required', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,PROGRES,PROGRESS,IN_PROGRESS,PENDING,RETURN,RETURNED,WAITING_RETURN,DRAFT,APPROVED,SIGNED,REVISI'],
+            'recipient' => ['sometimes', 'required', 'string', 'max:2000'],
+            'progress' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,PROGRES,PROGRESS,IN_PROGRESS,PENDING,RETURN,RETURNED,WAITING_RETURN,DRAFT,APPROVED,SIGNED,REVISI,READY_TO_DELIVERY,WAITING_RECEIVE'],
+            'status' => ['nullable', 'string', 'max:255'],
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'files' => ['nullable', 'array'],
             'files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],

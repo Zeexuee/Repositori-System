@@ -4,12 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Support\MailRecipient;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateIncomingMailRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('recipient')) {
+            $this->merge([
+                'recipient' => MailRecipient::format($this->input('recipient')),
+            ]);
+        }
+    }
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -30,8 +39,9 @@ class UpdateIncomingMailRequest extends FormRequest
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
             'sender' => ['sometimes', 'required', 'string', 'max:255'],
             'received_date' => ['sometimes', 'required', 'date'],
-            'recipient' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,RETURN,RETURNED,WAITING_RETURN,REVISI,DISPOSISI,DRAFT'],
+            'recipient' => ['nullable', 'string', 'max:2000'],
+            'progress' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,RETURN,RETURNED,WAITING_RETURN,REVISI,DISPOSISI,DRAFT'],
+            'status' => ['nullable', 'string', 'max:255'],
             'revision_note' => ['nullable', 'string', 'max:2000'],
             'outgoing_date' => ['nullable', 'date'],
             'disposition_note' => ['nullable', 'string'],
