@@ -18,34 +18,40 @@
         <td class="py-4 px-4 sm:px-5 text-slate-700 font-mono whitespace-nowrap">
             {{ $mail->created_at?->format('d/m/Y H:i') ?? '-' }}
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-800 font-medium min-w-[260px] max-w-lg break-words leading-relaxed" title="{{ $mail->subject }}">
-            {{ $mail->subject }}
+        <td class="py-4 px-4 sm:px-5 text-slate-800 font-medium min-w-[260px] max-w-lg">
+            <div class="line-clamp-2 break-words leading-relaxed cursor-help" title="{{ $mail->subject }}">
+                {{ $mail->subject }}
+            </div>
         </td>
         <td class="py-4 px-4 sm:px-5 text-slate-700 font-medium max-w-[280px]">
             @php
                 $recipientsList = $mail->recipients_list;
             @endphp
             @if(count($recipientsList) > 1)
-                <div class="flex flex-wrap gap-1 max-w-[280px]">
+                <div class="flex flex-wrap gap-1 max-w-[280px] max-h-16 overflow-hidden" title="{{ implode(', ', $recipientsList) }}">
                     @foreach($recipientsList as $rec)
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 break-words leading-tight">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200 break-words leading-tight max-w-[260px] truncate" title="{{ $rec }}">
                             {{ $rec }}
                         </span>
                     @endforeach
                 </div>
             @elseif(count($recipientsList) === 1)
-                <span class="break-words leading-relaxed block">{{ $recipientsList[0] }}</span>
+                <div class="line-clamp-2 break-words leading-relaxed" title="{{ $recipientsList[0] }}">
+                    {{ $recipientsList[0] }}
+                </div>
             @else
                 <span class="text-slate-400">-</span>
             @endif
         </td>
-        <td class="py-4 px-4 sm:px-5 text-slate-600 font-medium max-w-[180px] break-words leading-relaxed">
-            {{ $mail->creator?->name ?? 'System' }}
+        <td class="py-4 px-4 sm:px-5 text-slate-600 font-medium max-w-[180px]">
+            <div class="line-clamp-2 break-words leading-relaxed" title="{{ $mail->creator?->name ?? 'System' }}">
+                {{ $mail->creator?->name ?? 'System' }}
+            </div>
         </td>
         <!-- Kolom Status (Input Admin) -->
         <td class="py-4 px-4 sm:px-5 text-center min-w-[120px] max-w-[180px]">
             @if (filled($mail->status))
-                <span class="inline-block max-w-[160px] px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 break-words [overflow-wrap:anywhere] leading-tight text-center" title="{{ $mail->status }}">
+                <span class="inline-block max-w-[160px] px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 break-words [overflow-wrap:anywhere] leading-tight text-center line-clamp-2" title="{{ $mail->status }}">
                     {{ $mail->status }}
                 </span>
             @else

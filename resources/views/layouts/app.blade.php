@@ -375,6 +375,29 @@
 
     <!-- Loading Spinner Component -->
     <x-loading-spinner />
+    <!-- Tombol Kembali ke Atas (Floating Scroll-to-Top Button) -->
+    <div x-data="{ showScrollTop: false }"
+        @scroll.window="showScrollTop = (window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop) > 280"
+        class="fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-50">
+        <button type="button"
+            x-show="showScrollTop"
+            x-cloak
+            x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="opacity-0 translate-y-4 scale-90"
+            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+            x-transition:leave="transition ease-in duration-200 transform"
+            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+            x-transition:leave-end="opacity-0 translate-y-4 scale-90"
+            @click="window.scrollTo({ top: 0, behavior: 'smooth' }); document.querySelectorAll('.overflow-x-auto').forEach(el => el.scrollTo({ left: 0, behavior: 'smooth' }));"
+            aria-label="Kembali ke atas"
+            title="Kembali ke atas"
+            class="group inline-flex items-center gap-2 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-full bg-slate-900/90 hover:bg-slate-900 text-white shadow-xl hover:shadow-2xl border border-slate-700/60 backdrop-blur-md transition-all cursor-pointer">
+            <svg class="w-4 h-4 transition-transform group-hover:-translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+            <span class="text-xs font-semibold tracking-wide hidden sm:inline">Ke Atas</span>
+        </button>
+    </div>
 </body>
 
 </html>
