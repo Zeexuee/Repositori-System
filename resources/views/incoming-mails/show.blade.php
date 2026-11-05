@@ -347,10 +347,13 @@
                                     </td>
                                     <td class="px-4 py-3 text-right">
                                         @if ($returnRecipient->signature_path)
-                                            <a href="{{ route('document.download', ['path' => $returnRecipient->signature_path, 'inline' => 1]) }}" target="_blank"
-                                                class="inline-flex px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 border border-slate-200">
-                                                Lihat Tanda Tangan
-                                            </a>
+                                            <div class="inline-flex items-center justify-end space-x-2">
+                                                <img src="{{ route('document.download', ['path' => $returnRecipient->signature_path, 'inline' => 1]) }}" alt="Tanda Tangan" class="h-8 max-w-[80px] object-contain border border-slate-200 rounded bg-white p-0.5">
+                                                <a href="{{ route('document.download', ['path' => $returnRecipient->signature_path, 'inline' => 1]) }}" target="_blank"
+                                                    class="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 border border-slate-200 transition-all">
+                                                    Lihat
+                                                </a>
+                                            </div>
                                         @else
                                             <span class="text-xs text-slate-400 italic">Belum ada</span>
                                         @endif
@@ -375,7 +378,7 @@
         <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">
             <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center space-x-2">
                 <span class="w-2 h-2 rounded-full bg-slate-900"></span>
-                <span>Foto Dokumen & Tanda Terima</span>
+                <span>Foto Dokumen & Bukti Tanda Tangan</span>
             </h2>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -450,23 +453,93 @@
                     @endif
                 </div>
 
-                <!-- Tanda Terima -->
+                <!-- Tanda Tangan & Tanda Terima -->
+                @php
+                    $signedReturnRecipients = $incomingMail->returnRecipients->filter(fn ($r) => !empty($r->signature_path));
+                    if ($signedReturnRecipients->isEmpty() && $incomingMail->batchItems) {
+                        $signedReturnRecipients = $incomingMail->batchItems->flatMap->returnRecipients->filter(fn ($r) => !empty($r->signature_path));
+                    }
+                @endphp
                 <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Tanda Terima</span>
-                        @if ($incomingMail->receipt_signature_path)
-                            <a href="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path]) }}" class="text-xs font-semibold text-slate-900 hover:underline">
-                                Unduh
-                            </a>
-                        @endif
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            {{ $signedReturnRecipients->isNotEmpty() ? 'Tanda Tangan Pengambil' : 'Tanda Terima' }}
+                        </span>
                     </div>
 
-                    @if ($incomingMail->receipt_signature_path)
-                        <div class="bg-white p-3 border border-slate-200 rounded-lg flex items-center justify-center min-h-[120px]">
-                            <img src="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path, 'inline' => 1]) }}" alt="Tanda Terima" class="max-h-40 object-contain">
+                    @if ($signedReturnRecipients->isNotEmpty())
+                        <div class="space-y-3">
+                            @foreach ($signedReturnRecipients as $retSigner)
+                                <div class="bg-white p-3 border border-slate-200 rounded-xl space-y-2 shadow-2xs">
+                                    <div class="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
+                                        <div class="min-w-0 pr-2">
+                                            <span class="font-bold text-slate-900 block truncate">{{ $retSigner->signer_name ?: 'Pengambil' }}</span>
+                                            @if ($retSigner->recipient_name)
+                                                <span class="text-[11px] text-slate-500 block truncate">{{ $retSigner->recipient_name }}</span>
+                                            @endif
+                                        </div>
+                                        <div class="flex items-center space-x-1.5 flex-shrink-0">
+                                            <a href="{{ route('document.download', ['path' => $retSigner->signature_path, 'inline' => 1]) }}" target="_blank" class="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-[11px] font-semibold transition-all">
+                                                Lihat
+                                            </a>
+                                            <a href="{{ route('document.download', ['path' => $retSigner->signature_path]) }}" class="px-2.5 py-1 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-[11px] font-bold transition-all">
+                                                Unduh
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-slate-50 p-2 border border-slate-100 rounded-lg flex items-center justify-center min-h-[120px]">
+                                        <img src="{{ route('document.download', ['path' => $retSigner->signature_path, 'inline' => 1]) }}" alt="Tanda Tangan {{ $retSigner->signer_name }}" class="max-h-40 object-contain">
+                                    </div>
+
+                                    @if ($retSigner->signed_at)
+                                        <div class="text-[10px] text-slate-500 font-mono text-right pt-0.5">
+                                            Waktu Tanda Tangan: {{ $retSigner->signed_at->format('d/m/Y H:i') }}
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+
+                            @if ($incomingMail->receipt_signature_path)
+                                <div class="bg-white p-3 border border-slate-200 rounded-xl space-y-2 shadow-2xs">
+                                    <div class="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
+                                        <span class="font-bold text-slate-900">Tanda Terima Saat Masuk</span>
+                                        <div class="flex items-center space-x-1.5">
+                                            <a href="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path, 'inline' => 1]) }}" target="_blank" class="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-[11px] font-semibold transition-all">
+                                                Lihat
+                                            </a>
+                                            <a href="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path]) }}" class="px-2.5 py-1 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-[11px] font-bold transition-all">
+                                                Unduh
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="bg-slate-50 p-2 border border-slate-100 rounded-lg flex items-center justify-center min-h-[100px]">
+                                        <img src="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path, 'inline' => 1]) }}" alt="Tanda Terima" class="max-h-36 object-contain">
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @elseif ($incomingMail->receipt_signature_path)
+                        <div class="bg-white p-3 border border-slate-200 rounded-xl space-y-2 shadow-2xs">
+                            <div class="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
+                                <span class="font-bold text-slate-900">Tanda Terima Saat Masuk</span>
+                                <div class="flex items-center space-x-1.5">
+                                    <a href="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path, 'inline' => 1]) }}" target="_blank" class="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-[11px] font-semibold transition-all">
+                                        Lihat
+                                    </a>
+                                    <a href="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path]) }}" class="px-2.5 py-1 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-[11px] font-bold transition-all">
+                                        Unduh
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-2 border border-slate-100 rounded-lg flex items-center justify-center min-h-[120px]">
+                                <img src="{{ route('document.download', ['path' => $incomingMail->receipt_signature_path, 'inline' => 1]) }}" alt="Tanda Terima" class="max-h-40 object-contain">
+                            </div>
                         </div>
                     @else
-                        <p class="text-xs text-slate-400 italic">Tidak ada tanda tangan terdaftar.</p>
+                        <div class="bg-white p-4 border border-slate-200 rounded-xl flex items-center justify-center min-h-[120px]">
+                            <p class="text-xs text-slate-400 italic">Belum ada tanda tangan pengambil atau tanda terima tercatat.</p>
+                        </div>
                     @endif
                 </div>
             </div>

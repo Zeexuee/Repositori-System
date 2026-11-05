@@ -170,9 +170,11 @@ class IncomingMailReturnController extends Controller
                     $isFinalizing = in_array($action, ['complete', 'skip_remaining'], true);
 
                     $latestSignedAt = null;
+                    $latestSignedPath = null;
                     foreach ($mail->returnRecipients()->get() as $r) {
                         if ($r->signed_at && ($latestSignedAt === null || $r->signed_at->gt($latestSignedAt))) {
                             $latestSignedAt = $r->signed_at;
+                            $latestSignedPath = $r->signature_path;
                         }
                     }
                     $activityDate = $latestSignedAt ?? now();
@@ -183,6 +185,10 @@ class IncomingMailReturnController extends Controller
                             : IncomingMailStatus::WAITING_RETURN,
                         'outgoing_date' => $activityDate,
                     ];
+
+                    if ($latestSignedPath && empty($mail->receipt_signature_path)) {
+                        $attributes['receipt_signature_path'] = $latestSignedPath;
+                    }
 
                     if ($hasDispositionNote) {
                         $attributes['disposition_note'] = $dispositionNote;

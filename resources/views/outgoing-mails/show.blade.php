@@ -305,10 +305,13 @@
                                     </td>
                                     <td class="px-4 py-3 text-right">
                                         @if ($recipient->signature_path)
-                                            <a href="{{ route('document.download', ['path' => $recipient->signature_path, 'inline' => 1]) }}" target="_blank"
-                                                class="inline-flex px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 border border-slate-200 shadow-2xs">
-                                                Lihat Tanda Tangan
-                                            </a>
+                                            <div class="inline-flex items-center justify-end space-x-2">
+                                                <img src="{{ route('document.download', ['path' => $recipient->signature_path, 'inline' => 1]) }}" alt="Tanda Tangan" class="h-8 max-w-[80px] object-contain border border-slate-200 rounded bg-white p-0.5">
+                                                <a href="{{ route('document.download', ['path' => $recipient->signature_path, 'inline' => 1]) }}" target="_blank"
+                                                    class="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 border border-slate-200 shadow-2xs">
+                                                    Lihat
+                                                </a>
+                                            </div>
                                         @else
                                             <span class="text-xs text-slate-400 italic">Belum tanda tangan</span>
                                         @endif
