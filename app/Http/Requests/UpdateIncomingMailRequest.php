@@ -34,8 +34,20 @@ class UpdateIncomingMailRequest extends FormRequest
      */
     public function rules(): array
     {
+        $incomingMail = $this->route('incoming_mail') ?? $this->route('incomingMail');
+        $incomingMailId = $incomingMail instanceof \App\Models\IncomingMail
+            ? $incomingMail->id
+            : ($incomingMail?->id ?? $incomingMail ?? $this->input('id'));
+
         return [
-            'mail_number' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('incoming_mails', 'mail_number')->ignore($this->route('incoming_mail'))],
+            'mail_number' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('incoming_mails', 'mail_number')
+                    ->whereNull('deleted_at')
+                    ->ignore($incomingMailId),
+            ],
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
             'sender' => ['sometimes', 'required', 'string', 'max:255'],
             'received_date' => ['sometimes', 'required', 'date'],

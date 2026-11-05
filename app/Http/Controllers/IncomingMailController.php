@@ -58,7 +58,10 @@ class IncomingMailController extends Controller
             'received_date' => ['required', 'date'],
             'documents' => ['required', 'array', 'min:1'],
             'documents.*.id' => ['required', 'string'],
-            'documents.*.mail_number' => ['required', 'string', 'max:255', 'distinct:ignore_case', function ($attribute, $value, $fail) use ($request) {
+            'documents.*.mail_number' => ['nullable', 'string', 'max:255', 'distinct:ignore_case', function ($attribute, $value, $fail) use ($request) {
+                  if (blank($value)) {
+                      return;
+                  }
                   preg_match('/documents\.(\d+)\.mail_number/', $attribute, $matches);
                   $index = $matches[1] ?? null;
                   $id = $index !== null ? $request->input("documents.{$index}.id") : null;
@@ -101,7 +104,7 @@ class IncomingMailController extends Controller
                 'recipient' => $doc['recipient'] ?? null,
                 'progress' => $globalProgress,
                 'status' => ! empty($doc['status']) ? trim((string) $doc['status']) : null,
-                'mail_number' => $doc['mail_number'],
+                'mail_number' => ! empty($doc['mail_number']) ? $doc['mail_number'] : (count($documents) > 1 ? sprintf('%s-%02d', $receiptNumber, $index + 1) : $receiptNumber),
                 'subject' => $doc['subject'],
                 'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : null,
                 'disposition_note' => $doc['disposition_note'] ?? null,
@@ -378,7 +381,22 @@ class IncomingMailController extends Controller
         // Shared Batch metadata & signature
         $batchId = (string) Str::uuid();
         $dateStr = now()->format('Ymd');
-        $seq = IncomingMail::whereDate('created_at', now()->toDateString())->whereNotNull('batch_id')->distinct('batch_id')->count('batch_id') + 1;
+        $prefix = sprintf('TR-%s-', $dateStr);
+        $highestSeq = IncomingMail::withTrashed()
+            ->where(function ($q) use ($prefix) {
+                $q->where('receipt_number', 'like', $prefix.'%')
+                  ->orWhere('mail_number', 'like', $prefix.'%');
+            })
+            ->get(['receipt_number', 'mail_number'])
+            ->reduce(function (int $max, $item) use ($prefix): int {
+                foreach ([$item->receipt_number, $item->mail_number] as $val) {
+                    if ($val !== null && preg_match('/^'.preg_quote($prefix, '/').'(\d+)/', (string) $val, $matches) === 1) {
+                        $max = max($max, (int) $matches[1]);
+                    }
+                }
+                return $max;
+            }, 0);
+        $seq = max($highestSeq + 1, 1);
         $receiptNumber = sprintf('TR-%s-%04d', $dateStr, $seq);
 
         // Storage Tanda Terima Signature (Shared for the batch)
@@ -412,7 +430,9 @@ class IncomingMailController extends Controller
 
         if (is_array($documents) && count($documents) > 0) {
             foreach ($documents as $index => $doc) {
-                $mailNumber = ! empty($doc['mail_number']) ? $doc['mail_number'] : $receiptNumber;
+                $mailNumber = ! empty($doc['mail_number'])
+                    ? $doc['mail_number']
+                    : (count($documents) > 1 ? sprintf('%s-%02d', $receiptNumber, $index + 1) : $receiptNumber);
                 $subject = ! empty($doc['subject']) ? $doc['subject'] : '(Tanpa Perihal)';
                 $docProgress = ! empty($doc['progress']) ? $doc['progress'] : $globalProgress;
                 if ($request->input('is_draft') == '1') {
@@ -542,6 +562,12 @@ class IncomingMailController extends Controller
 
         if (array_key_exists('status', $data)) {
             $data['status'] = ! empty($data['status']) ? trim((string) $data['status']) : null;
+        }
+
+        if (array_key_exists('mail_number', $data)) {
+            $data['mail_number'] = ! empty($data['mail_number'])
+                ? trim((string) $data['mail_number'])
+                : ($incomingMail->receipt_number ?: $incomingMail->mail_number);
         }
 
         $isContinuingRevisi = $requestedProgress === IncomingMailStatus::REVISI

@@ -98,6 +98,7 @@
         <form x-ref="form" action="{{ route('incoming-mails.update', $incomingMail) }}" method="POST" enctype="multipart/form-data" class="space-y-6" @submit.prevent="onSubmit">
             @csrf
             @method('PUT')
+            <input type="hidden" name="id" value="{{ $incomingMail->id }}">
 
             <!-- Section 1: Informasi Utama & Pengirim -->
             <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">

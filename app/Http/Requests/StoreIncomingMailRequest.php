@@ -7,6 +7,7 @@ namespace App\Http\Requests;
 use App\Support\MailRecipient;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreIncomingMailRequest extends FormRequest
 {
@@ -64,7 +65,7 @@ class StoreIncomingMailRequest extends FormRequest
             'receipt_signature_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
 
             // Single document input fields
-            'mail_number' => ['nullable', 'string', 'max:255', 'unique:incoming_mails,mail_number'],
+            'mail_number' => ['nullable', 'string', 'max:255', Rule::unique('incoming_mails', 'mail_number')->whereNull('deleted_at')],
             'subject' => $topSubjectRule,
             'progress' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,REVISI,DRAFT'],
             'status' => ['nullable', 'string', 'max:255'],
@@ -78,7 +79,7 @@ class StoreIncomingMailRequest extends FormRequest
             'documents' => ['nullable', 'array'],
             'documents.*.recipient' => $docRecipientRule,
             'documents.*.subject' => $docSubjectRule,
-            'documents.*.mail_number' => ['nullable', 'string', 'max:255', 'distinct:ignore_case', 'unique:incoming_mails,mail_number'],
+            'documents.*.mail_number' => ['nullable', 'string', 'max:255', 'distinct:ignore_case', Rule::unique('incoming_mails', 'mail_number')->whereNull('deleted_at')],
             'documents.*.outgoing_date' => ['nullable', 'date'],
             'documents.*.disposition_note' => ['nullable', 'string'],
             'documents.*.notes' => ['nullable', 'string'],

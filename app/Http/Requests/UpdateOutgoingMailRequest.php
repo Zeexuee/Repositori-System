@@ -34,14 +34,19 @@ class UpdateOutgoingMailRequest extends FormRequest
      */
     public function rules(): array
     {
-        $outgoingMailId = $this->route('outgoing_mail')?->id ?? $this->route('outgoing_mail');
+        $outgoingMail = $this->route('outgoing_mail') ?? $this->route('outgoingMail');
+        $outgoingMailId = $outgoingMail instanceof \App\Models\OutgoingMail
+            ? $outgoingMail->id
+            : ($outgoingMail?->id ?? $outgoingMail ?? $this->input('id'));
 
         return [
             'mail_number' => [
                 'nullable',
                 'string',
                 'max:255',
-                Rule::unique('outgoing_mails', 'mail_number')->ignore($outgoingMailId),
+                Rule::unique('outgoing_mails', 'mail_number')
+                    ->whereNull('deleted_at')
+                    ->ignore($outgoingMailId),
             ],
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
             'recipient' => ['sometimes', 'required', 'string', 'max:2000'],

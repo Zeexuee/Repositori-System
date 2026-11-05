@@ -7,6 +7,7 @@ namespace App\Http\Requests;
 use App\Support\MailRecipient;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreOutgoingMailRequest extends FormRequest
 {
@@ -39,7 +40,7 @@ class StoreOutgoingMailRequest extends FormRequest
     {
         return [
             'documents' => ['required', 'array', 'min:1'],
-            'documents.*.mail_number' => ['nullable', 'string', 'max:255', 'distinct:ignore_case', 'unique:outgoing_mails,mail_number'],
+            'documents.*.mail_number' => ['nullable', 'string', 'max:255', 'distinct:ignore_case', Rule::unique('outgoing_mails', 'mail_number')->whereNull('deleted_at')],
             'documents.*.subject' => ['required', 'string', 'max:255'],
             'documents.*.recipient' => ['required', 'string', 'max:2000'],
             'documents.*.status' => ['nullable', 'string', 'max:255'],

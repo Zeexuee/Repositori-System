@@ -481,4 +481,51 @@ class IncomingMailTest extends TestCase
             ->assertSee('Dekan Fakultas Teknik')
             ->assertSee('Biro Keuangan');
     }
+
+    public function test_user_can_edit_incoming_mail_with_disposition_and_notes_without_unique_mail_number_error(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        // Create an active mail
+        $mail = IncomingMail::create([
+            'mail_number' => 'TR-20261104-0014',
+            'subject' => 'Surat Pengantar Awal',
+            'sender' => 'Jabatan Fungsional Akademik',
+            'received_date' => '2026-11-04 14:44:00',
+            'progress' => 'RECEIVE',
+            'receipt_number' => 'TR-20261104-0014',
+        ]);
+
+        // Create a soft-deleted mail with the same mail_number (e.g. from an earlier deleted draft)
+        $deletedMail = IncomingMail::create([
+            'mail_number' => 'TR-20261104-0014',
+            'subject' => 'Surat Pengantar Lama Dihapus',
+            'sender' => 'Biro Lain',
+            'received_date' => '2026-11-04 10:00:00',
+            'progress' => 'RECEIVE',
+            'receipt_number' => 'TR-20261104-0013',
+        ]);
+        $deletedMail->delete();
+
+        // Updating the active mail with existing mail_number, adding disposition note & additional notes
+        $response = $this->actingAs($user)->put(route('incoming-mails.update', $mail), [
+            'id' => $mail->id,
+            'mail_number' => 'TR-20261104-0014',
+            'sender' => 'Jabatan Fungsional Akademik',
+            'received_date' => '2026-11-04 14:44:00',
+            'subject' => 'Surat Pengantar Awal',
+            'disposition_note' => 'Mohon diproses sesuai prosedur',
+            'notes' => 'Catatan tambahan operasional surat',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('incoming-mails.index'));
+
+        $mail->refresh();
+        $this->assertSame('TR-20261104-0014', $mail->mail_number);
+        $this->assertSame('Mohon diproses sesuai prosedur', $mail->disposition_note);
+        $this->assertSame('Catatan tambahan operasional surat', $mail->notes);
+    }
 }

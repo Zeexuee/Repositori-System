@@ -71,6 +71,7 @@
         <form action="{{ route('outgoing-mails.update', $outgoingMail) }}" method="POST" enctype="multipart/form-data" class="space-y-6" @submit="onSubmit($event)">
         @csrf
         @method('PUT')
+        <input type="hidden" name="id" value="{{ $outgoingMail->id }}">
 
         <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
