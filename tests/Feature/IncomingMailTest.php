@@ -528,4 +528,53 @@ class IncomingMailTest extends TestCase
         $this->assertSame('Mohon diproses sesuai prosedur', $mail->disposition_note);
         $this->assertSame('Catatan tambahan operasional surat', $mail->notes);
     }
+
+    public function test_user_can_edit_document_in_batch_sharing_same_auto_doc_id(): void
+    {
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $batchId = (string) \Illuminate\Support\Str::uuid();
+        $receiptNumber = 'TR-20261104-0014';
+
+        // Document A and Document B in the same draft/batch sharing receiptNumber as mail_number
+        $docA = IncomingMail::create([
+            'batch_id' => $batchId,
+            'receipt_number' => $receiptNumber,
+            'mail_number' => $receiptNumber,
+            'subject' => 'Dokumen 1 dalam berkas bersama',
+            'sender' => 'Jabatan Fungsional Akademik',
+            'received_date' => '2026-11-04 14:44:00',
+            'progress' => 'RECEIVE',
+        ]);
+
+        $docB = IncomingMail::create([
+            'batch_id' => $batchId,
+            'receipt_number' => $receiptNumber,
+            'mail_number' => $receiptNumber,
+            'subject' => 'Dokumen 2 dalam berkas bersama',
+            'sender' => 'Jabatan Fungsional Akademik',
+            'received_date' => '2026-11-04 14:44:00',
+            'progress' => 'RECEIVE',
+        ]);
+
+        // User edits Doc A adding disposition note and additional notes
+        $response = $this->actingAs($user)->put(route('incoming-mails.update', $docA), [
+            'id' => $docA->id,
+            'mail_number' => $receiptNumber,
+            'sender' => 'Jabatan Fungsional Akademik',
+            'received_date' => '2026-11-04 14:44:00',
+            'subject' => 'Dokumen 1 dalam berkas bersama',
+            'disposition_note' => 'Catatan disposisi baru',
+            'notes' => 'Catatan tambahan baru',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('incoming-mails.index'));
+
+        $docA->refresh();
+        $this->assertSame('Catatan disposisi baru', $docA->disposition_note);
+        $this->assertSame('Catatan tambahan baru', $docA->notes);
+    }
 }

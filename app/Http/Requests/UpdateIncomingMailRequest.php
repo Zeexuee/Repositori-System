@@ -35,19 +35,38 @@ class UpdateIncomingMailRequest extends FormRequest
     public function rules(): array
     {
         $incomingMail = $this->route('incoming_mail') ?? $this->route('incomingMail');
-        $incomingMailId = $incomingMail instanceof \App\Models\IncomingMail
-            ? $incomingMail->id
-            : ($incomingMail?->id ?? $incomingMail ?? $this->input('id'));
+        if (! $incomingMail instanceof \App\Models\IncomingMail) {
+            $incomingMailId = $incomingMail?->id ?? $incomingMail ?? $this->input('id');
+            $incomingMail = $incomingMailId ? \App\Models\IncomingMail::find($incomingMailId) : null;
+        }
+
+        $mailNumberRules = ['nullable', 'string', 'max:255'];
+        $submittedMailNumber = $this->input('mail_number');
+
+        // Jika nomor surat tidak diubah, atau sama dengan nomor tanda terima (ID doc otomatis batch),
+        // maka nomor tersebut diizinkan dan tidak perlu memicu validasi unik terhadap dokumen lain dalam batch/draft yang sama.
+        $isSameAsCurrent = $incomingMail && filled($submittedMailNumber) && $submittedMailNumber === $incomingMail->mail_number;
+        $isSameAsReceipt = $incomingMail && filled($submittedMailNumber) && $submittedMailNumber === $incomingMail->receipt_number;
+
+        if (! $isSameAsCurrent && ! $isSameAsReceipt && filled($submittedMailNumber)) {
+            $uniqueRule = Rule::unique('incoming_mails', 'mail_number')
+                ->whereNull('deleted_at');
+
+            if ($incomingMail && $incomingMail->batch_id) {
+                // Abaikan dokumen-dokumen lain yang diinput bersamaan dalam batch / draft yang sama
+                $uniqueRule->where(function ($query) use ($incomingMail) {
+                    $query->where('batch_id', '!=', $incomingMail->batch_id)
+                          ->orWhereNull('batch_id');
+                })->ignore($incomingMail->id);
+            } elseif ($incomingMail) {
+                $uniqueRule->ignore($incomingMail->id);
+            }
+
+            $mailNumberRules[] = $uniqueRule;
+        }
 
         return [
-            'mail_number' => [
-                'nullable',
-                'string',
-                'max:255',
-                Rule::unique('incoming_mails', 'mail_number')
-                    ->whereNull('deleted_at')
-                    ->ignore($incomingMailId),
-            ],
+            'mail_number' => $mailNumberRules,
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
             'sender' => ['sometimes', 'required', 'string', 'max:255'],
             'received_date' => ['sometimes', 'required', 'date'],

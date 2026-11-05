@@ -58,14 +58,19 @@ class IncomingMailController extends Controller
             'received_date' => ['required', 'date'],
             'documents' => ['required', 'array', 'min:1'],
             'documents.*.id' => ['required', 'string'],
-            'documents.*.mail_number' => ['nullable', 'string', 'max:255', 'distinct:ignore_case', function ($attribute, $value, $fail) use ($request) {
+            'documents.*.mail_number' => ['nullable', 'string', 'max:255', function ($attribute, $value, $fail) use ($request, $batchId, $existingMails) {
                   if (blank($value)) {
+                      return;
+                  }
+                  $batchReceiptNumber = $existingMails->first()?->receipt_number;
+                  if ($value === $batchReceiptNumber) {
                       return;
                   }
                   preg_match('/documents\.(\d+)\.mail_number/', $attribute, $matches);
                   $index = $matches[1] ?? null;
                   $id = $index !== null ? $request->input("documents.{$index}.id") : null;
-                  $query = \App\Models\IncomingMail::where('mail_number', $value);
+                  $query = \App\Models\IncomingMail::where('mail_number', $value)
+                      ->where('batch_id', '!=', $batchId);
                   if ($id) { $query->where('id', '!=', $id); }
                   if ($query->exists()) { $fail('Nomor Surat pada dokumen ini sudah ada di sistem.'); }
               }],
@@ -104,7 +109,7 @@ class IncomingMailController extends Controller
                 'recipient' => $doc['recipient'] ?? null,
                 'progress' => $globalProgress,
                 'status' => ! empty($doc['status']) ? trim((string) $doc['status']) : null,
-                'mail_number' => ! empty($doc['mail_number']) ? $doc['mail_number'] : (count($documents) > 1 ? sprintf('%s-%02d', $receiptNumber, $index + 1) : $receiptNumber),
+                'mail_number' => ! empty($doc['mail_number']) ? $doc['mail_number'] : $receiptNumber,
                 'subject' => $doc['subject'],
                 'outgoing_date' => ! empty($doc['outgoing_date']) ? $doc['outgoing_date'] : null,
                 'disposition_note' => $doc['disposition_note'] ?? null,
@@ -430,9 +435,7 @@ class IncomingMailController extends Controller
 
         if (is_array($documents) && count($documents) > 0) {
             foreach ($documents as $index => $doc) {
-                $mailNumber = ! empty($doc['mail_number'])
-                    ? $doc['mail_number']
-                    : (count($documents) > 1 ? sprintf('%s-%02d', $receiptNumber, $index + 1) : $receiptNumber);
+                $mailNumber = ! empty($doc['mail_number']) ? $doc['mail_number'] : $receiptNumber;
                 $subject = ! empty($doc['subject']) ? $doc['subject'] : '(Tanpa Perihal)';
                 $docProgress = ! empty($doc['progress']) ? $doc['progress'] : $globalProgress;
                 if ($request->input('is_draft') == '1') {

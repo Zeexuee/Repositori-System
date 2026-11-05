@@ -35,19 +35,29 @@ class UpdateOutgoingMailRequest extends FormRequest
     public function rules(): array
     {
         $outgoingMail = $this->route('outgoing_mail') ?? $this->route('outgoingMail');
-        $outgoingMailId = $outgoingMail instanceof \App\Models\OutgoingMail
-            ? $outgoingMail->id
-            : ($outgoingMail?->id ?? $outgoingMail ?? $this->input('id'));
+        if (! $outgoingMail instanceof \App\Models\OutgoingMail) {
+            $outgoingMailId = $outgoingMail?->id ?? $outgoingMail ?? $this->input('id');
+            $outgoingMail = $outgoingMailId ? \App\Models\OutgoingMail::find($outgoingMailId) : null;
+        }
+
+        $mailNumberRules = ['nullable', 'string', 'max:255'];
+        $submittedMailNumber = $this->input('mail_number');
+
+        $isSameAsCurrent = $outgoingMail && filled($submittedMailNumber) && $submittedMailNumber === $outgoingMail->mail_number;
+
+        if (! $isSameAsCurrent && filled($submittedMailNumber)) {
+            $uniqueRule = Rule::unique('outgoing_mails', 'mail_number')
+                ->whereNull('deleted_at');
+
+            if ($outgoingMail) {
+                $uniqueRule->ignore($outgoingMail->id);
+            }
+
+            $mailNumberRules[] = $uniqueRule;
+        }
 
         return [
-            'mail_number' => [
-                'nullable',
-                'string',
-                'max:255',
-                Rule::unique('outgoing_mails', 'mail_number')
-                    ->whereNull('deleted_at')
-                    ->ignore($outgoingMailId),
-            ],
+            'mail_number' => $mailNumberRules,
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
             'recipient' => ['sometimes', 'required', 'string', 'max:2000'],
             'progress' => ['nullable', 'string', 'in:RECEIVE,RECEIVED,PROGRES,PROGRESS,IN_PROGRESS,PENDING,RETURN,RETURNED,WAITING_RETURN,DRAFT,APPROVED,SIGNED,REVISI,READY_TO_DELIVERY,WAITING_RECEIVE'],
