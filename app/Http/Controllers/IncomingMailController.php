@@ -70,6 +70,7 @@ class IncomingMailController extends Controller
                   $index = $matches[1] ?? null;
                   $id = $index !== null ? $request->input("documents.{$index}.id") : null;
                   $query = \App\Models\IncomingMail::where('mail_number', $value)
+                      ->whereNull('deleted_at')
                       ->where('batch_id', '!=', $batchId);
                   if ($id) { $query->where('id', '!=', $id); }
                   if ($query->exists()) { $fail('Nomor Surat pada dokumen ini sudah ada di sistem.'); }
@@ -82,6 +83,8 @@ class IncomingMailController extends Controller
             'documents.*.notes' => ['nullable', 'string'],
             'documents.*.file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'documents.*.document_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+            'documents.*.files' => ['nullable', 'array'],
+            'documents.*.files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
         ]);
 
         $globalProgress = $request->input('is_draft') == '1' ? 'DRAFT' : 'RECEIVE';

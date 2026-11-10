@@ -473,4 +473,60 @@ class OutgoingMailTest extends TestCase
             ->assertSee('Divisi Hukum')
             ->assertSee('Divisi Operasional');
     }
+
+    public function test_user_can_store_three_outgoing_mail_documents_simultaneously_in_single_batch(): void
+    {
+        Storage::fake('local');
+
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $file1 = UploadedFile::fake()->create('lampiran_keluar_1.pdf', 100, 'application/pdf');
+        $file2 = UploadedFile::fake()->image('lampiran_keluar_2.jpg', 500, 500);
+        $file3 = UploadedFile::fake()->create('lampiran_keluar_3.pdf', 120, 'application/pdf');
+
+        $response = $this->actingAs($user)->post(route('outgoing-mails.store'), [
+            'documents' => [
+                [
+                    'mail_number' => '',
+                    'subject' => 'Surat Keluar Batch Pertama',
+                    'recipient' => 'Biro Keuangan',
+                    'status' => 'Tembusan',
+                    'disposition_note' => 'Catatan 1',
+                    'files' => [$file1],
+                ],
+                [
+                    'mail_number' => 'SK-MANUAL-002',
+                    'subject' => 'Surat Keluar Batch Kedua',
+                    'recipient' => 'Biro SDM',
+                    'status' => 'Undangan',
+                    'disposition_note' => 'Catatan 2',
+                    'files' => [$file2],
+                ],
+                [
+                    'mail_number' => '',
+                    'subject' => 'Surat Keluar Batch Ketiga',
+                    'recipient' => 'Biro Akademik',
+                    'status' => '',
+                    'disposition_note' => 'Catatan 3',
+                    'files' => [$file3],
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('outgoing-mails.index'));
+        $response->assertSessionHas('success', '3 Surat Keluar berhasil dicatat (Progres: READY TO DELIVERY).');
+
+        $savedMails = OutgoingMail::whereIn('subject', [
+            'Surat Keluar Batch Pertama',
+            'Surat Keluar Batch Kedua',
+            'Surat Keluar Batch Ketiga',
+        ])->get();
+
+        $this->assertCount(3, $savedMails);
+        foreach ($savedMails as $savedMail) {
+            $this->assertCount(1, $savedMail->attachments);
+        }
+    }
 }

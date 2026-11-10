@@ -1063,10 +1063,22 @@
                 selectedFiles: [],
 
                 handleFileChange(e) {
-                    const files = Array.from(e.target.files || []);
-                    this.selectedFiles = files;
-                    if (files.length > 0) {
-                        this.previewSelectedFile(0);
+                    const newFiles = Array.from(e.target.files || []);
+                    if (newFiles.length === 0) return;
+
+                    const dt = new DataTransfer();
+                    this.selectedFiles.forEach(f => dt.items.add(f));
+                    newFiles.forEach(f => {
+                        if (!this.selectedFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
+                            dt.items.add(f);
+                        }
+                    });
+                    if (this.$refs.photoInput) {
+                        this.$refs.photoInput.files = dt.files;
+                    }
+                    this.selectedFiles = Array.from(dt.files);
+                    if (this.selectedFiles.length > 0) {
+                        this.previewSelectedFile(this.selectedFiles.length - 1);
                     }
                 },
 

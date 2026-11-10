@@ -577,4 +577,113 @@ class IncomingMailTest extends TestCase
         $this->assertSame('Catatan disposisi baru', $docA->disposition_note);
         $this->assertSame('Catatan tambahan baru', $docA->notes);
     }
+
+    public function test_user_can_store_three_incoming_mail_documents_simultaneously_in_single_batch(): void
+    {
+        Storage::fake('local');
+
+        $role = Role::firstOrCreate(['name' => Roles::STAFF]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        $file1 = UploadedFile::fake()->create('dokumen_1.pdf', 120, 'application/pdf');
+        $file2 = UploadedFile::fake()->image('dokumen_2.jpg', 600, 400);
+        $file3 = UploadedFile::fake()->create('dokumen_3.pdf', 150, 'application/pdf');
+
+        $response = $this->actingAs($user)->postJson(route('incoming-mails.store'), [
+            'sender' => 'Biro Administrasi Akademik',
+            'received_date' => '2026-11-10T09:00',
+            'is_draft' => '0',
+            'documents' => [
+                [
+                    'mail_number' => '',
+                    'recipient' => 'Rektor',
+                    'subject' => 'Dokumen Batch Pertama',
+                    'status' => 'Tembusan',
+                    'disposition_note' => 'Disposisi 1',
+                    'notes' => 'Catatan 1',
+                    'files' => [$file1],
+                ],
+                [
+                    'mail_number' => 'NO-KHUSUS-002',
+                    'recipient' => 'Wakil Rektor I',
+                    'subject' => 'Dokumen Batch Kedua',
+                    'status' => 'Undangan',
+                    'disposition_note' => 'Disposisi 2',
+                    'notes' => 'Catatan 2',
+                    'files' => [$file2],
+                ],
+                [
+                    'mail_number' => '',
+                    'recipient' => 'Dekan Fakultas Teknik',
+                    'subject' => 'Dokumen Batch Ketiga',
+                    'status' => '',
+                    'disposition_note' => 'Disposisi 3',
+                    'notes' => 'Catatan 3',
+                    'files' => [$file3],
+                ],
+            ],
+        ]);
+
+        $response->assertOk()->assertJson([
+            'redirect' => route('incoming-mails.index'),
+        ]);
+
+        $savedMails = IncomingMail::where('sender', 'Biro Administrasi Akademik')
+            ->orderBy('subject')
+            ->get();
+
+        $this->assertCount(3, $savedMails);
+        $this->assertSame(1, $savedMails->pluck('batch_id')->unique()->count());
+        $this->assertSame(1, $savedMails->pluck('receipt_number')->unique()->count());
+
+        $subjects = $savedMails->pluck('subject')->all();
+        $this->assertContains('Dokumen Batch Pertama', $subjects);
+        $this->assertContains('Dokumen Batch Kedua', $subjects);
+        $this->assertContains('Dokumen Batch Ketiga', $subjects);
+
+        foreach ($savedMails as $savedMail) {
+            $this->assertCount(1, $savedMail->attachments);
+        }
+
+        // Test updating the batch and adding a 4th document with files[]
+        $batchId = (string) $savedMails->first()->batch_id;
+        $file4 = UploadedFile::fake()->create('dokumen_4.pdf', 110, 'application/pdf');
+
+        $updateResponse = $this->actingAs($user)->putJson(route('incoming-mails.batch-update', $batchId), [
+            'sender' => 'Biro Administrasi Akademik',
+            'received_date' => '2026-11-10T09:00',
+            'is_draft' => '0',
+            'documents' => [
+                [
+                    'id' => $savedMails[0]->id,
+                    'mail_number' => $savedMails[0]->mail_number,
+                    'recipient' => $savedMails[0]->recipient,
+                    'subject' => $savedMails[0]->subject,
+                ],
+                [
+                    'id' => $savedMails[1]->id,
+                    'mail_number' => $savedMails[1]->mail_number,
+                    'recipient' => $savedMails[1]->recipient,
+                    'subject' => $savedMails[1]->subject,
+                ],
+                [
+                    'id' => $savedMails[2]->id,
+                    'mail_number' => $savedMails[2]->mail_number,
+                    'recipient' => $savedMails[2]->recipient,
+                    'subject' => $savedMails[2]->subject,
+                ],
+                [
+                    'id' => 'new-doc-4',
+                    'mail_number' => '',
+                    'recipient' => 'Biro Umum',
+                    'subject' => 'Dokumen Batch Keempat',
+                    'files' => [$file4],
+                ],
+            ],
+        ]);
+
+        $updateResponse->assertOk()->assertJson(['success' => true]);
+        $this->assertCount(4, IncomingMail::where('batch_id', $batchId)->get());
+    }
 }

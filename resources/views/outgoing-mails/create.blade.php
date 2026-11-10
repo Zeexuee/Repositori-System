@@ -72,22 +72,22 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <!-- Nomor Surat (Opsional) -->
                         <div>
-                            <label :for="'mail_number_' + index" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Surat <span class="text-slate-400 font-normal normal-case">(Opsional)</span></label>
-                            <input type="text" :name="'documents[' + index + '][mail_number]'" :id="'mail_number_' + index" x-model="doc.mail_number" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs font-mono">
+                            <label :for="'mail_number_' + doc.formKey" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Surat <span class="text-slate-400 font-normal normal-case">(Opsional)</span></label>
+                            <input type="text" :name="'documents[' + doc.formKey + '][mail_number]'" :id="'mail_number_' + doc.formKey" x-model="doc.mail_number" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs font-mono">
                         </div>
 
                         <!-- Subjek / Perihal -->
                         <div>
-                            <label :for="'subject_' + index" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Subjek / Perihal <span class="text-slate-900 font-bold">*</span></label>
-                            <input type="text" :name="'documents[' + index + '][subject]'" :id="'subject_' + index" x-model="doc.subject" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
+                            <label :for="'subject_' + doc.formKey" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Subjek / Perihal <span class="text-slate-900 font-bold">*</span></label>
+                            <input type="text" :name="'documents[' + doc.formKey + '][subject]'" :id="'subject_' + doc.formKey" x-model="doc.subject" required class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                         </div>
 
                         <!-- Penerima Surat (Multi-Recipient Chip Combobox) -->
-                        <div x-data="multiRecipientSelect({ listType: 'recipients', initialValue: doc.recipient })" x-effect="doc.recipient = value" class="relative" @click.away="closeDropdown()">
+                        <div x-data="multiRecipientSelect({ listType: 'recipients', initialValue: Alpine.raw(doc).recipient })" x-effect="doc.recipient = value" class="relative" @click.away="closeDropdown()">
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                 Penerima Surat <span class="text-slate-900 font-bold">*</span>
                             </label>
-                            <input type="hidden" :name="'documents[' + index + '][recipient]'" :value="value">
+                            <input type="hidden" :name="'documents[' + doc.formKey + '][recipient]'" :value="value">
 
                             <!-- Trigger Box with Chips -->
                             <div @click="toggle()"
@@ -160,10 +160,10 @@
                         </div>
 
                         <!-- Status (Opsional) -->
-                        <div x-data="searchableSelect({ listType: 'statuses', initialValue: doc.status })" x-effect="doc.status = value" class="relative" @click.away="open = false">
-                            <label :for="'status_' + index" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status <span class="text-slate-400 font-normal normal-case">(Opsional)</span></label>
+                        <div x-data="searchableSelect({ listType: 'statuses', initialValue: Alpine.raw(doc).status })" x-effect="doc.status = value" class="relative" @click.away="open = false">
+                            <label :for="'status_' + doc.formKey" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Status <span class="text-slate-400 font-normal normal-case">(Opsional)</span></label>
                             <div class="relative">
-                                <input type="text" :name="'documents[' + index + '][status]'" :id="'status_' + index" x-model="value" @focus="open = true" @input="open = true" autocomplete="off" placeholder="Ketik atau pilih status..." class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs pr-8">
+                                <input type="text" :name="'documents[' + doc.formKey + '][status]'" :id="'status_' + doc.formKey" x-model="value" @focus="open = true" @input="open = true" autocomplete="off" placeholder="Ketik atau pilih status..." class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs pr-8">
                                 <button type="button" @click="open = !open" class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600">
                                     <svg class="w-4 h-4 transition-transform duration-200" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
@@ -223,7 +223,7 @@
                              @click="$refs.fileInput.click()">
                             <input type="file" 
                                    x-ref="fileInput"
-                                   :name="'documents[' + index + '][files][]'" 
+                                   :name="'documents[' + doc.formKey + '][files][]'" 
                                    multiple 
                                    accept="application/pdf,image/*" 
                                    capture="environment" 
@@ -266,8 +266,8 @@
 
                     <!-- Catatan Disposisi -->
                     <div>
-                        <label :for="'disposition_note_' + index" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Disposisi (Opsional)</label>
-                        <textarea :name="'documents[' + index + '][disposition_note]'" :id="'disposition_note_' + index" x-model="doc.disposition_note" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs"></textarea>
+                        <label :for="'disposition_note_' + doc.formKey" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Disposisi (Opsional)</label>
+                        <textarea :name="'documents[' + doc.formKey + '][disposition_note]'" :id="'disposition_note_' + doc.formKey" x-model="doc.disposition_note" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs"></textarea>
                     </div>
                 </div>
             </template>
@@ -441,35 +441,53 @@
                 }
             }));
 
-            Alpine.data('outgoingMailBatchForm', () => ({
-                loading: false,
-                documents: [
-                    { id: Date.now(), mail_number: '', subject: '', recipient: '', status: '', disposition_note: '' }
-                ],
-                addDocument() {
-                    this.documents.push({
-                        id: Date.now() + Math.random(),
-                        mail_number: '',
-                        subject: '',
-                        recipient: '',
-                        status: '',
-                        disposition_note: ''
-                    });
-                },
-                removeDocument(index) {
-                    if (this.documents.length > 1) {
-                        this.documents.splice(index, 1);
+            Alpine.data('outgoingMailBatchForm', () => {
+                const rawOldDocs = @json(array_values(old('documents', [])));
+                const oldDocs = Array.isArray(rawOldDocs) ? rawOldDocs : Object.values(rawOldDocs || {});
+                let nextFormKey = 0;
+                const initialDocs = (oldDocs && oldDocs.length > 0)
+                    ? oldDocs.map((d, i) => ({
+                        id: Date.now() + i,
+                        formKey: nextFormKey++,
+                        mail_number: (d && d.mail_number) ? String(d.mail_number) : '',
+                        subject: (d && d.subject) ? String(d.subject) : '',
+                        recipient: (d && d.recipient) ? String(d.recipient) : '',
+                        status: (d && d.status) ? String(d.status) : '',
+                        disposition_note: (d && d.disposition_note) ? String(d.disposition_note) : ''
+                    }))
+                    : [
+                        { id: Date.now(), formKey: nextFormKey++, mail_number: '', subject: '', recipient: '', status: '', disposition_note: '' }
+                    ];
+
+                return {
+                    loading: false,
+                    documents: initialDocs,
+                    addDocument() {
+                        this.documents.push({
+                            id: Date.now() + Math.random(),
+                            formKey: nextFormKey++,
+                            mail_number: '',
+                            subject: '',
+                            recipient: '',
+                            status: '',
+                            disposition_note: ''
+                        });
+                    },
+                    removeDocument(index) {
+                        if (this.documents.length > 1) {
+                            this.documents.splice(index, 1);
+                        }
+                    },
+                    onSubmit(e) {
+                        if (this.documents.length === 0) {
+                            e.preventDefault();
+                            alert('Minimal harus ada 1 surat keluar.');
+                            return;
+                        }
+                        this.loading = true;
                     }
-                },
-                onSubmit(e) {
-                    if (this.documents.length === 0) {
-                        e.preventDefault();
-                        alert('Minimal harus ada 1 surat keluar.');
-                        return;
-                    }
-                    this.loading = true;
-                }
-            }));
+                };
+            });
         });
     </script>
 @endsection

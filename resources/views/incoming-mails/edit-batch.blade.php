@@ -185,12 +185,13 @@
                 <div x-ref="docList" class="space-y-4">
                     <template x-for="(doc, index) in documents" :key="doc.id">
                         <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-2xs space-y-5 relative transition-all duration-300"
+                             :data-doc-id="doc.id"
                              :class="{ 'animate-stack-in ring-2 ring-slate-900/10 border-slate-300': doc.isNew }"
-                             :style="'z-index: ' + (documents.length - index)">
+                             :style="'z-index: ' + doc.docNumber">
                             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                                 <div class="flex items-center space-x-2">
-                                    <span class="w-6 h-6 rounded-lg bg-slate-900 text-white text-xs font-bold flex items-center justify-center font-mono" x-text="getDocNumber(index)"></span>
-                                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider" x-text="'Dokumen Surat Masuk #' + getDocNumber(index)"></h3>
+                                    <span class="w-6 h-6 rounded-lg bg-slate-900 text-white text-xs font-bold flex items-center justify-center font-mono" x-text="doc.docNumber"></span>
+                                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider" x-text="'Dokumen Surat Masuk #' + doc.docNumber"></h3>
                                 </div>
 
                                 <button type="button" 
@@ -201,7 +202,7 @@
                                 </button>
                             </div>
 
-                        <input type="hidden" :name="'documents[' + getFormIndex(index) + '][id]'" :value="doc.id">
+                        <input type="hidden" :name="'documents[' + doc.formKey + '][id]'" :value="doc.id">
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Nomor Surat -->
@@ -210,20 +211,20 @@
                                     Nomor Surat <span class="text-slate-400 font-normal normal-case">(Opsional)</span>
                                 </label>
                                 <input type="text" 
-                                       :name="'documents[' + getFormIndex(index) + '][mail_number]'" 
+                                       :name="'documents[' + doc.formKey + '][mail_number]'" 
                                        x-model="doc.mail_number" 
                                        class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                             </div>
 
                             <!-- Kepada (Penerima) Dokumen Ini (Multi-Recipient Chip Combobox) -->
                             <div x-data="multiRecipientSelect({
-                                initialValue: doc.recipient,
+                                initialValue: Alpine.raw(doc).recipient,
                                 listType: 'recipients'
                             })" class="relative" @click.away="closeDropdown()" x-effect="doc.recipient = value">
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                     Kepada / Penerima Dokumen <span class="text-slate-900 font-bold" x-show="!isDraft">*</span>
                                 </label>
-                                <input type="hidden" :name="'documents[' + getFormIndex(index) + '][recipient]'" :value="value">
+                                <input type="hidden" :name="'documents[' + doc.formKey + '][recipient]'" :value="value">
 
                                 <!-- Trigger Box with Chips -->
                                 <div @click="toggle()"
@@ -305,20 +306,20 @@
                                     Perihal <span class="text-slate-900 font-bold" x-show="!isDraft">*</span>
                                 </label>
                                 <input type="text" 
-                                       :name="'documents[' + getFormIndex(index) + '][subject]'" 
+                                       :name="'documents[' + doc.formKey + '][subject]'" 
                                        x-model="doc.subject" 
                                        class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs">
                             </div>
 
                             <!-- Status (Inputan Admin - Opsional) -->
                             <div x-data="searchableSelect({
-                                initialValue: doc.status,
+                                initialValue: Alpine.raw(doc).status,
                                 listType: 'statuses'
                             })" class="relative" @click.away="open = false" x-effect="doc.status = value">
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                     Status <span class="text-slate-400 font-normal normal-case">(Opsional)</span>
                                 </label>
-                                <input type="hidden" :name="'documents[' + getFormIndex(index) + '][status]'" :value="value">
+                                <input type="hidden" :name="'documents[' + doc.formKey + '][status]'" :value="value">
 
                                 <!-- Trigger Button -->
                                 <button type="button" 
@@ -394,7 +395,7 @@
                                     Tanggal Surat Keluar <span class="text-slate-400 font-normal normal-case">(Opsional)</span>
                                 </label>
                                 <input type="datetime-local" 
-                                       :name="'documents[' + getFormIndex(index) + '][outgoing_date]'" 
+                                       :name="'documents[' + doc.formKey + '][outgoing_date]'" 
                                        x-model="doc.outgoing_date" 
                                        class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm text-slate-900 transition-all shadow-2xs font-mono">
                             </div>
@@ -404,13 +405,13 @@
                             <!-- Disposisi -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Disposisi (Opsional)</label>
-                                <textarea :name="'documents[' + getFormIndex(index) + '][disposition_note]'" x-model="doc.disposition_note" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 shadow-2xs focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
+                                <textarea :name="'documents[' + doc.formKey + '][disposition_note]'" x-model="doc.disposition_note" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 shadow-2xs focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
                             </div>
 
                             <!-- Keterangan -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Keterangan / Catatan Tambahan</label>
-                                <textarea :name="'documents[' + getFormIndex(index) + '][notes]'" x-model="doc.notes" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 shadow-2xs focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
+                                <textarea :name="'documents[' + doc.formKey + '][notes]'" x-model="doc.notes" rows="2" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 shadow-2xs focus:ring-2 focus:ring-slate-900 focus:border-slate-900"></textarea>
                             </div>
                         </div>
 
@@ -456,7 +457,7 @@
                                  @click="$refs.fileInput.click()">
                                 <input type="file" 
                                        x-ref="fileInput"
-                                       :name="'documents[' + getFormIndex(index) + '][files][]'" 
+                                       :name="'documents[' + doc.formKey + '][files][]'" 
                                        multiple 
                                        accept="application/pdf,image/*" 
                                        capture="environment" 
@@ -612,12 +613,15 @@
         function incomingMailBatchForm() {
             const rawOldDocs = {{ json_encode(array_values(old('documents', $incomingMail->batchItems->toArray()))) }};
             const oldDocs = Array.isArray(rawOldDocs) ? rawOldDocs : Object.values(rawOldDocs || {});
+            let nextFormKey = 0;
             const defaultDoc = [
-                { id: Date.now(), mail_number: '', recipient: '', subject: '', status: '', outgoing_date: '', disposition_note: '', notes: '' }
+                { id: Date.now(), formKey: nextFormKey++, docNumber: 1, mail_number: '', recipient: '', subject: '', status: '', outgoing_date: '', disposition_note: '', notes: '' }
             ];
             const initialDocs = (oldDocs && oldDocs.length > 0) 
                 ? oldDocs.map((d, i) => ({ 
                     id: (d && d.id) ? d.id : (Date.now() + i), 
+                    formKey: nextFormKey++,
+                    docNumber: oldDocs.length - i,
                     mail_number: (d && d.mail_number !== undefined && d.mail_number !== null) ? String(d.mail_number) : '', 
                     recipient: (d && d.recipient !== undefined && d.recipient !== null) ? String(d.recipient) : '', 
                     subject: (d && d.subject !== undefined && d.subject !== null) ? String(d.subject) : '', 
@@ -636,11 +640,17 @@
                 documents: initialDocs,
                 errorMessageList: {{ json_encode($errors->all()) }},
 
+                syncDocNumbers() {
+                    const total = this.documents.length;
+                    this.documents.forEach((doc, idx) => {
+                        doc.docNumber = total - idx;
+                    });
+                },
                 getDocNumber(index) {
-                    return this.documents.length - index;
+                    return this.documents[index]?.docNumber ?? (this.documents.length - index);
                 },
                 getFormIndex(index) {
-                    return this.documents.length - 1 - index;
+                    return this.documents[index]?.formKey ?? (this.documents.length - 1 - index);
                 },
 
                 openDeleteModal() {
@@ -658,6 +668,8 @@
                 addDocument() {
                     const newDoc = {
                         id: Date.now() + Math.random(),
+                        formKey: nextFormKey++,
+                        docNumber: this.documents.length + 1,
                         mail_number: '',
                         recipient: '',
                         subject: '',
@@ -668,6 +680,7 @@
                         isNew: true
                     };
                     this.documents.unshift(newDoc);
+                    this.syncDocNumbers();
 
                     this.$nextTick(() => {
                         const firstDoc = this.$refs.docList?.querySelector('.animate-stack-in') || this.$refs.docList?.querySelector('.bg-white');
@@ -683,6 +696,7 @@
                 removeDocument(index) {
                     if (this.documents.length > 1) {
                         this.documents.splice(index, 1);
+                        this.syncDocNumbers();
                     }
                 },
                 async onSubmit(e) {
@@ -729,9 +743,38 @@
                     this.loading = true;
 
                     try {
-                        const formData = new FormData(this.$refs.form);
-                        // Tambahkan nilai is_draft sesuai pilihan user
-                        formData.set('is_draft', this.isDraft ? '1' : '0');
+                        const formData = new FormData();
+                        const csrfInput = this.$refs.form.querySelector('input[name="_token"]');
+                        if (csrfInput) {
+                            formData.append('_token', csrfInput.value);
+                        }
+                        const methodInput = this.$refs.form.querySelector('input[name="_method"]');
+                        formData.append('_method', methodInput ? methodInput.value : 'PUT');
+                        formData.append('is_draft', this.isDraft ? '1' : '0');
+                        formData.append('sender', senderVal);
+                        formData.append('received_date', dateInput ? dateInput.value.trim() : '');
+
+                        // Susun dokumen secara eksplisit dari dokumen pertama (#1) hingga terakhir (#N)
+                        // agar seluruh dokumen yang diinput pasti terkirim tanpa tertimpa indeks DOM.
+                        const orderedDocs = [...this.documents].reverse();
+                        orderedDocs.forEach((doc, idx) => {
+                            formData.append(`documents[${idx}][id]`, doc.id ?? '');
+                            formData.append(`documents[${idx}][mail_number]`, doc.mail_number ?? '');
+                            formData.append(`documents[${idx}][recipient]`, doc.recipient ?? '');
+                            formData.append(`documents[${idx}][subject]`, doc.subject ?? '');
+                            formData.append(`documents[${idx}][status]`, doc.status ?? '');
+                            formData.append(`documents[${idx}][outgoing_date]`, doc.outgoing_date ?? '');
+                            formData.append(`documents[${idx}][disposition_note]`, doc.disposition_note ?? '');
+                            formData.append(`documents[${idx}][notes]`, doc.notes ?? '');
+
+                            const cardEl = this.$refs.docList?.querySelector(`[data-doc-id="${doc.id}"]`);
+                            const fileInput = cardEl?.querySelector('input[type="file"]');
+                            if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                                Array.from(fileInput.files).forEach((file) => {
+                                    formData.append(`documents[${idx}][files][]`, file);
+                                });
+                            }
+                        });
 
                         const response = await fetch(this.$refs.form.action, {
                             method: 'POST',
