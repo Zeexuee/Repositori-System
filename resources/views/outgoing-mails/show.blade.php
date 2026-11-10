@@ -15,15 +15,20 @@
             <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Detail Surat Keluar</h1>
             <p class="text-xs text-slate-500 mt-0.5 font-mono">ID: {{ $outgoingMail->id }}</p>
         </div>
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <a href="{{ route('outgoing-mails.index') }}" class="w-full sm:w-auto text-center px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs transition-all">
-                Kembali
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ route('outgoing-mails.index') }}" class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 shadow-2xs transition-all">
+                ← Kembali ke Daftar
             </a>
+            @can('update', $outgoingMail)
+                <a href="{{ route('outgoing-mails.edit', $outgoingMail) }}" class="px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 shadow-xs transition-all">
+                    Edit Dokumen
+                </a>
+            @endcan
             @can('delete', $outgoingMail)
                 <form action="{{ route('outgoing-mails.destroy', $outgoingMail) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus draf/surat keluar ini?');" class="w-full sm:w-auto">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="w-full sm:w-auto px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 shadow-xs transition-all cursor-pointer">
+                    <button type="submit" class="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-slate-600 hover:text-rose-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs transition-all cursor-pointer">
                         Hapus Dokumen
                     </button>
                 </form>
@@ -330,6 +335,22 @@
                 </div>
             </div>
         @endif
+
+        <!-- Bottom Navigation Bar -->
+        <div class="mt-8 pt-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <a href="{{ route('outgoing-mails.index') }}" 
+               class="w-full sm:w-auto text-center px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-300 rounded-xl text-xs font-bold transition-all shadow-2xs">
+                ← Kembali ke Daftar Surat Keluar
+            </a>
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                @can('update', $outgoingMail)
+                    <a href="{{ route('outgoing-mails.edit', $outgoingMail) }}" 
+                       class="w-full sm:w-auto text-center px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs">
+                        Edit Dokumen Ini
+                    </a>
+                @endcan
+            </div>
+        </div>
 
     </div>
 @endsection

@@ -48,8 +48,12 @@
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Edit Surat Masuk</h1>
                 <p class="text-xs text-slate-500 mt-1">Perbarui rincian surat masuk, unggah berkas, dan periksa pratinjau dokumen.</p>
             </div>
-            <div class="flex items-center space-x-2.5">
-                <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('incoming-mails.show', $incomingMail) }}" 
+                   class="inline-flex items-center px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-300 rounded-xl text-xs font-bold transition-all shadow-2xs">
+                    ← Kembali
+                </a>
+                <div class="inline-flex items-center space-x-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
                     <span>No. Surat: <strong class="text-slate-900 font-mono">{{ $incomingMail->mail_number ?: '-' }}</strong></span>
                 </div>
                 @can('delete', $incomingMail)
@@ -695,7 +699,7 @@
             <!-- Action Buttons -->
             <div class="flex items-center justify-between pt-4 border-t border-slate-200/80">
                 <a href="{{ route('incoming-mails.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-all shadow-2xs">
-                    Batal
+                    ← Batal & Kembali
                 </a>
 
                 <button type="submit" :disabled="loading" class="px-6 py-2.5 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 inline-flex items-center space-x-2 transition-all shadow-xs cursor-pointer">

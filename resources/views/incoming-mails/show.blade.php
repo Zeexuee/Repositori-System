@@ -25,14 +25,19 @@
             </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <a href="{{ route('incoming-mails.index') }}" class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs transition-all">
-                Kembali
+            <a href="{{ route('incoming-mails.index') }}" class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 shadow-2xs transition-all">
+                ← Kembali ke Daftar
             </a>
+            @can('update', $incomingMail)
+                <a href="{{ route('incoming-mails.edit', $incomingMail) }}" class="px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 shadow-xs transition-all">
+                    Edit Dokumen
+                </a>
+            @endcan
             @can('delete', $incomingMail)
                 <form action="{{ route('incoming-mails.destroy', $incomingMail) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus surat masuk ini?');">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 shadow-xs transition-all cursor-pointer">
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-rose-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs transition-all cursor-pointer">
                         Hapus Dokumen
                     </button>
                 </form>
@@ -519,6 +524,22 @@
                         </div>
                     @endif
                 </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation Bar -->
+        <div class="pt-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <a href="{{ route('incoming-mails.index') }}" 
+               class="w-full sm:w-auto text-center px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-300 rounded-xl text-xs font-bold transition-all shadow-2xs">
+                ← Kembali ke Daftar Surat Masuk
+            </a>
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                @can('update', $incomingMail)
+                    <a href="{{ route('incoming-mails.edit', $incomingMail) }}" 
+                       class="w-full sm:w-auto text-center px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs">
+                        Edit Dokumen Ini
+                    </a>
+                @endcan
             </div>
         </div>
 

@@ -4,7 +4,7 @@
 
 @section('content')
     <div x-data="incomingMailBatchForm()" class="space-y-6">
-        <div class="pb-4 border-b border-slate-200/80 flex items-center justify-between">
+        <div class="pb-4 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <nav class="flex items-center space-x-2 text-xs text-slate-500 mb-2 font-medium" aria-label="Breadcrumb">
                     <a href="{{ route('incoming-mails.index') }}" class="hover:text-slate-900 hover:underline transition-colors">
@@ -16,9 +16,15 @@
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Form Pencatatan Surat Masuk</h1>
                 <p class="text-xs text-slate-500 mt-1">Catat satu atau beberapa dokumen dari pengirim/biro yang sama dalam satu tanda terima.</p>
             </div>
-            <div class="inline-flex items-center px-3 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs space-x-1.5">
-                <span class="text-slate-400">Total Dokumen:</span>
-                <span class="font-mono text-white" x-text="documents.length">1</span>
+            <div class="flex items-center space-x-2.5">
+                <a href="{{ route('incoming-mails.index') }}" 
+                   class="inline-flex items-center px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-300 rounded-xl text-xs font-bold transition-all shadow-2xs">
+                    ← Kembali ke Daftar
+                </a>
+                <div class="inline-flex items-center px-3 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs space-x-1.5">
+                    <span class="text-slate-400">Total:</span>
+                    <span class="font-mono text-white" x-text="documents.length">1</span>
+                </div>
             </div>
         </div>
 
@@ -465,8 +471,8 @@
 
             <!-- Action Buttons: Simpan Sebagai Draft vs Finalisasi -->
             <div class="flex items-center justify-between pt-4 border-t border-slate-200/80">
-                <a href="{{ route('incoming-mails.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs">
-                    Batal
+                <a href="{{ route('incoming-mails.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-all shadow-2xs">
+                    ← Batal & Kembali
                 </a>
 
                 <div class="flex items-center space-x-3">
