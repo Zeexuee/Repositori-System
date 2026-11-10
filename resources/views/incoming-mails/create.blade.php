@@ -6,6 +6,13 @@
     <div x-data="incomingMailBatchForm()" class="space-y-6">
         <div class="pb-4 border-b border-slate-200/80 flex items-center justify-between">
             <div>
+                <nav class="flex items-center space-x-2 text-xs text-slate-500 mb-2 font-medium" aria-label="Breadcrumb">
+                    <a href="{{ route('incoming-mails.index') }}" class="hover:text-slate-900 hover:underline transition-colors">
+                        Surat Masuk
+                    </a>
+                    <span class="text-slate-300">/</span>
+                    <span class="text-slate-800 font-semibold">Tambah Dokumen Baru</span>
+                </nav>
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Form Pencatatan Surat Masuk</h1>
                 <p class="text-xs text-slate-500 mt-1">Catat satu atau beberapa dokumen dari pengirim/biro yang sama dalam satu tanda terima.</p>
             </div>

@@ -7,6 +7,17 @@
     <div x-data="editOutgoingMailForm()" class="space-y-6">
         <div class="pb-4 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
+                <nav class="flex items-center space-x-2 text-xs text-slate-500 mb-2 font-medium" aria-label="Breadcrumb">
+                    <a href="{{ route('outgoing-mails.index') }}" class="hover:text-slate-900 hover:underline transition-colors">
+                        Surat Keluar
+                    </a>
+                    <span class="text-slate-300">/</span>
+                    <a href="{{ route('outgoing-mails.show', $outgoingMail) }}" class="hover:text-slate-900 hover:underline transition-colors font-mono">
+                        {{ $outgoingMail->mail_number ?: 'Detail' }}
+                    </a>
+                    <span class="text-slate-300">/</span>
+                    <span class="text-slate-800 font-semibold">Edit Dokumen</span>
+                </nav>
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Edit Surat Keluar</h1>
                 <p class="text-xs text-slate-500 mt-1">Perbarui rincian, berkas lampiran, status, atau progres surat keluar.</p>
             </div>

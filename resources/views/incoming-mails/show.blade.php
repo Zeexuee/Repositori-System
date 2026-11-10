@@ -5,6 +5,13 @@
 @section('content')
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-200/80 gap-3">
         <div>
+            <nav class="flex items-center space-x-2 text-xs text-slate-500 mb-2 font-medium" aria-label="Breadcrumb">
+                <a href="{{ route('incoming-mails.index') }}" class="hover:text-slate-900 hover:underline transition-colors">
+                    Surat Masuk
+                </a>
+                <span class="text-slate-300">/</span>
+                <span class="text-slate-800 font-semibold font-mono">{{ $incomingMail->mail_number ?: 'Detail' }}</span>
+            </nav>
             <div class="flex items-center space-x-2">
                 <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Detail Surat Masuk</h1>
             </div>
