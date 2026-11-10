@@ -5,6 +5,7 @@
 @section('content')
     <div x-data="outgoingMailSelector()" 
          @single-status-change.window="handleSingleStatusChange($event.detail)"
+         @keydown.window="handleGlobalKeydown($event)"
          class="space-y-4">
         <!-- Custom Confirmation Modal -->
         <div x-show="showConfirmModal" 
@@ -698,19 +699,104 @@
         </form>
 
         <div class="mt-6 bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
+            <!-- Selection Info Bar (Hanya tampil saat mode select aktif) -->
+            <div x-show="isSelectionMode" x-cloak
+                class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-3 transition-all">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-slate-900">
+                        <span x-text="selectedIds.length"></span> dokumen terpilih
+                    </span>
+                    <span class="text-slate-300">|</span>
+                    <span class="text-[11px] text-slate-500">
+                        Klik baris untuk memilih · Tahan <kbd class="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-white border border-slate-300 rounded text-slate-700 shadow-2xs">Shift</kbd> untuk memilih rentang baris
+                    </span>
+                </div>
+                <div class="flex items-center gap-3 text-xs">
+                    <button type="button" @click="selectAllInPage()" class="text-slate-700 hover:text-slate-900 font-semibold underline text-[11px] cursor-pointer">
+                        Pilih Semua (<span x-text="allIds.length"></span>)
+                    </button>
+                    <button type="button" @click="invertSelection()" class="text-slate-700 hover:text-slate-900 font-semibold underline text-[11px] cursor-pointer">
+                        Balikkan Pilihan
+                    </button>
+                    <button type="button" @click="clearSelection()" :disabled="selectedIds.length === 0" class="text-slate-500 hover:text-slate-900 font-semibold underline text-[11px] cursor-pointer disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
+                        Batal Pilihan
+                    </button>
+                </div>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse min-w-full">
                     <thead>
                         <tr
                             class="border-b border-slate-200 bg-slate-100 text-xs sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider">
-                            <!-- Select Box Column Header -->
-                            <th x-show="isSelectionMode" x-cloak class="py-4 px-3 text-center whitespace-nowrap w-10">
-                                <input type="checkbox"
-                                    @change="toggleSelectAll()"
-                                    :checked="isAllSelected"
-                                    :indeterminate.prop="isIndeterminate"
-                                    title="Pilih Semua Dokumen yang Ditampilkan"
-                                    class="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer">
+                            <!-- Select Box Column Header with Quick Select Menu -->
+                            <th x-show="isSelectionMode" x-cloak class="py-3 px-3 text-center whitespace-nowrap w-16">
+                                <div class="relative inline-flex items-center justify-center gap-1" x-data="{ openQuickSelect: false }">
+                                    <input type="checkbox"
+                                        @change="toggleSelectAll()"
+                                        :checked="isAllSelected"
+                                        :indeterminate.prop="isIndeterminate"
+                                        title="Pilih Semua Dokumen yang Ditampilkan (Ctrl+A)"
+                                        class="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer">
+                                    <button type="button"
+                                        @click="openQuickSelect = !openQuickSelect"
+                                        title="Opsi Pilih Cepat"
+                                        aria-label="Opsi Pilih Cepat"
+                                        class="p-0.5 text-slate-500 hover:text-slate-900 rounded hover:bg-slate-200 transition-colors">
+                                        <svg class="w-3 h-3 transition-transform" :class="openQuickSelect ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <!-- Dropdown Menu Pilih Cepat -->
+                                    <div x-show="openQuickSelect"
+                                        @click.away="openQuickSelect = false"
+                                        x-transition:enter="transition ease-out duration-100"
+                                        x-transition:enter-start="opacity-0 scale-95"
+                                        x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="transition ease-in duration-75"
+                                        x-transition:leave-start="opacity-100 scale-100"
+                                        x-transition:leave-end="opacity-0 scale-95"
+                                        class="absolute left-0 top-full mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden text-left py-1 font-normal normal-case">
+                                        <div class="px-3.5 py-1.5 border-b border-slate-100">
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Opsi Pemilihan</p>
+                                        </div>
+                                        <button type="button"
+                                            @click="selectAllInPage(); openQuickSelect = false"
+                                            class="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center justify-between">
+                                            <span>Pilih Semua di Halaman</span>
+                                            <span class="text-[10px] text-slate-500 font-mono" x-text="allIds.length"></span>
+                                        </button>
+                                        <button type="button"
+                                            @click="invertSelection(); openQuickSelect = false"
+                                            class="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                                            <span>Balikkan Pilihan</span>
+                                        </button>
+                                        <button type="button"
+                                            @click="clearSelection(); openQuickSelect = false"
+                                            :disabled="selectedIds.length === 0"
+                                            class="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                                            <span>Batalkan Semua Pilihan</span>
+                                        </button>
+
+                                        <!-- Status-specific selection options -->
+                                        <template x-if="availableStatuses.length > 0">
+                                            <div>
+                                                <div class="px-3.5 pt-2 pb-1 border-t border-slate-100">
+                                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pilih Berdasarkan Progres</p>
+                                                </div>
+                                                <template x-for="item in availableStatuses" :key="item.status">
+                                                    <button type="button"
+                                                        @click="selectByStatus(item.status); openQuickSelect = false"
+                                                        class="w-full text-left px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center justify-between">
+                                                        <span x-text="item.label"></span>
+                                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono font-bold" x-text="item.count"></span>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
                             </th>
                             <th class="py-4 px-4 sm:px-5 text-center whitespace-nowrap w-14">No.</th>
                             <th class="py-4 px-4 sm:px-5 whitespace-nowrap">Nomor Surat</th>
@@ -723,7 +809,10 @@
                             <th class="py-4 px-4 sm:px-5 text-right whitespace-nowrap">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-200 text-sm" x-ref="tableBody">
+                    <tbody class="divide-y divide-slate-200 text-sm"
+                        :class="isSelectionMode ? 'cursor-pointer select-none' : ''"
+                        x-ref="tableBody"
+                        @click="handleTableClick($event)">
                         @include('outgoing-mails.partials.table-rows')
                     </tbody>
                 </table>
@@ -765,6 +854,7 @@
                 isSearching: false,
                 totalResults: {{ $outgoingMails->total() }},
                 selectedIds: [],
+                lastSelectedId: null,
                 allIds: @json($outgoingMails->pluck('id')->map(fn($id) => (string) $id)->values()),
 
                 // Lazy load (infinite scroll) state
@@ -856,8 +946,9 @@
                 // Watch modal state untuk lock body scroll
                 init() {
                     // Setup global functions untuk onclick handler
-                    window.toggleMailSelection = (id) => {
-                        this.toggleSelection(id);
+                    window.toggleMailSelection = (id, event) => {
+                        const isShift = Boolean(event && event.shiftKey);
+                        this.handleSelectRow(id, isShift);
                     };
                     
                     window.dispatchSingleStatusChange = (id, mailNumber, currentStatus, targetStatus) => {
@@ -1283,6 +1374,7 @@
                     this.isSelectionMode = !this.isSelectionMode;
                     if (!this.isSelectionMode) {
                         this.selectedIds = [];
+                        this.lastSelectedId = null;
                     }
                     this.$nextTick(() => {
                         this.updateCheckboxStates();
@@ -1507,46 +1599,172 @@
                     return selectedInPage > 0 && selectedInPage < this.allIds.length;
                 },
 
+                get availableStatuses() {
+                    const statusMap = new Map();
+                    this.allIds.forEach(id => {
+                        const raw = this.statusById[id];
+                        const status = this.normalizeStatus(raw);
+                        if (status) {
+                            statusMap.set(status, (statusMap.get(status) || 0) + 1);
+                        }
+                    });
+
+                    return Array.from(statusMap.entries()).map(([status, count]) => ({
+                        status,
+                        label: this.statusLabel(status),
+                        count,
+                    }));
+                },
+
                 toggleSelectAll() {
-                    const allPageIdsSelected = this.allIds.every(id => this.selectedIds.includes(id));
+                    const allPageIdsSelected = this.allIds.length > 0 && this.allIds.every(id => this.selectedIds.includes(id));
                     
                     if (allPageIdsSelected) {
-                        // Deselect all in current page
                         this.selectedIds = this.selectedIds.filter(id => !this.allIds.includes(id));
                     } else {
-                        // Select all in current page
-                        this.allIds.forEach(id => {
-                            if (!this.selectedIds.includes(id)) {
-                                this.selectedIds.push(id);
-                            }
-                        });
+                        const newSelected = new Set(this.selectedIds);
+                        this.allIds.forEach(id => newSelected.add(id));
+                        this.selectedIds = Array.from(newSelected);
+                        if (this.allIds.length > 0) {
+                            this.lastSelectedId = this.allIds[0];
+                        }
+                    }
+                    this.$nextTick(() => {
+                        this.updateCheckboxStates();
+                    });
+                },
+
+                selectAllInPage() {
+                    const newSelected = new Set(this.selectedIds);
+                    this.allIds.forEach(id => newSelected.add(id));
+                    this.selectedIds = Array.from(newSelected);
+                    if (this.allIds.length > 0) {
+                        this.lastSelectedId = this.allIds[0];
+                    }
+                    this.$nextTick(() => {
+                        this.updateCheckboxStates();
+                    });
+                },
+
+                invertSelection() {
+                    const currentSet = new Set(this.selectedIds);
+                    const preservedOutside = this.selectedIds.filter(id => !this.allIds.includes(id));
+                    const invertedInPage = this.allIds.filter(id => !currentSet.has(id));
+
+                    this.selectedIds = [...preservedOutside, ...invertedInPage];
+                    this.$nextTick(() => {
+                        this.updateCheckboxStates();
+                    });
+                },
+
+                selectByStatus(targetStatus) {
+                    const normalized = this.normalizeStatus(targetStatus);
+                    const matchingIds = this.allIds.filter(id => this.normalizeStatus(this.statusById[id]) === normalized);
+                    if (matchingIds.length === 0) return;
+
+                    const newSelected = new Set(this.selectedIds);
+                    matchingIds.forEach(id => newSelected.add(id));
+                    this.selectedIds = Array.from(newSelected);
+                    this.lastSelectedId = matchingIds[matchingIds.length - 1];
+
+                    this.$nextTick(() => {
+                        this.updateCheckboxStates();
+                    });
+                },
+
+                handleSelectRow(id, isShift = false) {
+                    if (!id) return;
+
+                    if (isShift && this.lastSelectedId && this.allIds.includes(this.lastSelectedId)) {
+                        const fromIdx = this.allIds.indexOf(this.lastSelectedId);
+                        const toIdx = this.allIds.indexOf(id);
+
+                        if (fromIdx !== -1 && toIdx !== -1) {
+                            const start = Math.min(fromIdx, toIdx);
+                            const end = Math.max(fromIdx, toIdx);
+                            const rangeIds = this.allIds.slice(start, end + 1);
+
+                            const newSelected = new Set(this.selectedIds);
+                            rangeIds.forEach(rangeId => newSelected.add(rangeId));
+                            this.selectedIds = Array.from(newSelected);
+                            this.lastSelectedId = id;
+                            this.updateCheckboxStates();
+                            return;
+                        }
+                    }
+
+                    if (this.selectedIds.includes(id)) {
+                        this.selectedIds = this.selectedIds.filter(selectedId => selectedId !== id);
+                        this.lastSelectedId = id;
+                    } else {
+                        this.selectedIds.push(id);
+                        this.lastSelectedId = id;
+                    }
+
+                    this.updateCheckboxStates();
+                },
+
+                handleTableClick(event) {
+                    if (!this.isSelectionMode) return;
+
+                    // Abaikan klik pada tombol aksi, link, input, atau elemen berkategori khusus
+                    if (event.target.closest('a, button, input, textarea, select, [data-no-row-select="true"]')) {
+                        return;
+                    }
+
+                    const row = event.target.closest('tr');
+                    if (!row) return;
+
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    if (checkbox && checkbox.value) {
+                        if (event.shiftKey) {
+                            const sel = window.getSelection();
+                            if (sel) sel.removeAllRanges();
+                        }
+                        this.handleSelectRow(checkbox.value, event.shiftKey);
                     }
                 },
 
-                toggleSelection(id) {
-                    if (this.selectedIds.includes(id)) {
-                        this.selectedIds = this.selectedIds.filter(selectedId => selectedId !== id);
-                    } else {
-                        this.selectedIds.push(id);
+                handleGlobalKeydown(event) {
+                    if (this.showConfirmModal || this.showRevisionModal || this.showReturnModal || 
+                        this.showReceiptPreviewModal || this.showUploadAttachmentModal) {
+                        return;
                     }
-                    
-                    // Update checkbox and row styling
-                    const checkbox = this.$refs.tableBody.querySelector(`input[value="${id}"]`);
-                    if (checkbox) {
-                        checkbox.checked = this.selectedIds.includes(id);
-                        const row = checkbox.closest('tr');
-                        if (row) {
-                            if (this.selectedIds.includes(id)) {
-                                row.classList.add('bg-slate-100/90');
-                            } else {
-                                row.classList.remove('bg-slate-100/90');
-                            }
+
+                    const targetTag = (event.target.tagName || '').toLowerCase();
+                    const isEditingText = ['input', 'textarea', 'select'].includes(targetTag) && event.target.type !== 'checkbox';
+                    if (isEditingText) {
+                        return;
+                    }
+
+                    // Ctrl+A / Cmd+A: Pilih semua di halaman
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+                        if (this.isSelectionMode) {
+                            event.preventDefault();
+                            this.selectAllInPage();
+                        }
+                    }
+
+                    // Escape: Batalkan pilihan atau keluar mode select
+                    if (event.key === 'Escape' && this.isSelectionMode) {
+                        if (this.selectedIds.length > 0) {
+                            this.clearSelection();
+                        } else {
+                            this.isSelectionMode = false;
                         }
                     }
                 },
 
+                toggleSelection(id) {
+                    this.handleSelectRow(id, false);
+                },
+
                 clearSelection() {
                     this.selectedIds = [];
+                    this.lastSelectedId = null;
+                    this.$nextTick(() => {
+                        this.updateCheckboxStates();
+                    });
                 },
 
                 getSelectedInCurrentPage() {

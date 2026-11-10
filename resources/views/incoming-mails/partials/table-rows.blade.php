@@ -5,7 +5,7 @@
             <input type="checkbox"
                 value="{{ $mail->id }}"
                 aria-label="Pilih dokumen {{ $mail->mail_number }}"
-                onclick="window.toggleMailSelection && window.toggleMailSelection('{{ $mail->id }}')"
+                onclick="window.toggleMailSelection && window.toggleMailSelection('{{ $mail->id }}', event)"
                 class="row-checkbox w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer">
         </td>
         <td class="py-4 px-4 sm:px-5 text-center font-bold text-slate-500 whitespace-nowrap">
@@ -125,6 +125,7 @@
         <td class="py-4 px-4 sm:px-5 text-slate-600 max-w-[240px]">
             @if(!empty($mail->disposition_note))
                 <div class="line-clamp-2 break-words leading-snug cursor-pointer hover:text-slate-900 transition-colors"
+                    data-no-row-select="true"
                     @click="window.openDispositionPreviewModal(@js((string) $mail->id), @js((string) $mail->mail_number))"
                     title="{{ $mail->disposition_note }} (Klik untuk intip lengkap)">
                     {{ $mail->disposition_note }}

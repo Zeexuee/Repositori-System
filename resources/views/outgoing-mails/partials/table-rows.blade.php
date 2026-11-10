@@ -4,9 +4,9 @@
         <td x-show="isSelectionMode" class="py-4 px-3 text-center whitespace-nowrap">
             <input type="checkbox"
                 value="{{ $mail->id }}"
-                x-model="selectedIds"
-                @change="handleSelectionChange"
-                class="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer mail-checkbox">
+                aria-label="Pilih dokumen {{ $mail->mail_number ?? '-' }}"
+                onclick="window.toggleMailSelection && window.toggleMailSelection('{{ $mail->id }}', event)"
+                class="row-checkbox w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer mail-checkbox">
         </td>
         
         <td class="py-4 px-4 sm:px-5 text-center font-bold text-slate-500 whitespace-nowrap">

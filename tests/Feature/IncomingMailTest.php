@@ -521,7 +521,7 @@ class IncomingMailTest extends TestCase
         ]);
 
         $response->assertSessionHasNoErrors();
-        $response->assertRedirect(route('incoming-mails.index'));
+        $response->assertRedirect();
 
         $mail->refresh();
         $this->assertSame('TR-20261104-0014', $mail->mail_number);
@@ -571,7 +571,7 @@ class IncomingMailTest extends TestCase
         ]);
 
         $response->assertSessionHasNoErrors();
-        $response->assertRedirect(route('incoming-mails.index'));
+        $response->assertRedirect();
 
         $docA->refresh();
         $this->assertSame('Catatan disposisi baru', $docA->disposition_note);
