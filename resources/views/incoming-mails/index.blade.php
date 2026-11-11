@@ -287,7 +287,10 @@
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label :for="`return-recipient-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penerima / Unit</label>
+                                            <label :for="`return-recipient-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">
+                                                Nama Penerima / Unit
+                                                <span x-show="index === 0 && recipient.recipient_name" class="text-[11px] font-normal text-slate-500 normal-case">(Otomatis dari pengirim)</span>
+                                            </label>
                                             <input type="text" :id="`return-recipient-${recipient.client_key}`"
                                                 x-model="recipient.recipient_name" @input="returnDirty = true" maxlength="255"
                                                 placeholder="Contoh: Divisi Keuangan"
@@ -874,6 +877,9 @@
                 statusById: @js($incomingMails->mapWithKeys(fn ($mail) => [
                     (string) $mail->id => App\Support\IncomingMailStatus::canonical($mail->progress) ?? (string) $mail->progress,
                 ])),
+                senderById: @js($incomingMails->mapWithKeys(fn ($mail) => [
+                    (string) $mail->id => (string) ($mail->sender ?? ''),
+                ])),
                 statusChangeError: '',
                 
                 // Modal state
@@ -958,11 +964,14 @@
                         this.handleSingleStatusChange({ id, mailNumber, currentStatus, targetStatus });
                     };
                     
-                    window.openStatusDropdown = (event, id, mailNumber, currentStatus) => {
-                        this.openStatusDropdown(event, id, mailNumber, currentStatus);
+                    window.openStatusDropdown = (event, id, mailNumber, currentStatus, sender = '') => {
+                        this.openStatusDropdown(event, id, mailNumber, currentStatus, sender);
                     };
 
-                    window.resumeReturnWorkflow = (id, mailNumber) => {
+                    window.resumeReturnWorkflow = (id, mailNumber, sender = '') => {
+                        if (sender && !this.senderById[id]) {
+                            this.senderById[id] = sender;
+                        }
                         this.openReturnWorkflow([id], mailNumber, true);
                     };
 
@@ -1373,20 +1382,37 @@
                     this.returnMailLabel = label || 'Dokumen terpilih';
                     this.returnDispositionNote = '';
                     this.returnDispositionNoteTouched = false;
-                    this.returnRecipients = [this.newReturnRecipient()];
+
+                    // Cari nama pengirim dari dokumen terpilih untuk otomatis mengisi penerima awal pengembalian
+                    let defaultSender = '';
+                    if (mailIds && mailIds.length > 0) {
+                        const senders = mailIds.map(id => {
+                            if (this.senderById?.[id]) return this.senderById[id];
+                            const rowEl = document.querySelector(`tr[data-mail-id="${id}"]`);
+                            return rowEl?.dataset?.sender || '';
+                        }).filter(Boolean);
+                        const uniqueSenders = [...new Set(senders)];
+                        if (uniqueSenders.length > 0) {
+                            defaultSender = uniqueSenders.join(', ');
+                        }
+                    }
+
+                    this.returnRecipients = [this.newReturnRecipient({
+                        recipient_name: defaultSender
+                    })];
                     this.returnCanvases = {};
                     this.returnError = '';
                     this.returnDirty = false;
                     this.showReturnModal = true;
 
-                    // Untuk satu dokumen, catatan disposisi yang sudah ada diisikan lebih dulu
-                    // agar operator tidak menimpanya dengan nilai kosong tanpa sadar.
-                    if (!resume && mailIds.length !== 1) return;
-
                     this.isLoadingReturn = true;
                     try {
                         const baseUrl = @js(url('/incoming-mails'));
-                        const response = await fetch(`${baseUrl}/${encodeURIComponent(mailIds[0])}/return-recipients`, {
+                        const url = new URL(`${baseUrl}/${encodeURIComponent(mailIds[0])}/return-recipients`);
+                        if (mailIds.length > 1) {
+                            url.searchParams.set('mail_ids', mailIds.join(','));
+                        }
+                        const response = await fetch(url.toString(), {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
@@ -1400,10 +1426,16 @@
                         this.returnMailLabel = data.mail?.mail_number || this.returnMailLabel;
                         this.returnDispositionNote = data.mail?.disposition_note || '';
 
-                        if (resume) {
-                            this.returnRecipients = data.recipients?.length
-                                ? data.recipients.map(recipient => this.newReturnRecipient(recipient))
-                                : [this.newReturnRecipient()];
+                        const serverSender = data.mail?.sender || defaultSender;
+
+                        if (resume && data.recipients?.length > 0) {
+                            this.returnRecipients = data.recipients.map(recipient => this.newReturnRecipient(recipient));
+                        } else {
+                            // Untuk alur baru atau jika belum ada penerima tersimpan,
+                            // otomatis isi nama pengirim pada penerima pertama
+                            this.returnRecipients = [this.newReturnRecipient({
+                                recipient_name: serverSender
+                            })];
                         }
                     } catch (error) {
                         console.error('Return workflow load error:', error);
@@ -1781,6 +1813,7 @@
                         });
                         this.allIds = [...this.allIds, ...newIds];
                         this.statusById = { ...this.statusById, ...(data.statuses || {}) };
+                        this.senderById = { ...this.senderById, ...(data.senders || {}) };
                         this.totalResults = data.total;
                         this.currentPage = data.current_page ?? (this.currentPage + 1);
                         this.hasMorePages = Boolean(data.has_more) && this.allIds.length < this.maxLimit;
@@ -2001,8 +2034,11 @@
                     return this.selectedIds.filter(id => this.allIds.includes(id)).length;
                 },
 
-                openStatusDropdown(event, id, mailNumber, currentStatus) {
+                openStatusDropdown(event, id, mailNumber, currentStatus, sender = '') {
                     event.stopPropagation();
+                    if (sender && !this.senderById[id]) {
+                        this.senderById[id] = sender;
+                    }
                     const btn = event.currentTarget;
                     const rect = btn.getBoundingClientRect();
 

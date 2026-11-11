@@ -288,7 +288,10 @@
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label :for="`return-recipient-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">Nama Penerima / Unit</label>
+                                            <label :for="`return-recipient-${recipient.client_key}`" class="block text-xs font-bold text-slate-700 mb-1.5">
+                                                Nama Penerima / Unit
+                                                <span x-show="index === 0 && recipient.recipient_name" class="text-[11px] font-normal text-slate-500 normal-case">(Otomatis dari tujuan)</span>
+                                            </label>
                                             <input type="text" :id="`return-recipient-${recipient.client_key}`"
                                                 x-model="recipient.recipient_name" @input="returnDirty = true" maxlength="255"
                                                 placeholder="Contoh: Divisi Keuangan"
@@ -1160,7 +1163,7 @@
                         this.returnDispositionNote = data.mail?.disposition_note || '';
                         this.returnRecipients = data.recipients?.length
                             ? data.recipients.map(recipient => this.newReturnRecipient(recipient))
-                            : [this.newReturnRecipient()];
+                            : [this.newReturnRecipient({ recipient_name: data.mail?.recipient || '' })];
                     } catch (error) {
                         console.error('Return workflow load error:', error);
                         this.returnError = error.message || 'Progres penerimaan gagal dimuat.';

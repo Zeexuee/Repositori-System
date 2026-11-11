@@ -1,5 +1,5 @@
 @forelse ($incomingMails as $index => $mail)
-    <tr class="row-item hover:bg-slate-50/80 transition-colors" data-selected="false">
+    <tr class="row-item hover:bg-slate-50/80 transition-colors" data-selected="false" data-mail-id="{{ $mail->id }}" data-sender="{{ $mail->sender }}">
         <!-- Select Box Column Cell -->
         <td x-show="isSelectionMode" class="py-4 px-3 text-center whitespace-nowrap">
             <input type="checkbox"
@@ -73,7 +73,7 @@
                 @if (auth()->user()?->can('update', $mail) && ! $isFinalProgress)
                     @if ($canonicalProgress === App\Support\IncomingMailStatus::WAITING_RETURN)
                         <button type="button"
-                            @click="window.resumeReturnWorkflow(@js((string) $mail->id), @js((string) $mail->mail_number))"
+                            @click="window.resumeReturnWorkflow(@js((string) $mail->id), @js((string) $mail->mail_number), @js((string) $mail->sender))"
                             title="Lanjutkan pengisian catatan disposisi & tanda tangan pengembalian"
                             class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">
                             <span>{{ $displayProgress }}</span>
@@ -83,7 +83,7 @@
                         </button>
                     @else
                         <button type="button"
-                            @click="window.openStatusDropdown($event, @js((string) $mail->id), @js((string) $mail->mail_number), @js((string) $displayProgress))"
+                            @click="window.openStatusDropdown($event, @js((string) $mail->id), @js((string) $mail->mail_number), @js((string) $displayProgress), @js((string) $mail->sender))"
                             aria-haspopup="menu"
                             title="Klik untuk mengubah progres dokumen"
                             class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-all shadow-2xs {{ $badgeClasses }}">

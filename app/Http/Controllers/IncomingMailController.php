@@ -251,6 +251,10 @@ class IncomingMailController extends Controller
                 (string) $mail->id => IncomingMailStatus::canonical($mail->progress) ?? (string) $mail->progress,
             ]);
 
+            $senderMap = $incomingMails->mapWithKeys(fn (IncomingMail $mail) => [
+                (string) $mail->id => (string) ($mail->sender ?? ''),
+            ]);
+
             $hasMore = $incomingMails->hasMorePages() && ($incomingMails->currentPage() * $perPage < self::LAZY_LOAD_MAX_ROWS);
 
             return response()->json([
@@ -263,6 +267,7 @@ class IncomingMailController extends Controller
                 'allIds' => $incomingMails->pluck('id')->map(fn ($id) => (string) $id)->values(),
                 'progresses' => $progressMap,
                 'statuses' => $progressMap,
+                'senders' => $senderMap,
             ]);
         }
 

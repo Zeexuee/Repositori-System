@@ -253,4 +253,46 @@ class IncomingMailReturnDispositionNoteTest extends TestCase
         $response->assertSee('return-disposition-note');
         $response->assertSee('returnDispositionNote');
     }
+
+    public function test_return_recipients_show_endpoint_includes_sender_information(): void
+    {
+        $user = $this->actor();
+        $mail = $this->createMail('WAITING_RETURN');
+        $mail->update(['sender' => 'Fakultas Ilmu Komputer']);
+
+        $response = $this->actingAs($user)->getJson(route('incoming-mails.return-recipients.show', $mail));
+
+        $response->assertOk();
+        $response->assertJsonPath('mail.sender', 'Fakultas Ilmu Komputer');
+    }
+
+    public function test_return_recipients_show_endpoint_supports_batch_mail_ids(): void
+    {
+        $user = $this->actor();
+        $mail1 = $this->createMail('WAITING_RETURN');
+        $mail1->update(['sender' => 'Biro Perencanaan']);
+
+        $mail2 = $this->createMail('WAITING_RETURN');
+        $mail2->update(['sender' => 'Biro Perencanaan']);
+
+        $response = $this->actingAs($user)->getJson(
+            route('incoming-mails.return-recipients.show', $mail1)."?mail_ids={$mail1->id},{$mail2->id}"
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('mail.sender', 'Biro Perencanaan');
+    }
+
+    public function test_table_renders_data_sender_and_auto_fill_hint(): void
+    {
+        $user = $this->actor();
+        $mail = $this->createMail('RECEIVE');
+        $mail->update(['sender' => 'Biro Kemahasiswaan']);
+
+        $response = $this->actingAs($user)->get(route('incoming-mails.index'));
+
+        $response->assertOk();
+        $response->assertSee('data-sender="Biro Kemahasiswaan"', false);
+        $response->assertSee('(Otomatis dari pengirim)');
+    }
 }

@@ -18,11 +18,24 @@ use Throwable;
 
 class IncomingMailReturnController extends Controller
 {
-    public function show(IncomingMail $incomingMail): JsonResponse
+    public function show(\Illuminate\Http\Request $request, IncomingMail $incomingMail): JsonResponse
     {
         Gate::authorize('view', $incomingMail);
 
         $incomingMail->load(['returnRecipients' => fn ($query) => $query->orderBy('sort_order')]);
+
+        $sender = $incomingMail->sender;
+        if ($request->filled('mail_ids')) {
+            $ids = array_filter(explode(',', (string) $request->query('mail_ids')));
+            if (! empty($ids)) {
+                $senders = IncomingMail::whereIn('id', $ids)->pluck('sender')->filter()->unique()->values();
+                if ($senders->count() === 1) {
+                    $sender = $senders->first();
+                } elseif ($senders->count() > 1) {
+                    $sender = $senders->implode(', ');
+                }
+            }
+        }
 
         return response()->json([
             'mail' => [
@@ -31,6 +44,7 @@ class IncomingMailReturnController extends Controller
                 'progress' => $incomingMail->progress,
                 'status' => $incomingMail->status,
                 'disposition_note' => $incomingMail->disposition_note,
+                'sender' => $sender,
             ],
             'recipients' => $incomingMail->returnRecipients->map(fn (IncomingMailReturnRecipient $recipient) => [
                 'id' => $recipient->id,
