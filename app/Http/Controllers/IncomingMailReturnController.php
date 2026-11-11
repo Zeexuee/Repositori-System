@@ -46,6 +46,7 @@ class IncomingMailReturnController extends Controller
                 'disposition_note' => $incomingMail->disposition_note,
                 'sender' => $sender,
             ],
+            'attachments' => $incomingMail->formattedAttachments(),
             'recipients' => $incomingMail->returnRecipients->map(fn (IncomingMailReturnRecipient $recipient) => [
                 'id' => $recipient->id,
                 'recipient_name' => $recipient->recipient_name,

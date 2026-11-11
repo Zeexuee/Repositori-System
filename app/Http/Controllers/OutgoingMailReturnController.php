@@ -46,6 +46,7 @@ class OutgoingMailReturnController extends Controller
                 'disposition_note' => $outgoingMail->disposition_note,
                 'recipient' => $recipient,
             ],
+            'attachments' => $outgoingMail->formattedAttachments(),
             'recipients' => $outgoingMail->returnRecipients->map(fn (OutgoingMailReturnRecipient $recipient) => [
                 'id' => $recipient->id,
                 'recipient_name' => $recipient->recipient_name,

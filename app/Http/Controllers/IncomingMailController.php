@@ -240,7 +240,7 @@ class IncomingMailController extends Controller
         $isAjax = $request->ajax() || $request->wantsJson();
         $perPage = min(max($request->integer('per_page', self::LAZY_LOAD_CHUNK), 1), self::LAZY_LOAD_MAX_ROWS);
 
-        $incomingMails = $query->latest()
+        $incomingMails = $query->withCount('attachments')->latest()
             ->orderByDesc('id') // urutan stabil antar blok lazy load
             ->paginate($perPage, ['*'], 'page', $isAjax ? null : 1)
             ->withQueryString();
@@ -802,55 +802,6 @@ class IncomingMailController extends Controller
     {
         Gate::authorize('view', $incomingMail);
 
-        $incomingMail->load('attachments');
-
-        $existingFilePaths = $incomingMail->attachments->pluck('file_path')->all();
-        $legacyAttachments = collect();
-
-        if ($incomingMail->document_photo_path && ! in_array($incomingMail->document_photo_path, $existingFilePaths, true)) {
-            $legacyAttachments->push([
-                'id' => 'legacy-photo',
-                'file_name' => basename($incomingMail->document_photo_path),
-                'file_size' => Storage::disk('local')->exists($incomingMail->document_photo_path) ? Storage::disk('local')->size($incomingMail->document_photo_path) : null,
-                'mime_type' => 'image/jpeg',
-                'is_image' => true,
-                'is_legacy' => true,
-                'preview_url' => route('document.download', ['path' => $incomingMail->document_photo_path, 'inline' => 1]),
-                'download_url' => route('document.download', ['path' => $incomingMail->document_photo_path]),
-                'created_at' => $incomingMail->created_at?->format('d/m/Y H:i'),
-            ]);
-        }
-
-        if ($incomingMail->file_path && ! in_array($incomingMail->file_path, $existingFilePaths, true) && $incomingMail->file_path !== $incomingMail->document_photo_path) {
-            $legacyAttachments->push([
-                'id' => 'legacy-file',
-                'file_name' => basename($incomingMail->file_path),
-                'file_size' => Storage::disk('local')->exists($incomingMail->file_path) ? Storage::disk('local')->size($incomingMail->file_path) : null,
-                'mime_type' => 'application/pdf',
-                'is_image' => false,
-                'is_legacy' => true,
-                'preview_url' => route('document.download', ['path' => $incomingMail->file_path, 'inline' => 1]),
-                'download_url' => route('document.download', ['path' => $incomingMail->file_path]),
-                'created_at' => $incomingMail->created_at?->format('d/m/Y H:i'),
-            ]);
-        }
-
-        $attachments = $incomingMail->attachments->map(function (IncomingMailAttachment $att) {
-            $isImg = str_starts_with((string) $att->mime_type, 'image/');
-
-            return [
-                'id' => (string) $att->id,
-                'file_name' => $att->file_name ?? basename($att->file_path),
-                'file_size' => $att->file_size,
-                'mime_type' => $att->mime_type,
-                'is_image' => $isImg,
-                'is_legacy' => false,
-                'preview_url' => route('document.download', ['path' => $att->file_path, 'inline' => 1]),
-                'download_url' => route('document.download', ['path' => $att->file_path]),
-                'created_at' => $att->created_at?->format('d/m/Y H:i'),
-            ];
-        });
-
         return response()->json([
             'success' => true,
             'mail' => [
@@ -859,7 +810,7 @@ class IncomingMailController extends Controller
                 'subject' => $incomingMail->subject,
                 'sender' => $incomingMail->sender,
             ],
-            'attachments' => $legacyAttachments->merge($attachments)->values(),
+            'attachments' => $incomingMail->formattedAttachments(),
         ]);
     }
 

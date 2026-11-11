@@ -70,6 +70,7 @@ class OutgoingMailController extends Controller
         $perPage = min(max($request->integer('per_page', self::LAZY_LOAD_CHUNK), 1), self::LAZY_LOAD_MAX_ROWS);
 
         $outgoingMails = $query->with(['creator', 'returnRecipients'])
+            ->withCount('attachments')
             ->latest()
             ->orderByDesc('id') // urutan stabil antar blok lazy load
             ->paginate($perPage, ['*'], 'page', $isAjax ? null : 1)
@@ -437,43 +438,6 @@ class OutgoingMailController extends Controller
     {
         Gate::authorize('view', $outgoingMail);
 
-        $outgoingMail->load('attachments');
-
-        $existingFilePaths = $outgoingMail->attachments->pluck('file_path')->all();
-        $legacyAttachments = collect();
-
-        if ($outgoingMail->file_path && ! in_array($outgoingMail->file_path, $existingFilePaths, true)) {
-            $isImg = (bool) preg_match('/\.(jpe?g|png|webp)$/i', $outgoingMail->file_path);
-
-            $legacyAttachments->push([
-                'id' => 'legacy-file',
-                'file_name' => basename($outgoingMail->file_path),
-                'file_size' => Storage::disk('local')->exists($outgoingMail->file_path) ? Storage::disk('local')->size($outgoingMail->file_path) : null,
-                'mime_type' => $isImg ? 'image/jpeg' : 'application/pdf',
-                'is_image' => $isImg,
-                'is_legacy' => true,
-                'preview_url' => route('document.download', ['path' => $outgoingMail->file_path, 'inline' => 1]),
-                'download_url' => route('document.download', ['path' => $outgoingMail->file_path]),
-                'created_at' => $outgoingMail->created_at?->format('d/m/Y H:i'),
-            ]);
-        }
-
-        $attachments = $outgoingMail->attachments->map(function (OutgoingMailAttachment $att) {
-            $isImg = str_starts_with((string) $att->mime_type, 'image/');
-
-            return [
-                'id' => (string) $att->id,
-                'file_name' => $att->file_name ?? basename($att->file_path),
-                'file_size' => $att->file_size,
-                'mime_type' => $att->mime_type,
-                'is_image' => $isImg,
-                'is_legacy' => false,
-                'preview_url' => route('document.download', ['path' => $att->file_path, 'inline' => 1]),
-                'download_url' => route('document.download', ['path' => $att->file_path]),
-                'created_at' => $att->created_at?->format('d/m/Y H:i'),
-            ];
-        });
-
         return response()->json([
             'success' => true,
             'mail' => [
@@ -482,7 +446,7 @@ class OutgoingMailController extends Controller
                 'subject' => $outgoingMail->subject,
                 'recipient' => $outgoingMail->recipient,
             ],
-            'attachments' => $legacyAttachments->merge($attachments)->values(),
+            'attachments' => $outgoingMail->formattedAttachments(),
         ]);
     }
 

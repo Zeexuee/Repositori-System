@@ -187,4 +187,45 @@ class OutgoingMailReceiveWorkflowTest extends TestCase
 
         $this->assertSame('RECEIVE', $mail->refresh()->progress);
     }
+
+    public function test_show_endpoint_includes_attachments_for_outgoing_mail(): void
+    {
+        $staff = $this->staff();
+        $mail = $this->outgoingMail($staff);
+        $mail->attachments()->create([
+            'file_path' => 'outgoing-mails/attachments/draft-sk.pdf',
+            'file_name' => 'draft-sk.pdf',
+            'file_size' => 15360,
+            'mime_type' => 'application/pdf',
+        ]);
+
+        $response = $this->actingAs($staff)->getJson(route('outgoing-mails.return-recipients.show', $mail));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'mail',
+            'attachments',
+            'recipients',
+        ]);
+        $response->assertJsonCount(1, 'attachments');
+        $response->assertJsonPath('attachments.0.file_name', 'draft-sk.pdf');
+    }
+
+    public function test_outgoing_table_renders_peek_button_when_mail_has_attachments(): void
+    {
+        $staff = $this->staff();
+        $mail = $this->outgoingMail($staff, 'READY_TO_DELIVERY'); // Not RECEIVE and no returnRecipients and no disposition_note
+        $mail->attachments()->create([
+            'file_path' => 'outgoing-mails/attachments/lampiran-surat.pdf',
+            'file_name' => 'lampiran-surat.pdf',
+            'file_size' => 12000,
+            'mime_type' => 'application/pdf',
+        ]);
+
+        $response = $this->actingAs($staff)->get(route('outgoing-mails.index'));
+
+        $response->assertOk();
+        $response->assertSee('openReceiptPreviewModal');
+        $response->assertSee('Berkas Dokumen Terunggah');
+    }
 }

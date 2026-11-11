@@ -67,9 +67,13 @@
                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                 };
                 $displayStatus = App\Support\OutgoingMailStatus::label($canonicalStatus);
+                // Dokumen dapat diintip jika berstatus RECEIVE, memiliki alur tanda tangan, catatan disposisi, atau berkas lampiran terunggah.
+                $hasUploadedDocs = filled($mail->file_path)
+                    || ($mail->relationLoaded('attachments') ? $mail->attachments->isNotEmpty() : (($mail->attachments_count ?? 0) > 0));
                 $canPeekReceipt = $canonicalStatus === App\Support\OutgoingMailStatus::RECEIVE
                     || $hasReturnProgress
-                    || filled($mail->disposition_note);
+                    || filled($mail->disposition_note)
+                    || $hasUploadedDocs;
             @endphp
 
             <div class="inline-flex items-center gap-1.5">

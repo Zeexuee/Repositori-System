@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class OutgoingMail extends Model
@@ -114,5 +116,52 @@ class OutgoingMail extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(OutgoingMailAttachment::class, 'outgoing_mail_id');
+    }
+
+    /**
+     * Get formatted attachments for the outgoing mail (including legacy files).
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function formattedAttachments(): Collection
+    {
+        $this->loadMissing('attachments');
+
+        $existingFilePaths = $this->attachments->pluck('file_path')->all();
+        $legacyAttachments = collect();
+
+        if ($this->file_path && ! in_array($this->file_path, $existingFilePaths, true)) {
+            $isImg = (bool) preg_match('/\.(jpe?g|png|webp)$/i', $this->file_path);
+
+            $legacyAttachments->push([
+                'id' => 'legacy-file',
+                'file_name' => basename($this->file_path),
+                'file_size' => Storage::disk('local')->exists($this->file_path) ? Storage::disk('local')->size($this->file_path) : null,
+                'mime_type' => $isImg ? 'image/jpeg' : 'application/pdf',
+                'is_image' => $isImg,
+                'is_legacy' => true,
+                'preview_url' => route('document.download', ['path' => $this->file_path, 'inline' => 1]),
+                'download_url' => route('document.download', ['path' => $this->file_path]),
+                'created_at' => $this->created_at?->format('d/m/Y H:i'),
+            ]);
+        }
+
+        $attachments = $this->attachments->map(function (OutgoingMailAttachment $att) {
+            $isImg = str_starts_with((string) $att->mime_type, 'image/');
+
+            return [
+                'id' => (string) $att->id,
+                'file_name' => $att->file_name ?? basename($att->file_path),
+                'file_size' => $att->file_size,
+                'mime_type' => $att->mime_type,
+                'is_image' => $isImg,
+                'is_legacy' => false,
+                'preview_url' => route('document.download', ['path' => $att->file_path, 'inline' => 1]),
+                'download_url' => route('document.download', ['path' => $att->file_path]),
+                'created_at' => $att->created_at?->format('d/m/Y H:i'),
+            ];
+        });
+
+        return $legacyAttachments->merge($attachments)->values();
     }
 }

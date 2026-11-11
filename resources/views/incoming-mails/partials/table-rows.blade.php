@@ -64,9 +64,13 @@
                     default => 'bg-slate-100 text-slate-700 border-slate-300',
                 };
 
-                // Dokumen yang sudah dikembalikan dapat diintip catatan disposisi & penerimanya.
+                // Dokumen dapat diintip jika memiliki catatan disposisi, berstatus RETURN, atau memiliki berkas lampiran terunggah.
+                $hasUploadedDocs = filled($mail->file_path)
+                    || filled($mail->document_photo_path)
+                    || ($mail->relationLoaded('attachments') ? $mail->attachments->isNotEmpty() : (($mail->attachments_count ?? 0) > 0));
                 $canPeekDisposition = $canonicalProgress === App\Support\IncomingMailStatus::RETURN
-                    || filled($mail->disposition_note);
+                    || filled($mail->disposition_note)
+                    || $hasUploadedDocs;
             @endphp
 
             <div class="inline-flex items-center gap-1.5">

@@ -295,4 +295,46 @@ class IncomingMailReturnDispositionNoteTest extends TestCase
         $response->assertSee('data-sender="Biro Kemahasiswaan"', false);
         $response->assertSee('(Otomatis dari pengirim)');
     }
+
+    public function test_show_endpoint_includes_attachments_for_incoming_mail(): void
+    {
+        $user = $this->actor();
+        $mail = $this->createMail('RECEIVE');
+        $mail->attachments()->create([
+            'file_path' => 'incoming-mails/attachments/test-doc.pdf',
+            'file_name' => 'test-doc.pdf',
+            'file_size' => 10240,
+            'mime_type' => 'application/pdf',
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('incoming-mails.return-recipients.show', $mail));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'mail',
+            'attachments',
+            'recipients',
+        ]);
+        $response->assertJsonCount(1, 'attachments');
+        $response->assertJsonPath('attachments.0.file_name', 'test-doc.pdf');
+        $response->assertJsonPath('attachments.0.mime_type', 'application/pdf');
+    }
+
+    public function test_table_renders_peek_button_when_mail_has_attachments(): void
+    {
+        $user = $this->actor();
+        $mail = $this->createMail('RECEIVE'); // Not RETURN and no disposition_note
+        $mail->attachments()->create([
+            'file_path' => 'incoming-mails/attachments/foto-lampiran.jpg',
+            'file_name' => 'foto-lampiran.jpg',
+            'file_size' => 20480,
+            'mime_type' => 'image/jpeg',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('incoming-mails.index'));
+
+        $response->assertOk();
+        $response->assertSee('openDispositionPreviewModal');
+        $response->assertSee('Berkas Dokumen Terunggah');
+    }
 }
