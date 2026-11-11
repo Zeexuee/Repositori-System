@@ -365,7 +365,7 @@ class IncomingMailController extends Controller
 
         $nextSequenceNumber = IncomingMail::count() + 1;
 
-        $senders = IncomingMail::whereNotNull('sender')->where('sender', '!=', '')->select('sender')->distinct()->pluck('sender');
+        $senders = \App\Support\MailOptionList::senders();
         $recipients = $this->getDistinctRecipients();
         $statuses = $this->getDistinctStatuses();
 
@@ -541,7 +541,7 @@ class IncomingMailController extends Controller
 
         $incomingMail->load(['batchItems', 'attachments']);
 
-        $senders = IncomingMail::whereNotNull('sender')->where('sender', '!=', '')->select('sender')->distinct()->pluck('sender');
+        $senders = \App\Support\MailOptionList::senders();
         $recipients = $this->getDistinctRecipients();
         $statuses = $this->getDistinctStatuses();
 
@@ -688,10 +688,7 @@ class IncomingMailController extends Controller
      */
     private function getDistinctRecipients(): \Illuminate\Support\Collection
     {
-        $raw = IncomingMail::whereNotNull('recipient')->where('recipient', '!=', '')->distinct()->pluck('recipient')
-            ->merge(\App\Models\OutgoingMail::whereNotNull('recipient')->where('recipient', '!=', '')->distinct()->pluck('recipient'));
-
-        return collect(MailRecipient::extractDistinct($raw));
+        return \App\Support\MailOptionList::recipients();
     }
 
     /**
@@ -701,10 +698,7 @@ class IncomingMailController extends Controller
      */
     private function getDistinctStatuses(): \Illuminate\Support\Collection
     {
-        $raw = IncomingMail::whereNotNull('status')->where('status', '!=', '')->distinct()->pluck('status')
-            ->merge(\App\Models\OutgoingMail::whereNotNull('status')->where('status', '!=', '')->distinct()->pluck('status'));
-
-        return collect(\App\Support\MailCustomStatus::extractDistinct($raw));
+        return \App\Support\MailOptionList::statuses();
     }
 
     /**

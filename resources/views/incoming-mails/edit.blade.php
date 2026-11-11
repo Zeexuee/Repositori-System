@@ -128,7 +128,8 @@
                     <!-- Dari (Pengirim) -->
                     <div x-data="searchableSelect({
                         initialValue: {{ json_encode(old('sender', $incomingMail->sender)) }},
-                        defaultOptions: {{ json_encode($senders ?? []) }}
+                        defaultOptions: {{ json_encode($senders ?? []) }},
+                        listType: 'senders'
                     })" class="relative" @click.away="open = false">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             Dari / Biro Pengirim <span class="text-slate-900 font-bold">*</span>
@@ -223,7 +224,8 @@
                     <!-- Kepada (Penerima) Dokumen Ini (Multi-Recipient Chip Combobox) -->
                     <div x-data="multiRecipientSelect({
                         initialValue: {{ json_encode(old('recipient', $incomingMail->recipient)) }},
-                        defaultOptions: {{ json_encode($recipients ?? []) }}
+                        defaultOptions: {{ json_encode($recipients ?? []) }},
+                        listType: 'recipients'
                     })" class="relative" @click.away="closeDropdown()">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             Kepada / Penerima Dokumen <span class="text-slate-900 font-bold">*</span>
@@ -320,7 +322,8 @@
                     <!-- Status (Inputan Admin - Opsional) -->
                     <div x-data="searchableSelect({
                         initialValue: {{ json_encode(old('status', $incomingMail->status)) }},
-                        defaultOptions: {{ json_encode($statuses ?? \App\Support\MailCustomStatus::DEFAULTS) }}
+                        defaultOptions: {{ json_encode($statuses ?? \App\Support\MailCustomStatus::DEFAULTS) }},
+                        listType: 'statuses'
                     })" class="relative" @click.away="open = false">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             Status <span class="text-slate-400 font-normal normal-case">(Opsional)</span>
@@ -907,11 +910,9 @@
         }
 
         function searchableSelect(config) {
+            const listType = config.listType || 'statuses';
             const defaultOpts = Array.isArray(config.defaultOptions) ? [...config.defaultOptions] : [];
-            const initVal = config.initialValue || '';
-            if (initVal && !defaultOpts.includes(initVal)) {
-                defaultOpts.unshift(initVal);
-            }
+            const initVal = config.initialValue ? String(config.initialValue) : '';
 
             return {
                 open: false,
@@ -920,11 +921,12 @@
                 options: defaultOpts,
 
                 get filteredOptions() {
-                    if (!this.search.trim()) {
+                    const kw = this.search.trim().toLowerCase();
+                    if (!kw) {
                         return this.options;
                     }
                     return this.options.filter(opt => 
-                        opt.toLowerCase().includes(this.search.trim().toLowerCase())
+                        String(opt).toLowerCase().includes(kw)
                     );
                 },
 
@@ -935,25 +937,32 @@
                 },
 
                 addNewOption(newOpt) {
-                    if (!newOpt) return;
-                    if (!this.options.includes(newOpt)) {
-                        this.options.unshift(newOpt);
+                    const clean = String(newOpt || '').trim();
+                    if (!clean) return;
+                    const existing = this.options.find(o => String(o).toLowerCase() === clean.toLowerCase());
+                    const finalVal = existing || clean;
+                    if (!existing) {
+                        this.options.unshift(finalVal);
                     }
-                    this.value = newOpt;
+                    this.value = finalVal;
                     this.search = '';
                     this.open = false;
+                    window.mailOptionSync?.restore(listType, finalVal);
                 },
 
                 removeOption(opt) {
-                    this.options = this.options.filter(item => item !== opt);
-                    if (this.value === opt) {
+                    const key = String(opt ?? '').trim().toLowerCase();
+                    this.options = this.options.filter(item => String(item).trim().toLowerCase() !== key);
+                    if (this.value && this.value.toLowerCase() === key) {
                         this.value = '';
                     }
+                    window.mailOptionSync?.remove(listType, opt);
                 }
             };
         }
 
         function multiRecipientSelect(config) {
+            const listType = config.listType || 'recipients';
             const parseTags = (raw) => {
                 if (!raw) return [];
                 if (Array.isArray(raw)) return raw.map(s => String(s).trim()).filter(Boolean);
@@ -961,11 +970,6 @@
             };
             const initialTags = parseTags(config.initialValue);
             const defaultOpts = Array.isArray(config.defaultOptions) ? [...config.defaultOptions] : [];
-            initialTags.forEach(tag => {
-                if (!defaultOpts.some(o => String(o).toLowerCase() === tag.toLowerCase())) {
-                    defaultOpts.unshift(tag);
-                }
-            });
 
             return {
                 open: false,
@@ -978,11 +982,12 @@
                 },
 
                 get filteredOptions() {
-                    if (!this.search.trim()) {
+                    const kw = this.search.trim().toLowerCase();
+                    if (!kw) {
                         return this.options;
                     }
                     return this.options.filter(opt =>
-                        String(opt).toLowerCase().includes(this.search.trim().toLowerCase())
+                        String(opt).toLowerCase().includes(kw)
                     );
                 },
 
@@ -1032,19 +1037,23 @@
                 addNewOption(newOpt) {
                     const parts = String(newOpt || '').split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
                     parts.forEach(part => {
-                        if (!this.options.some(o => String(o).toLowerCase() === part.toLowerCase())) {
-                            this.options.unshift(part);
+                        const existing = this.options.find(o => String(o).toLowerCase() === part.toLowerCase());
+                        const finalVal = existing || part;
+                        if (!existing) {
+                            this.options.unshift(finalVal);
                         }
-                        this.addTag(part);
+                        this.addTag(finalVal);
+                        window.mailOptionSync?.restore(listType, finalVal);
                     });
                     this.search = '';
                     this.$nextTick(() => this.$refs.searchInput?.focus());
                 },
 
                 removeOption(opt) {
-                    this.options = this.options.filter(item => item !== opt);
-                    const target = String(opt).toLowerCase();
-                    this.tags = this.tags.filter(t => t.toLowerCase() !== target);
+                    const key = String(opt ?? '').trim().toLowerCase();
+                    this.options = this.options.filter(item => String(item).trim().toLowerCase() !== key);
+                    this.tags = this.tags.filter(t => t.toLowerCase() !== key);
+                    window.mailOptionSync?.remove(listType, opt);
                 },
 
                 commitSearch() {

@@ -9,6 +9,7 @@ use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\IncomingMailController;
 use App\Http\Controllers\IncomingMailReturnController;
 use App\Http\Controllers\MailDispositionController;
+use App\Http\Controllers\MailOptionController;
 use App\Http\Controllers\OutgoingMailController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepositoryController;
@@ -30,6 +31,10 @@ Route::middleware(['auth'])->group(function () {
 
     // Repositori Dokumen (Card Per Bulan)
     Route::get('/repository', [RepositoryController::class, 'index'])->name('repository.index');
+
+    // Daftar riwayat combobox registrasi on-the-fly (hapus / daftarkan ulang secara permanen)
+    Route::post('/mail-options/remove', [MailOptionController::class, 'destroy'])->name('mail-options.destroy');
+    Route::post('/mail-options/restore', [MailOptionController::class, 'restore'])->name('mail-options.restore');
 
     // Alur Status & Pengembalian Surat Masuk.
     // Catatan disposisi kini dikumpulkan di dalam alur pengembalian (return-workflow).

@@ -304,14 +304,10 @@
             Alpine.store('mailOptions', {
                 statuses: @json($statuses ?? \App\Support\MailCustomStatus::DEFAULTS),
                 recipients: @json($recipients ?? []),
-                deleted_statuses: JSON.parse(localStorage.getItem('deleted_outgoing_statuses') || '[]'),
-                deleted_recipients: JSON.parse(localStorage.getItem('deleted_outgoing_recipients') || '[]'),
                 getOptions(type) {
-                    const list = this[type] || [];
-                    const deleted = this['deleted_' + type] || [];
-                    return list.filter(item => !deleted.includes(item));
+                    return this[type] || [];
                 },
-                addOption(type, val) {
+                addOption(type, val, persist = true) {
                     const clean = String(val || '').trim();
                     if (!clean) return '';
                     const list = this[type] || [];
@@ -320,19 +316,17 @@
                     if (!existing) {
                         this[type].unshift(finalVal);
                     }
-                    const delKey = 'deleted_' + type;
-                    if (this[delKey] && this[delKey].includes(finalVal)) {
-                        this[delKey] = this[delKey].filter(i => i !== finalVal);
-                        localStorage.setItem('deleted_outgoing_' + type, JSON.stringify(this[delKey]));
+                    if (persist) {
+                        window.mailOptionSync?.restore(type, finalVal);
                     }
                     return finalVal;
                 },
                 removeOption(type, val) {
-                    const key = 'deleted_' + type;
-                    if (!this[key].includes(val)) {
-                        this[key].push(val);
-                        localStorage.setItem('deleted_outgoing_' + type, JSON.stringify(this[key]));
+                    const key = String(val ?? '').trim().toLowerCase();
+                    if (this[type]) {
+                        this[type] = this[type].filter(item => String(item).trim().toLowerCase() !== key);
                     }
+                    window.mailOptionSync?.remove(type, val);
                 }
             });
 
@@ -348,7 +342,7 @@
                     search: '',
                     tags: parseTags(initialValue),
                     init() {
-                        this.tags.forEach(tag => Alpine.store('mailOptions').addOption(listType, tag));
+                        // Tidak memasukkan ulang tag awal ke store agar opsi yang pernah dihapus tidak muncul kembali
                     },
                     get value() {
                         return this.tags.join(', ');
@@ -438,6 +432,9 @@
                 },
                 remove(opt) {
                     Alpine.store('mailOptions').removeOption(listType, opt);
+                    if (this.value === opt) {
+                        this.value = '';
+                    }
                 }
             }));
 

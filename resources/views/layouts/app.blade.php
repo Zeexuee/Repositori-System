@@ -6,6 +6,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    @auth
+    <script>
+        // Sinkronisasi daftar riwayat combobox (registrasi on-the-fly) ke server,
+        // agar opsi yang dihapus tidak muncul kembali setelah halaman dimuat ulang.
+        window.mailOptionSync = (function () {
+            const endpoints = {
+                remove: @json(route('mail-options.destroy')),
+                restore: @json(route('mail-options.restore')),
+            };
+            const validTypes = ['senders', 'recipients', 'statuses'];
+
+            // Data hapus lama yang dulu hanya tersimpan di localStorage browser (surat keluar).
+            const legacyKeys = { recipients: 'deleted_outgoing_recipients', statuses: 'deleted_outgoing_statuses' };
+            const legacyHidden = {};
+            Object.entries(legacyKeys).forEach(([type, storageKey]) => {
+                try {
+                    const list = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                    legacyHidden[type] = Array.isArray(list) ? list.map(v => String(v).trim().toLowerCase()).filter(Boolean) : [];
+                } catch (e) {
+                    legacyHidden[type] = [];
+                }
+            });
+
+            function send(action, type, values) {
+                const list = (Array.isArray(values) ? values : [values])
+                    .map(v => String(v ?? '').trim())
+                    .filter(Boolean);
+                if (!validTypes.includes(type) || list.length === 0) {
+                    return Promise.resolve(false);
+                }
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                return fetch(endpoints[action], {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': token,
+                    },
+                    body: JSON.stringify({ type, values: list }),
+                }).then(res => res.ok).catch(() => false);
+            }
+
+            // Pindahkan data hapus lama dari localStorage ke server (sekali saja).
+            Object.entries(legacyKeys).forEach(([type, storageKey]) => {
+                const raw = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (e) { return []; } })();
+                if (Array.isArray(raw) && raw.length > 0) {
+                    send('remove', type, raw).then(ok => { if (ok) localStorage.removeItem(storageKey); });
+                } else {
+                    localStorage.removeItem(storageKey);
+                }
+            });
+
+            return {
+                remove(type, value) {
+                    return send('remove', type, value);
+                },
+                restore(type, value) {
+                    if (legacyHidden[type]) {
+                        const key = String(value ?? '').trim().toLowerCase();
+                        legacyHidden[type] = legacyHidden[type].filter(v => v !== key);
+                    }
+                    return send('restore', type, value);
+                },
+                filter(type, list) {
+                    const hidden = legacyHidden[type] || [];
+                    if (!Array.isArray(list) || hidden.length === 0) return Array.isArray(list) ? list : [];
+                    return list.filter(item => !hidden.includes(String(item).trim().toLowerCase()));
+                },
+            };
+        })();
+    </script>
+    @endauth
+
     <title>{{ config('app.name', 'Corporate Secretariat Repository') }} - @yield('title', 'Dashboard')</title>
 
     <!-- Fonts -->

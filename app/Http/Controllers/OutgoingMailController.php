@@ -349,10 +349,7 @@ class OutgoingMailController extends Controller
      */
     private function getDistinctRecipients(): \Illuminate\Support\Collection
     {
-        $raw = OutgoingMail::whereNotNull('recipient')->where('recipient', '!=', '')->distinct()->pluck('recipient')
-            ->merge(\App\Models\IncomingMail::whereNotNull('recipient')->where('recipient', '!=', '')->distinct()->pluck('recipient'));
-
-        return collect(MailRecipient::extractDistinct($raw));
+        return \App\Support\MailOptionList::recipients();
     }
 
     /**
@@ -362,10 +359,7 @@ class OutgoingMailController extends Controller
      */
     private function getDistinctStatuses(): \Illuminate\Support\Collection
     {
-        $raw = \App\Models\IncomingMail::whereNotNull('status')->where('status', '!=', '')->distinct()->pluck('status')
-            ->merge(OutgoingMail::whereNotNull('status')->where('status', '!=', '')->distinct()->pluck('status'));
-
-        return collect(\App\Support\MailCustomStatus::extractDistinct($raw));
+        return \App\Support\MailOptionList::statuses();
     }
 
     /**

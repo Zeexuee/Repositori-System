@@ -826,7 +826,7 @@
                     return this.senders;
                 },
 
-                add(type, option) {
+                add(type, option, persist = true) {
                     const value = String(option ?? '').trim();
                     if (value === '') {
                         return '';
@@ -840,17 +840,27 @@
 
                     target.unshift(value);
 
+                    // Registrasi ulang opsi yang pernah dihapus: hapus dari daftar tersembunyi di server.
+                    if (persist) {
+                        window.mailOptionSync?.restore(type, value);
+                    }
+
                     return value;
                 },
 
                 remove(type, option) {
+                    const key = String(option ?? '').trim().toLowerCase();
+                    const keep = item => String(item).trim().toLowerCase() !== key;
                     if (type === 'senders') {
-                        this.senders = this.senders.filter(item => item !== option);
+                        this.senders = this.senders.filter(keep);
                     } else if (type === 'recipients') {
-                        this.recipients = this.recipients.filter(item => item !== option);
+                        this.recipients = this.recipients.filter(keep);
                     } else if (type === 'statuses') {
-                        this.statuses = this.statuses.filter(item => item !== option);
+                        this.statuses = this.statuses.filter(keep);
                     }
+
+                    // Simpan penghapusan secara permanen agar tidak muncul lagi saat halaman dimuat ulang.
+                    window.mailOptionSync?.remove(type, option);
                 },
             });
         });
@@ -865,9 +875,8 @@
                 listType: ['recipients', 'statuses'].includes(settings.listType) ? settings.listType : 'senders',
 
                 init() {
-                    if (this.value) {
-                        this.$store.mailOptions.add(this.listType, this.value);
-                    }
+                    // Nilai awal tetap tampil pada tombol pemilih tanpa dimasukkan kembali
+                    // ke daftar riwayat, sehingga opsi yang sudah dihapus tidak muncul lagi.
                 },
 
                 get options() {
@@ -954,9 +963,7 @@
                 listType: settings.listType || 'recipients',
 
                 init() {
-                    this.tags.forEach(tag => {
-                        this.$store.mailOptions.add(this.listType, tag);
-                    });
+                    // Chip penerima awal tetap tampil tanpa dimasukkan kembali ke daftar riwayat.
                 },
 
                 get value() {

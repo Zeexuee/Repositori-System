@@ -448,24 +448,29 @@
             Alpine.data('searchableSelect', ({ listType, initialValue, defaultOptions }) => ({
                 open: false,
                 value: initialValue || '',
-                rawOptions: defaultOptions || [],
-                deleted: JSON.parse(localStorage.getItem('deleted_outgoing_' + listType) || '[]'),
+                rawOptions: Array.isArray(defaultOptions) ? [...defaultOptions] : [],
                 get options() {
-                    return this.rawOptions.filter(item => !this.deleted.includes(item));
+                    return this.rawOptions;
                 },
                 get filteredOptions() {
-                    if (!this.value) return this.options;
-                    return this.options.filter(opt => opt.toLowerCase().includes(this.value.toLowerCase()));
+                    const kw = String(this.value || '').trim().toLowerCase();
+                    if (!kw) return this.options;
+                    return this.options.filter(opt => String(opt).toLowerCase().includes(kw));
                 },
                 select(opt) {
                     this.value = opt;
                     this.open = false;
                 },
                 remove(opt) {
-                    if (!this.deleted.includes(opt)) {
-                        this.deleted.push(opt);
-                        localStorage.setItem('deleted_outgoing_' + listType, JSON.stringify(this.deleted));
+                    const key = String(opt ?? '').trim().toLowerCase();
+                    this.rawOptions = this.rawOptions.filter(item => String(item).trim().toLowerCase() !== key);
+                    if (this.value && this.value.toLowerCase() === key) {
+                        this.value = '';
                     }
+                    window.mailOptionSync?.remove(listType, opt);
+                },
+                removeOption(opt) {
+                    this.remove(opt);
                 }
             }));
 
@@ -477,23 +482,17 @@
                 };
                 const initialTags = parseTags(initialValue);
                 const rawOpts = Array.isArray(defaultOptions) ? [...defaultOptions] : [];
-                initialTags.forEach(tag => {
-                    if (!rawOpts.some(o => String(o).toLowerCase() === tag.toLowerCase())) {
-                        rawOpts.unshift(tag);
-                    }
-                });
 
                 return {
                     open: false,
                     search: '',
                     tags: initialTags,
                     rawOptions: rawOpts,
-                    deleted: JSON.parse(localStorage.getItem('deleted_outgoing_' + (listType || 'recipients')) || '[]'),
                     get value() {
                         return this.tags.join(', ');
                     },
                     get options() {
-                        return this.rawOptions.filter(item => !this.deleted.includes(item));
+                        return this.rawOptions;
                     },
                     get filteredOptions() {
                         const kw = this.search.trim().toLowerCase();
@@ -540,25 +539,22 @@
                     addNewOption(newOpt) {
                         const parts = String(newOpt || '').split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
                         parts.forEach(part => {
-                            if (!this.rawOptions.some(o => String(o).toLowerCase() === part.toLowerCase())) {
-                                this.rawOptions.unshift(part);
+                            const existing = this.rawOptions.find(o => String(o).toLowerCase() === part.toLowerCase());
+                            const finalVal = existing || part;
+                            if (!existing) {
+                                this.rawOptions.unshift(finalVal);
                             }
-                            if (this.deleted.includes(part)) {
-                                this.deleted = this.deleted.filter(d => d !== part);
-                                localStorage.setItem('deleted_outgoing_' + (listType || 'recipients'), JSON.stringify(this.deleted));
-                            }
-                            this.addTag(part);
+                            this.addTag(finalVal);
+                            window.mailOptionSync?.restore(listType || 'recipients', finalVal);
                         });
                         this.search = '';
                         this.$nextTick(() => this.$refs.searchInput?.focus());
                     },
                     removeOption(opt) {
-                        if (!this.deleted.includes(opt)) {
-                            this.deleted.push(opt);
-                            localStorage.setItem('deleted_outgoing_' + (listType || 'recipients'), JSON.stringify(this.deleted));
-                        }
-                        const target = String(opt).toLowerCase();
-                        this.tags = this.tags.filter(t => t.toLowerCase() !== target);
+                        const key = String(opt ?? '').trim().toLowerCase();
+                        this.rawOptions = this.rawOptions.filter(item => String(item).trim().toLowerCase() !== key);
+                        this.tags = this.tags.filter(t => t.toLowerCase() !== key);
+                        window.mailOptionSync?.remove(listType || 'recipients', opt);
                     },
                     commitSearch() {
                         const kw = this.search.trim();
